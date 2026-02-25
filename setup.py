@@ -41,7 +41,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "ew=easy_whitelist._core:main",
+            "ew=EasyWhitelist._core:main",
         ],
     },
     extras_require={

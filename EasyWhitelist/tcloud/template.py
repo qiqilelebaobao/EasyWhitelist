@@ -89,7 +89,7 @@ def _modify_template_address(common_client, target_id, client_ips):
         if (TemplateSet := respon["Response"]["AddressTemplateSet"]) and TemplateSet[0]["AddressTemplateName"].startswith(TEMPLATE_PREFIX):
             pass
         else:
-            print("This is not a template generated from this tool. Shall not be modified.")
+            logging.error("[template] this is not a template generated from this tool. Shall not be modified.")
             return False
     except (TencentCloudSDKException, IndexError) as err:
         # IndexError catch when there is no match target.Example: "AddressTemplateSet": []
