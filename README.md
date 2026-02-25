@@ -1,8 +1,8 @@
-# Easy_whitelist
+# EasyWhitelist
 
-Easy_whitelist 是一个探测本机互联网 IP 地址，将并本机互联网IP地址，自动更新到云安全组白名单的小工具。工具使用 Python 编写。
+EasyWhitelist 是一个探测本机互联网 IP 地址，将并本机互联网IP地址，自动更新到云安全组白名单的小工具。工具使用 Python 编写。
 
-Easy_whitelist is a smart tool that detects the local Internet IP address and automatically updates the local Internet IP address to the cloud security group whitelist. The tool is written in Python.
+EasyWhitelist is a smart tool that detects the local Internet IP address and automatically updates the local Internet IP address to the cloud security group whitelist. The tool is written in Python.
 
 主要功能包括：
 
