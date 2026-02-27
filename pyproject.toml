@@ -1,10 +1,6 @@
-[build-system]
-requires = ["setuptools >= 77.0.3"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "easy_whitelist"
-version = "1.0.89"
+name = "EasyWhitelist"
+version = "1.0.104b1"
 description = 'A smart tool that detects the local Internet IP address and automatically updates the local Internet IP address to the cloud security group whitelist.'
 
 authors = [
@@ -38,7 +34,6 @@ classifiers = [
   ]
 
 dependencies = [
-  "requests",
   "tencentcloud-sdk-python"
 ]
 
@@ -49,18 +44,16 @@ Homepage = "https://github.com/qiqilelebaobao/easy_whitelist"
 Source = "https://github.com/qiqilelebaobao/easy_whitelist"
 
 [project.scripts]
-ew = "easy_whitelist._core:main"
+ew = "EasyWhitelist._core:main"
 
 [project.optional-dependencies]
 gui = ["PyQt5"]
-cli = [
-  "rich",
-  "click",
-]
+cli = ["rich", "click"]
 
 dev = ["orjson"]
 test = ["pytest", "simplejson"]
 doc = ["sphinx", "ujson"]
+easy = ['pandas']
 
 [tool.flit.sdist]
 include = [
@@ -68,3 +61,10 @@ include = [
     "CODE_OF_CONDUCT.md",
     "tests/"
 ]
+
+[build-system]
+requires = ["flit_core >= 3.12.0, <4"]
+build-backend = "flit_core.buildapi"
+
+[tool.setuptools]
+py-modules = ["EasyWhitelist"]
