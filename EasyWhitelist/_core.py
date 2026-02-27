@@ -3,6 +3,7 @@ import logging
 from .config import arg
 from .config.log import set_log
 from .tcloud.core import t_main
+from .aliyun.core import aliyun_main
 
 
 def main() -> None:
@@ -18,3 +19,6 @@ def main() -> None:
 
     if cloud_provider == "tencent":
         t_main(args.action, args.target, args.target_id,  args.region, args.proxy)
+
+    if cloud_provider == 'alibaba':
+        aliyun_main(args.action, args.target, args.target_id,  args.region, args.proxy)
