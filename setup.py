@@ -4,13 +4,9 @@ with open("README.md", encoding="utf-8") as f:
     long_desc = f.read()
 
 setup(
-    name="EasyWhitelist",
-    version="1.0.106",
-    description="A smart tool that detects the local Internet IP address and automatically updates the local Internet IP address to the cloud security group whitelist.",
     long_description=long_desc,
     long_description_content_type="text/markdown",
     keywords=["whitelist", "security-groups", "alibaba-cloud", "tencent-cloud", "security-tools"],
-    url="https://github.com/qiqilelebaobao/easy_whitelist",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
