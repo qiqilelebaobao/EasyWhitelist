@@ -4,16 +4,13 @@ with open("README.md", encoding="utf-8") as f:
     long_desc = f.read()
 
 setup(
-    name="EasyWhitelist",              # PyPI 上唯一的名字
-    version="1.0.104",                   # 每次上传必须 > 旧版本
-    author="qiqilelebaobao",
-    author_email="qiqilelebaobao@163.com",
+    name="EasyWhitelist",
+    version="1.0.106",
     description="A smart tool that detects the local Internet IP address and automatically updates the local Internet IP address to the cloud security group whitelist.",
     long_description=long_desc,
     long_description_content_type="text/markdown",
     keywords=["whitelist", "security-groups", "alibaba-cloud", "tencent-cloud", "security-tools"],
     url="https://github.com/qiqilelebaobao/easy_whitelist",
-    license="Apache License 2.0",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
