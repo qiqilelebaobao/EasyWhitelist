@@ -1,6 +1,6 @@
 [project]
 name = "EasyWhitelist"
-version = "1.0.104b1"
+# version = "1.0.104b1"
 description = 'A smart tool that detects the local Internet IP address and automatically updates the local Internet IP address to the cloud security group whitelist.'
 
 authors = [
@@ -37,7 +37,7 @@ dependencies = [
   "tencentcloud-sdk-python"
 ]
 
-# dynamic = ["version", "description"]
+dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/qiqilelebaobao/easy_whitelist"
@@ -58,9 +58,6 @@ easy = ['pandas']
 [build-system]
 requires = ["flit_core >= 3.12.0, <4"]
 build-backend = "flit_core.buildapi"
-
-[tool.flit.sdist]
-
 
 [tool.setuptools]
 py-modules = ["EasyWhitelist"]
