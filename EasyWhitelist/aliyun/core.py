@@ -5,11 +5,18 @@ from .prefix import Prefix
 
 
 def aliyun_main(action, target, target_id, region, proxy=None) -> None:
-    logging.info(f"Enter aliyun {action} {target} {target_id} {region}...")
+    logging.info("Enter aliyun %(action)s %(target)s %(target_id)s %(region)s..." % {"action": action, "target": target, "target_id": target_id, "region": region})
+
+    if region is None:
+        region = "cn-hangzhou"
+        logging.info("[config] region not set, fallback to %s", region)
 
     if target == "template":
+
         ACTION_MAP = {
-            "list": lambda: Prefix.list_prefix_list,
+            "list": lambda: Prefix.list_prefix_list(region_id=region),
+            "set": lambda: Prefix.associate_prefix_list(prefix_list_id=target_id, region_id=region),
+            "create": lambda: Prefix.create_prefix_list(region_id=region),
         }
         if action in ACTION_MAP:
             ACTION_MAP[action]()

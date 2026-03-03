@@ -12,68 +12,94 @@ from ..ip_detector.detectors import get_iplist
 
 class Prefix:
     @staticmethod
-    def create_prefix_list(RegionId='cn-hangzhou', PrefixListName=f'{TEMPLATE_PREFIX}0', Description=f'{TEMPLATE_PREFIX}0_desc'):
+    def create_prefix_list(region_id='cn-hangzhou', prefix_list_name=f'{TEMPLATE_PREFIX}0', description=f'{TEMPLATE_PREFIX}0_desc'):
         client = ClientFactory.create_client()
         # 构造请求对象
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
-            region_id=RegionId,
-            prefix_list_name=PrefixListName,
-            description=Description,
+            region_id=region_id,
+            prefix_list_name=prefix_list_name,
+            description=description,
             max_entries=20,
             address_family='IPv4'
         )
+
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 CreatePrefixList 接口
             create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)
-            print(json.dumps(create_prefix_list_response.body.to_map()))
+            logging.info(json.dumps(create_prefix_list_response.body.to_map()))
+            return create_prefix_list_response.body.to_map()
 
-            # json.dumps(describe_instances_response.body)
-        except UnretryableException as e:
-            # 网络异常，此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常
-            print(e)
-        except TeaException as e:
-            # 业务异常，此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常
-            print(e)
-        except Exception as e:
-            # 其他异常，此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常
-            print(e)
+        except UnretryableException:
+            logging.exception("Network error when creating prefix list")
+            return None
+        except TeaException:
+            logging.exception("Tea API error when creating prefix list")
+            return None
+        except Exception:
+            logging.exception("Unexpected error when creating prefix list")
+            return None
 
     @staticmethod
-    def associate_prefix_list(PrefixListId, RegionId):
+    def associate_prefix_list(prefix_list_id, region_id):
         client = ClientFactory.create_client()
-        client_iplist = get_iplist()
+        client_ip_list = get_iplist()
 
-        logging.warning(f"Associating prefix list {PrefixListId} in region {RegionId} with client IPs: {client_iplist}")
+        logging.warning(f"Associating prefix list {prefix_list_id} in region {region_id} with client IPs: {client_ip_list}")
 
         # 构造请求对象
-        modifiy_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
-            region_id=RegionId,
-            prefix_list_id=PrefixListId,
+        modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
+            region_id=region_id,
+            prefix_list_id=prefix_list_id,
             add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
                 cidr=ip,
                 description='added by EasyWhitelist'
-            ) for ip in client_iplist]
+            ) for ip in client_ip_list]
         )
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 ModifyPrefixList 接口
-            modify_prefix_list_response = client.modify_prefix_list_with_options(modifiy_prefix_list_request, runtime)
-            print(json.dumps(modify_prefix_list_response.body.to_map()))
+            modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)
+            logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
+            return modify_prefix_list_response.body.to_map()
 
             # json.dumps(describe_instances_response.body)
-        except UnretryableException as e:
-            # 网络异常，此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常
-            print(e)
-        except TeaException as e:
-            # 业务异常，此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常
-            print(e)
-        except Exception as e:
-            # 其他异常，此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常
-            print(e)
+        except UnretryableException:
+            logging.exception("Network error when modifying prefix list")
+            return None
+        except TeaException:
+            logging.exception("Tea API error when modifying prefix list")
+            return None
+        except Exception:
+            logging.exception("Unexpected error when modifying prefix list")
+            return None
 
     @staticmethod
-    def list_prefix_list():
-        logging.info("Enter list prefix list...")
+    def list_prefix_list(region_id='cn-hangzhou'):
+        logging.info("List prefix list of region: %s..." % region_id)
+        client = ClientFactory.create_client()
+        # 构造请求对象
+        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
+            region_id=region_id,
+            # prefix_list_name=f'{TEMPLATE_PREFIX}*'
+        )
+        # 设置运行时参数
+        runtime = util_models.RuntimeOptions()
+        try:
+            # 调用 DescribePrefixLists 接口
+            describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
+            logging.info(json.dumps(describe_prefix_lists_response.body.to_map()))
+            return describe_prefix_lists_response.body.to_map()
+
+            # json.dumps(describe_instances_response.body)
+        except UnretryableException:
+            logging.exception("Network error when describing prefix lists")
+            return None
+        except TeaException:
+            logging.exception("Tea API error when describing prefix lists")
+            return None
+        except Exception:
+            logging.exception("Unexpected error when describing prefix lists")
+            return None
