@@ -42,26 +42,26 @@ def print_template(common_client) -> List[str]:
     template_ids = []
 
     # 表头
-    header = (f"{"#":<{COLS["idx"]}}"
-              f"{"Template ID":<{COLS["id"]}}"
-              f"{"CreatedTime":<{COLS["ctime"]}}"
-              f"{"Addresses":<{COLS["addrs"]}}"
-              f"{"AddressTemplateName":<{COLS["name"]}}")
+    header = (f"{'#':<{COLS['idx']}}"
+              f"{'Template ID':<{COLS['id']}}"
+              f"{'CreatedTime':<{COLS['ctime']}}"
+              f"{'Addresses':<{COLS['addrs']}}"
+              f"{'AddressTemplateName':<{COLS['name']}}")
 
-    print(f"{"Tencent Cloud Template List":=^{HEADER_WIDTH}}")
+    print(f"{'Tencent Cloud Template List':=^{HEADER_WIDTH}}")
     print(header)
-    print(f"-" * HEADER_WIDTH)
+    print("-" * HEADER_WIDTH)
 
     for i, template in enumerate(tpl_resp["Response"]["AddressTemplateSet"], 1):
         template_ids.append(template["AddressTemplateId"])
         addreset = ", ".join(template["AddressSet"][:3])
         if len(template["AddressSet"]) > 3:
-            addreset += f" ~~~ {len(template["AddressSet"])-3} more..."
-        print(f"{str(i):{COLS["idx"]}}"
-              f"{template["AddressTemplateId"]:{COLS["id"]}}"
-              f"{template["CreatedTime"]:{COLS["ctime"]}}"
-              f"{addreset:<{COLS["addrs"]}}"
-              f"{template["AddressTemplateName"]:{COLS["name"]}}"
+            addreset += f" ~~~ {len(template['AddressSet'])-3} more..."
+        print(f"{str(i):{COLS['idx']}}"
+              f"{template['AddressTemplateId']:{COLS['id']}}"
+              f"{template['CreatedTime']:{COLS['ctime']}}"
+              f"{addreset:<{COLS['addrs']}}"
+              f"{template['AddressTemplateName']:{COLS['name']}}"
               )
     print("-" * HEADER_WIDTH)
 
@@ -138,8 +138,6 @@ def create_template_and_associate(common_client, rule_id, proxy=None):
     if not rule_id:
         logging.error("[template] security group ID required but missing")
         return False
-    # check rule_id
-    pass
 
     template_id, ret_val = create_template(common_client, proxy)
 

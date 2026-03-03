@@ -40,15 +40,12 @@ def validate_ip(l_ip):
     # r"((?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])"
     # r"(?<![\.\d])(?:25[0-5]\.|2[0-4]\d\.|[01]?\d\d?\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?![\.\d])"
     pat = r"((?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])"
-    if re.fullmatch(pat, l_ip):
-        return True
-    else:
-        return False
+    return bool(re.fullmatch(pat, l_ip))
 
 
 def get_local_ips(proxy=None):
     ip_list = []
-    for i, u in enumerate(utils.detect_url, 1):
+    for u in utils.detect_url:
         l_ip = get_local_ip_from_url_and_parse(u[0], u[1], u[2], u[3], proxy)
         if l_ip and validate_ip(l_ip):
             ip_list.append(l_ip)
@@ -57,9 +54,11 @@ def get_local_ips(proxy=None):
 
 def print_ip_list(ip_list):
     number = 100
-    print(f"{"Detected Local IP List":=^{number}}\n"
-          f"{"#":<38}IP Address\n"
-          f"{"-" * number}"
+    title = "Detected Local IP List"
+    index_col = "#"
+    print(f"{title:=^{number}}\n"
+          f"{index_col:<38}IP Address\n"
+          f"{'-' * number}"
           )
 
     for i, ip in enumerate(ip_list, 1):
