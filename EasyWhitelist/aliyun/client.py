@@ -25,8 +25,7 @@ class ClientFactory:
             missing.append('ALIBABA_CLOUD_ACCESS_KEY_SECRET')
         if missing:
             example = (
-                "export ALIBABA_CLOUD_ACCESS_KEY_ID=your_id && \
-export ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_secret"
+                "export ALIBABA_CLOUD_ACCESS_KEY_ID=your_id && export ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_secret"
             )
             msg = (
                 f"Missing required environment variables for Alibaba Cloud SDK: {', '.join(missing)}. "
