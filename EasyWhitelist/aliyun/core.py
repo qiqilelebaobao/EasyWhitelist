@@ -5,8 +5,18 @@ from .prefix import Prefix
 
 
 def aliyun_main(action, target, target_id, region, proxy=None) -> None:
-    logging.info("enter aliyun...")
-    pass
+    logging.info(f"Enter aliyun {action} {target} {target_id} {region}...")
+
+    if target == "template":
+        ACTION_MAP = {
+            "list": lambda: Prefix.list_prefix_list,
+        }
+        if action in ACTION_MAP:
+            ACTION_MAP[action]()
+        else:
+            logging.error("[cli] unsupported operation, reason=unknown action, detail=%s", action)
+    else:
+        logging.error("[cli] unsupported target, reason=not implemented, detail=%s", target)
 
 
 if __name__ == '__main__':

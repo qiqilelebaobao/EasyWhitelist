@@ -34,7 +34,7 @@ classifiers = [
   ]
 
 dependencies = [
-  "tencentcloud-sdk-python"
+  "tencentcloud-sdk-python", "alibabacloud_ecs20140526"
 ]
 
 dynamic = ["version"]
@@ -53,6 +53,7 @@ cli = ["rich", "click"]
 dev = ["orjson"]
 test = ["pytest", "simplejson"]
 doc = ["sphinx", "ujson"]
+
 easy = ['pandas']
 
 [build-system]

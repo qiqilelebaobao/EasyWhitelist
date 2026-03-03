@@ -73,3 +73,7 @@ class Prefix:
         except Exception as e:
             # 其他异常，此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常
             print(e)
+
+    @staticmethod
+    def list_prefix_list():
+        logging.info("Enter list prefix list...")
