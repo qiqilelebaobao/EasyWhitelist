@@ -1,22 +1,28 @@
 import logging
 # from .sg import SecurityGroup
 from .prefix import Prefix
-# from ..util.nm import TEMPLATE_PREFIX
+from typing import Optional
 
 
-def aliyun_main(action, target, target_id, region, proxy=None) -> None:
+def aliyun_main(action: str, target: str, target_id: str | None, region: Optional[str], proxy: Optional[str] = None) -> None:
+    """Entry point for aliyun operations used by the CLI.
+
+    Args:
+        action: 操作，例如 'list'/'create'/'set'.
+        target: 目标对象，例如 'template'.
+        target_id: 目标对象的 ID（可选）。
+        region: 阿里云区域（可选，默认使用 Prefix 的默认 region）。
+        proxy: 可选代理配置。
+    """
     logging.info("Enter aliyun %(action)s %(target)s %(target_id)s %(region)s..." % {"action": action, "target": target, "target_id": target_id, "region": region})
 
-    if region is None:
-        region = "cn-hangzhou"
-        logging.info("[config] region not set, fallback to %s", region)
+    prefix = Prefix(region=region, proxy=proxy)
 
     if target == "template":
-
         ACTION_MAP = {
-            "list": lambda: Prefix.list_prefix_list(region_id=region),
-            "set": lambda: Prefix.associate_prefix_list(prefix_list_id=target_id, region_id=region),
-            "create": lambda: Prefix.create_prefix_list(region_id=region),
+            "create": lambda: prefix.create_prefix_list(),
+            "list": lambda: prefix.list_prefix_list(),
+            "set": lambda: prefix.set_prefix(),
         }
         if action in ACTION_MAP:
             ACTION_MAP[action]()
@@ -31,4 +37,4 @@ if __name__ == '__main__':
     # for i in range(1, 10):
     #     Prefix.create_prefix_list(PrefixListName=f'{TEMPLATE_PREFIX}{i}', Description=f'{TEMPLATE_PREFIX}{i}_desc')
     #     # Prefix.create_prefix_list()
-    Prefix.associate_prefix_list("pl-bp1fa6b4ajysaelrsdnt", "cn-hangzhou")
+    pass

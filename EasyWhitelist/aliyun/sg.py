@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Dict, Any, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
@@ -14,7 +15,17 @@ class SecurityGroup:
         pass
 
     @staticmethod
-    def create_security_group(description='test_sg_desc', region_id=DEFAULT_REGION, vpc_id=DEFAULT_VPC_ID):
+    def create_security_group(description: str = 'test_sg_desc', region_id: str = DEFAULT_REGION, vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
+        """Create a security group in the specified VPC and region.
+
+        Args:
+            description: 用于安全组名称与描述的字符串。
+            region_id: 区域 ID。
+            vpc_id: VPC ID。
+
+        Returns:
+            成功返回响应字典；失败返回 None 并记录日志。
+        """
         client = ClientFactory.create_client()
         # 构造请求对象
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
@@ -40,11 +51,19 @@ class SecurityGroup:
             return None
 
     @staticmethod
-    def describe_security_groups():
+    def describe_security_groups(region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
+        """Describe security groups in the given region.
+
+        Args:
+            region_id: 区域 ID，默认使用 DEFAULT_REGION。
+
+        Returns:
+            成功返回响应字典；失败返回 None 并记录日志。
+        """
         client = ClientFactory.create_client()
         # 构造请求对象
         describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
-            region_id=DEFAULT_REGION
+            region_id=region_id
         )
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
