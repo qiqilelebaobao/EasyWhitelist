@@ -65,7 +65,7 @@ class Prefix:
         Returns SDK response dict on success or None on failure.
         """
         client = ClientFactory.create_client()
-        client_ip_list = get_iplist()
+        client_ip_list = get_iplist(self.proxy)
 
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
