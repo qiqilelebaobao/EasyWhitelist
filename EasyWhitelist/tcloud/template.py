@@ -256,7 +256,7 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
         else:
             logging.warning("[template] select failed, reason=index out of range, hint=available 1~%d", len(template_ids))
     except ValueError:
-        logging.warning("[template] select failed, reason=invalid number %s, hint= %d", user_input, len(template_ids))
+        logging.warning("[template] select failed, reason=invalid number, input=%s hint=1~%d", user_input, len(template_ids))
 
 
 def _handle_command_input(user_input: str, common_client, template_ids: list, proxy: Optional[str]) -> CommandAction:

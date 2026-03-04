@@ -5,6 +5,8 @@ from tencentcloud.common.profile.http_profile import HttpProfile
 from tencentcloud.common.profile.client_profile import ClientProfile
 from tencentcloud.common.common_client import CommonClient
 
+DEFAULT_REGION = "ap-guangzhou"
+
 
 def get_common_client(proxy_port, region):
     # cred = credential.Credential(
@@ -12,7 +14,7 @@ def get_common_client(proxy_port, region):
     #     os.environ.get("TENCENTCLOUD_SECRET_KEY"))
 
     if region is None:
-        region = "ap-guangzhou"
+        region = DEFAULT_REGION
         logging.info("[config] region not set, fallback to %s", region)
 
     cred = credential.DefaultCredentialProvider().get_credential()

@@ -36,12 +36,12 @@ class Prefix:
         self.proxy = proxy
         logging.info("[config] region set to %s", self.region)
 
-    def create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_PREFIX}0', description: str = f'{TEMPLATE_PREFIX}0_desc') -> dict | None:
+    def create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_PREFIX}0', description: str = f'{TEMPLATE_PREFIX}0_desc') -> Optional[dict]:
         """Create a prefix list in the configured region.
 
         Returns the SDK response as a dict on success, or None on failure.
         """
-        client = ClientFactory.create_client()
+        client = ClientFactory.create_client(self.region)
         # 构造请求对象
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
             region_id=self.region,
@@ -75,7 +75,7 @@ class Prefix:
         先查询旧条目并全部移除，再写入最新 IP，避免历史条目堆积。
         Returns SDK response dict on success or None on failure.
         """
-        client = ClientFactory.create_client()
+        client = ClientFactory.create_client(self.region)
         client_ip_list = get_iplist()
 
         # 校验、去重并限制数量
@@ -160,14 +160,14 @@ class Prefix:
             return None
 
     def _search_prefix_by_name(self, prefix_list_name):
-        logging.info("Search prefix list by name: %s in region: %s..." % (prefix_list_name, self.region))
+        logging.info("[prefix] search prefix list, name=%s region=%s", prefix_list_name, self.region)
         prefix_lists = self.list_prefix_list()
         logging.debug(prefix_lists)
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
             for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                 logging.debug(prefix)
                 if re.search(prefix_list_name, prefix['PrefixListName']):
-                    logging.info("Found prefix list with name: %s, id: %s" % (prefix_list_name, prefix['PrefixListId']))
+                    logging.info("[prefix] found prefix list, name=%s id=%s", prefix_list_name, prefix['PrefixListId'])
                     return prefix["PrefixListId"]
 
     def print_prefix_list(self) -> Optional[List[str]]:
@@ -184,7 +184,7 @@ class Prefix:
                   f"{'Addresses':<{COLS['addrs']}}"
                   f"{'AddressTemplateName':<{COLS['name']}}")
 
-        print(f"{'Tencent Cloud Template List':=^{HEADER_WIDTH}}")
+        print(f"{'Alibaba Cloud Prefix List':=^{HEADER_WIDTH}}")
         print(header)
         print("-" * HEADER_WIDTH)
 
