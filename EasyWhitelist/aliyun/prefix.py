@@ -23,7 +23,7 @@ class Prefix:
             proxy: Optional proxy configuration (currently stored but not used).
         """
         self.region = region if region else DEFAULT_REGION
-        self.proxy = proxy if proxy else None
+        self.proxy = proxy
         logging.info("[config] region set to %s", self.region)
 
     def create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_PREFIX}0', description: str = f'{TEMPLATE_PREFIX}0_desc') -> dict | None:
@@ -70,7 +70,7 @@ class Prefix:
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
-        logging.warning(f"[aliyun] Associating prefix list {prefix_list_id} in region {self.region} with client IPs: {client_ip_list}")
+        logging.warning("[aliyun] Associating prefix list %s in region %s with client IPs: %s", prefix_list_id, self.region, client_ip_list)
 
         # 构造请求对象
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(

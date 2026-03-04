@@ -27,5 +27,5 @@ detect_url = [
         random.choice(chrome_user_agent), "DISABLE"],
     ["https://tool.lu/ip/", TOOL_LU_PATTERN,
         random.choice(chrome_user_agent), "enable"],
-    ["http://ip.sb/", IP_SB_PATTERN, random.choice(curl_user_agent), "enable"]
+    ["https://ip.sb/", IP_SB_PATTERN, random.choice(curl_user_agent), "enable"]
 ]
