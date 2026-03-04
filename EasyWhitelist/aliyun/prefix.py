@@ -65,7 +65,7 @@ class Prefix:
         Returns SDK response dict on success or None on failure.
         """
         client = ClientFactory.create_client()
-        client_ip_list = get_iplist()
+        client_ip_list = get_iplist(self.proxy)
 
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
@@ -102,7 +102,7 @@ class Prefix:
 
     def list_prefix_list(self) -> dict | None:
         """List prefix lists in the configured region. Returns response dict or None."""
-        logging.info("List prefix list of region: %s..." % self.region)
+        logging.info("List prefix list of region: %s...", self.region)
         client = ClientFactory.create_client()
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
@@ -129,14 +129,14 @@ class Prefix:
             return None
 
     def _search_prefix_by_name(self, prefix_list_name):
-        logging.info("Search prefix list by name: %s in region: %s..." % (prefix_list_name, self.region))
+        logging.info("Search prefix list by name: %s in region: %s...", prefix_list_name, self.region)
         prefix_lists = self.list_prefix_list()
         logging.debug(prefix_lists)
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
             for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                 logging.debug(prefix)
-                if re.search(prefix_list_name, prefix['PrefixListName']):
-                    logging.info("Found prefix list with name: %s, id: %s" % (prefix_list_name, prefix['PrefixListId']))
+                if re.search(re.escape(prefix_list_name), prefix['PrefixListName']):
+                    logging.info("Found prefix list with name: %s, id: %s", prefix_list_name, prefix['PrefixListId'])
                     return prefix["PrefixListId"]
 
     def _normalize_ip_list(self, ip_list: List[str]) -> List[str]:
