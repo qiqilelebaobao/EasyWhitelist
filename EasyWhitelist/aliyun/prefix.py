@@ -25,7 +25,7 @@ COLS = {
 
 
 class Prefix:
-    def __init__(self, region: str | None = None, proxy: str | None = None) -> None:
+    def __init__(self, region: Optional[str] = None, proxy: Optional[str] = None) -> None:
         """Initialize Prefix helper.
 
         Args:
@@ -58,7 +58,6 @@ class Prefix:
             logging.info(json.dumps(create_prefix_list_response.body.to_map()))
             return create_prefix_list_response.body.to_map()
 
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when creating prefix list")
             return None
@@ -120,7 +119,6 @@ class Prefix:
             logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
             return modify_prefix_list_response.body.to_map()
 
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when modifying prefix list")
             return None
@@ -131,10 +129,10 @@ class Prefix:
             logging.exception("Unexpected error when modifying prefix list")
             return None
 
-    def list_prefix_list(self) -> dict | None:
+    def list_prefix_list(self) -> Optional[dict]:
         """List prefix lists in the configured region. Returns response dict or None."""
-        logging.info("[prefix] list prefix list of region: %s..." % self.region)
-        client = ClientFactory.create_client()
+        logging.info("[prefix] list prefix list of region: %s...", self.region)
+        client = ClientFactory.create_client(self.region)
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
             region_id=self.region,
