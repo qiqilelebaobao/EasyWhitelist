@@ -55,12 +55,20 @@ def get_local_ips(proxy=None):
     return ip_list
 
 
+def get_iplist(proxy=None):
+
+    client_ip_list = get_local_ips(proxy)
+    client_ip_list = list(set(client_ip_list))
+
+    return client_ip_list
+
+
 def print_ip_list(ip_list):
     number = 100
-    print(f"{"Detected Local IP List":=^{number}}\n"
-          f"{"#":<38}IP Address\n"
-          f"{"-" * number}"
-          )
+    header = f"{'Detected Local IP List':=^{number}}"
+    col_header = f"{'#':<38}IP Address"
+    separator = "-" * number
+    print(f"{header}\n{col_header}\n{separator}")
 
     for i, ip in enumerate(ip_list, 1):
         print(f"{str(i):<38}{ip}")

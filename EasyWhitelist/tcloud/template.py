@@ -6,12 +6,10 @@ import logging
 from typing import List, Optional
 
 
-from ..ip_detector import detectors
+from ..ip_detector.detectors import get_iplist
+from ..util.nm import TEMPLATE_PREFIX, TEMPLATE_ID_PREFIX
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
-# ---------- 常量 ----------
-TEMPLATE_PREFIX = "EW-TEMPLATE-"
-TEMPLATE_ID_PREFIX = "ipm-"
 HEADER_WIDTH = 150
 COLS = {
     "idx": 10,
@@ -42,38 +40,39 @@ def print_template(common_client) -> List[str]:
     template_ids = []
 
     # 表头
-    header = (f"{"#":<{COLS["idx"]}}"
-              f"{"Template ID":<{COLS["id"]}}"
-              f"{"CreatedTime":<{COLS["ctime"]}}"
-              f"{"Addresses":<{COLS["addrs"]}}"
-              f"{"AddressTemplateName":<{COLS["name"]}}")
+    col_idx = COLS["idx"]
+    col_id = COLS["id"]
+    col_ctime = COLS["ctime"]
+    col_addrs = COLS["addrs"]
+    col_name = COLS["name"]
+    header = (f"{'#':<{col_idx}}"
+              f"{'Template ID':<{col_id}}"
+              f"{'CreatedTime':<{col_ctime}}"
+              f"{'Addresses':<{col_addrs}}"
+              f"{'AddressTemplateName':<{col_name}}")
 
-    print(f"{"Tencent Cloud Template List":=^{HEADER_WIDTH}}")
+    print(f"{'Tencent Cloud Template List':=^{HEADER_WIDTH}}")
     print(header)
-    print(f"-" * HEADER_WIDTH)
+    print("-" * HEADER_WIDTH)
 
     for i, template in enumerate(tpl_resp["Response"]["AddressTemplateSet"], 1):
         template_ids.append(template["AddressTemplateId"])
         addreset = ", ".join(template["AddressSet"][:3])
         if len(template["AddressSet"]) > 3:
-            addreset += f" ~~~ {len(template["AddressSet"])-3} more..."
-        print(f"{str(i):{COLS["idx"]}}"
-              f"{template["AddressTemplateId"]:{COLS["id"]}}"
-              f"{template["CreatedTime"]:{COLS["ctime"]}}"
-              f"{addreset:<{COLS["addrs"]}}"
-              f"{template["AddressTemplateName"]:{COLS["name"]}}"
+            extra = len(template["AddressSet"]) - 3
+            addreset += f" ~~~ {extra} more..."
+        tpl_id = template["AddressTemplateId"]
+        tpl_ctime = template["CreatedTime"]
+        tpl_name = template["AddressTemplateName"]
+        print(f"{str(i):{col_idx}}"
+              f"{tpl_id:{col_id}}"
+              f"{tpl_ctime:{col_ctime}}"
+              f"{addreset:<{col_addrs}}"
+              f"{tpl_name:{col_name}}"
               )
     print("-" * HEADER_WIDTH)
 
     return template_ids
-
-
-def _get_iplist(proxy=None):
-
-    client_ip_list = detectors.get_local_ips(proxy)
-    client_ip_list = list(set(client_ip_list))
-
-    return client_ip_list
 
 
 def _modify_template_address(common_client, target_id, client_ips):
@@ -121,7 +120,7 @@ def set_template(common_client, target_id, proxy=None):
         logging.warning("[template] set failed, reason=wrong template id, hint=check prefix")
         return False
 
-    client_iplist = _get_iplist(proxy)
+    client_iplist = get_iplist(proxy)
 
     if _modify_template_address(common_client, target_id, client_iplist):
         print(f"✅ [成功] 模板 {target_id} 已更新 -> {client_iplist}")
@@ -171,7 +170,7 @@ def create_template(common_client, proxy=None):
             set_template(common_client, template_id)
             return template_id, 1
 
-        ip_list = _get_iplist(proxy)
+        ip_list = get_iplist(proxy)
         random_suffix = random.randint(1, 9999)
         template_name = f"{TEMPLATE_PREFIX}{random_suffix:04d}"
         params = {
