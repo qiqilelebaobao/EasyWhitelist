@@ -1,6 +1,5 @@
 import json
 import random
-import sys
 import logging
 from typing import List, Optional
 
@@ -83,7 +82,7 @@ def _modify_template_address(common_client, target_id, client_ips):
     except (TencentCloudSDKException, IndexError) as err:
         # IndexError catch when there is no match target.Example: "AddressTemplateSet": []
         logging.error("[template] api call failed, reason=exception, detail=%s", err)
-        sys.exit(1)
+        raise RuntimeError(f"[template] api call failed: {err}") from err
 
     params = {"AddressTemplateId": target_id,
               "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in client_ips]
