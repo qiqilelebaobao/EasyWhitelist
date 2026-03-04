@@ -145,8 +145,6 @@ class Prefix:
             describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
             logging.info("[prefix] API response, detail=%s", json.dumps(describe_prefix_lists_response.body.to_map()))
             return describe_prefix_lists_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when describing prefix lists")
             return None
