@@ -2,7 +2,7 @@ import json
 import logging
 import re
 import ipaddress
-from typing import List
+from typing import List, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
@@ -59,23 +59,44 @@ class Prefix:
             logging.exception("Unexpected error when creating prefix list")
             return None
 
-    def _associate_prefix_list_with_id(self, prefix_list_id: str) -> dict | None:
-        """Associate normalized client IPs with the given prefix list id.
+    def _associate_prefix_list_with_id(self, prefix_list_id: str) -> Optional[dict]:
+        """Replace all entries in the prefix list with current client IPs.
 
+        先查询旧条目并全部移除，再写入最新 IP，避免历史条目堆积。
         Returns SDK response dict on success or None on failure.
         """
         client = ClientFactory.create_client()
-        client_ip_list = get_iplist(self.proxy)
+        client_ip_list = get_iplist()
 
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
-        logging.warning("[aliyun] Associating prefix list %s in region %s with client IPs: %s", prefix_list_id, self.region, client_ip_list)
+        logging.warning("[aliyun] Replacing prefix list %s in region %s with client IPs: %s", prefix_list_id, self.region, client_ip_list)
+
+        # 查询当前条目，以便全量替换
+        runtime = util_models.RuntimeOptions()
+        try:
+            describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
+                region_id=self.region,
+                prefix_list_id=prefix_list_id,
+            )
+            describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)
+            current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
+        except Exception:
+            logging.exception("[aliyun] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
+            current_entries = []
+
+        remove_entries = [
+            ecs_20140526_models.ModifyPrefixListRequestRemoveEntry(cidr=entry['Cidr'])
+            for entry in current_entries
+            if entry.get('Cidr')
+        ]
 
         # 构造请求对象
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
             region_id=self.region,
             prefix_list_id=prefix_list_id,
+            remove_entry=remove_entries if remove_entries else None,
             add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
                 cidr=ip,
                 description='added by EasyWhitelist'

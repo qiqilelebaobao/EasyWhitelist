@@ -1,11 +1,12 @@
 import logging
+from typing import Optional
 
 from . import client
 from .template import set_template, create_template_and_associate
 from .ls_template import loop_list
 
 
-def t_main(action, target, target_id, region, proxy=None) -> None:
+def t_main(action: str, target: str, target_id: Optional[str], region: Optional[str], proxy: Optional[str] = None) -> None:
     if target == "template":
         common_client = client.get_common_client(proxy, region)
 

@@ -38,26 +38,30 @@ def print_template(common_client) -> List[str]:
     template_ids = []
 
     # 表头
-    header = (f"{"#":<{COLS["idx"]}}"
-              f"{"Template ID":<{COLS["id"]}}"
-              f"{"CreatedTime":<{COLS["ctime"]}}"
-              f"{"Addresses":<{COLS["addrs"]}}"
-              f"{"AddressTemplateName":<{COLS["name"]}}")
+    header = (f"{'#':<{COLS['idx']}}"
+              f"{'Template ID':<{COLS['id']}}"
+              f"{'CreatedTime':<{COLS['ctime']}}"
+              f"{'Addresses':<{COLS['addrs']}}"
+              f"{'AddressTemplateName':<{COLS['name']}}")
 
-    print(f"{"Tencent Cloud Template List":=^{HEADER_WIDTH}}")
+    print(f"{'Tencent Cloud Template List':=^{HEADER_WIDTH}}")
     print(header)
     print("-" * HEADER_WIDTH)
 
     for i, template in enumerate(tpl_resp["Response"]["AddressTemplateSet"], 1):
         template_ids.append(template["AddressTemplateId"])
-        addreset = ", ".join(template["AddressSet"][:3])
-        if len(template["AddressSet"]) > 3:
-            addreset += f" ~~~ {len(template["AddressSet"])-3} more..."
-        print(f"{str(i):{COLS["idx"]}}"
-              f"{template["AddressTemplateId"]:{COLS["id"]}}"
-              f"{template["CreatedTime"]:{COLS["ctime"]}}"
-              f"{addreset:<{COLS["addrs"]}}"
-              f"{template["AddressTemplateName"]:{COLS["name"]}}"
+        addr_set = template["AddressSet"]
+        addreset = ", ".join(addr_set[:3])
+        if len(addr_set) > 3:
+            addreset += f" ~~~ {len(addr_set) - 3} more..."
+        t_id = template["AddressTemplateId"]
+        t_time = template["CreatedTime"]
+        t_name = template["AddressTemplateName"]
+        print(f"{str(i):{COLS['idx']}}"
+              f"{t_id:{COLS['id']}}"
+              f"{t_time:{COLS['ctime']}}"
+              f"{addreset:<{COLS['addrs']}}"
+              f"{t_name:{COLS['name']}}"
               )
     print("-" * HEADER_WIDTH)
 

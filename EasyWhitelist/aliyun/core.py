@@ -1,10 +1,11 @@
 import logging
-# from .sg import SecurityGroup
-from .prefix import Prefix
 from typing import Optional
 
+# from .sg import SecurityGroup
+from .prefix import Prefix
 
-def aliyun_main(action: str, target: str, target_id: str | None, region: Optional[str], proxy: Optional[str] = None) -> None:
+
+def aliyun_main(action: str, target: str, target_id: Optional[str], region: Optional[str], proxy: Optional[str] = None) -> None:
     """Entry point for aliyun operations used by the CLI.
 
     Args:

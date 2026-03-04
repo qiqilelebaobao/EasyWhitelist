@@ -5,6 +5,6 @@ Do NOT store secrets or credentials in this file.
 """
 
 DEFAULT_REGION = 'cn-hangzhou'
-DEFAULT_VPC_ID = 'vpc-bp1okdh0otxlepq71u9x4'
+# NOTE: DEFAULT_VPC_ID 仅作示例，生产环境请通过环境变量 ALIBABA_CLOUD_VPC_ID 注入。
+DEFAULT_VPC_ID = ''
 DEFAULT_MAX_ENTRIES = 20
-DEFAULT_ENDPOINT = 'ecs.cn-hangzhou.aliyuncs.com'

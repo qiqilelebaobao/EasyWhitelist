@@ -60,9 +60,11 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
     command_handlers = {
         CMD_LIST: (lambda: print_template(common_client), CommandAction.CONTINUE),
         CMD_EMPTY: (lambda: None, CommandAction.CONTINUE),
-        CMD_CREATE: (lambda: None, CommandAction.CONTINUE),
+        CMD_CREATE: (
+            lambda: logging.warning("[template] create command not yet implemented, hint=use 'ew template create <sg_id>'"),
+            CommandAction.CONTINUE,
+        ),
         CMD_EXIT: (lambda: None, CommandAction.BREAK),
-        # "c": lambda: create_template(common_client, proxy) # 假设有create_template函数
         # 可轻松扩展其他命令，例如 "h": show_help
     }
 

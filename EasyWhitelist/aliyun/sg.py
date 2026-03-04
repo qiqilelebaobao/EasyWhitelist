@@ -26,7 +26,7 @@ class SecurityGroup:
         Returns:
             成功返回响应字典；失败返回 None 并记录日志。
         """
-        client = ClientFactory.create_client()
+        client = ClientFactory.create_client(region_id)
         # 构造请求对象
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
             region_id=region_id, security_group_name=description, description=description, vpc_id=vpc_id
@@ -38,8 +38,6 @@ class SecurityGroup:
             create_sg_response = client.create_security_group_with_options(create_sg_request, runtime)
             logging.info(json.dumps(create_sg_response.body.to_map()))
             return create_sg_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when creating security group")
             return None
@@ -60,7 +58,7 @@ class SecurityGroup:
         Returns:
             成功返回响应字典；失败返回 None 并记录日志。
         """
-        client = ClientFactory.create_client()
+        client = ClientFactory.create_client(region_id)
         # 构造请求对象
         describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
             region_id=region_id
@@ -72,8 +70,6 @@ class SecurityGroup:
             describe_sg_response = client.describe_security_groups_with_options(describe_sg_request, runtime)
             logging.info(json.dumps(describe_sg_response.body.to_map()))
             return describe_sg_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when describing security groups")
             return None
