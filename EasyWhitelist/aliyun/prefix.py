@@ -102,7 +102,7 @@ class Prefix:
 
     def list_prefix_list(self) -> dict | None:
         """List prefix lists in the configured region. Returns response dict or None."""
-        logging.info("List prefix list of region: %s..." % self.region)
+        logging.info("List prefix list of region: %s...", self.region)
         client = ClientFactory.create_client()
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
@@ -129,7 +129,7 @@ class Prefix:
             return None
 
     def _search_prefix_by_name(self, prefix_list_name):
-        logging.info("Search prefix list by name: %s in region: %s..." % (prefix_list_name, self.region))
+        logging.info("Search prefix list by name: %s in region: %s...", prefix_list_name, self.region)
         prefix_lists = self.list_prefix_list()
         logging.debug(prefix_lists)
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
