@@ -14,6 +14,16 @@ from ..util.nm import TEMPLATE_PREFIX
 from ..ip_detector.detectors import get_iplist
 
 
+HEADER_WIDTH = 150
+COLS = {
+    "idx": 10,
+    "id": 30,
+    "ctime": 30,
+    "addrs": 60,
+    "name": 30,
+}
+
+
 class Prefix:
     def __init__(self, region: str | None = None, proxy: str | None = None) -> None:
         """Initialize Prefix helper.
@@ -123,7 +133,7 @@ class Prefix:
 
     def list_prefix_list(self) -> dict | None:
         """List prefix lists in the configured region. Returns response dict or None."""
-        logging.info("List prefix list of region: %s..." % self.region)
+        logging.info("[prefix] list prefix list of region: %s..." % self.region)
         client = ClientFactory.create_client()
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
@@ -135,7 +145,7 @@ class Prefix:
         try:
             # 调用 DescribePrefixLists 接口
             describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
-            logging.info(json.dumps(describe_prefix_lists_response.body.to_map()))
+            logging.info("[prefix] API response, detail=%s", json.dumps(describe_prefix_lists_response.body.to_map()))
             return describe_prefix_lists_response.body.to_map()
 
             # json.dumps(describe_instances_response.body)
@@ -159,6 +169,43 @@ class Prefix:
                 if re.search(prefix_list_name, prefix['PrefixListName']):
                     logging.info("Found prefix list with name: %s, id: %s" % (prefix_list_name, prefix['PrefixListId']))
                     return prefix["PrefixListId"]
+
+    def print_prefix_list(self) -> Optional[List[str]]:
+        """Print prefix list information in a human-readable format."""
+        prefix_lists = self.list_prefix_list()
+        if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
+            logging.info("No prefix list information to display.")
+            return
+
+        # 表头
+        header = (f"{'#':<{COLS['idx']}}"
+                  f"{'Template ID':<{COLS['id']}}"
+                  f"{'CreatedTime':<{COLS['ctime']}}"
+                  f"{'Addresses':<{COLS['addrs']}}"
+                  f"{'AddressTemplateName':<{COLS['name']}}")
+
+        print(f"{'Tencent Cloud Template List':=^{HEADER_WIDTH}}")
+        print(header)
+        print("-" * HEADER_WIDTH)
+
+        template_ids = []
+
+        for i, prefix in enumerate(prefix_lists["PrefixLists"]["PrefixList"], 1):
+            template_ids.append(prefix["PrefixListId"])
+            # addr_set = prefix["AddressSet"]
+            addreset = "placeholder for addresses"
+            t_id = prefix["PrefixListId"]
+            t_time = prefix["CreationTime"]
+            t_name = prefix["PrefixListName"]
+            print(f"{str(i):{COLS['idx']}}"
+                  f"{t_id:{COLS['id']}}"
+                  f"{t_time:{COLS['ctime']}}"
+                  f"{addreset:<{COLS['addrs']}}"
+                  f"{t_name:{COLS['name']}}"
+                  )
+        print("-" * HEADER_WIDTH)
+
+        return template_ids
 
     def _normalize_ip_list(self, ip_list: List[str]) -> List[str]:
         """Validate, normalize to CIDR strings, deduplicate and limit to DEFAULT_MAX_ENTRIES.

@@ -13,7 +13,7 @@ from ..util.nm import TEMPLATE_PREFIX, TEMPLATE_ID_PREFIX
 HEADER_WIDTH = 150
 COLS = {
     "idx": 10,
-    "id": 20,
+    "id": 30,
     "ctime": 30,
     "addrs": 60,
     "name": 30,
