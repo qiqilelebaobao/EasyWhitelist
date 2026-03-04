@@ -47,8 +47,6 @@ class Prefix:
             create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)
             logging.info(json.dumps(create_prefix_list_response.body.to_map()))
             return create_prefix_list_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when creating prefix list")
             return None
@@ -88,8 +86,6 @@ class Prefix:
             modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)
             logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
             return modify_prefix_list_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when modifying prefix list")
             return None
@@ -116,8 +112,6 @@ class Prefix:
             describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
             logging.info(json.dumps(describe_prefix_lists_response.body.to_map()))
             return describe_prefix_lists_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when describing prefix lists")
             return None

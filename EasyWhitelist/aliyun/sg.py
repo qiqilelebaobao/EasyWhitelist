@@ -38,8 +38,6 @@ class SecurityGroup:
             create_sg_response = client.create_security_group_with_options(create_sg_request, runtime)
             logging.info(json.dumps(create_sg_response.body.to_map()))
             return create_sg_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when creating security group")
             return None
@@ -72,8 +70,6 @@ class SecurityGroup:
             describe_sg_response = client.describe_security_groups_with_options(describe_sg_request, runtime)
             logging.info(json.dumps(describe_sg_response.body.to_map()))
             return describe_sg_response.body.to_map()
-
-            # json.dumps(describe_instances_response.body)
         except UnretryableException:
             logging.exception("Network error when describing security groups")
             return None
