@@ -2,16 +2,13 @@ import json
 import random
 import sys
 import logging
-
 from typing import List, Optional
 
-
-from ..ip_detector import detectors
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
-# ---------- 常量 ----------
-TEMPLATE_PREFIX = "EW-TEMPLATE-"
-TEMPLATE_ID_PREFIX = "ipm-"
+from ..ip_detector.detectors import get_iplist
+from ..util.nm import TEMPLATE_PREFIX, TEMPLATE_ID_PREFIX
+
 HEADER_WIDTH = 150
 COLS = {
     "idx": 10,
@@ -50,7 +47,7 @@ def print_template(common_client) -> List[str]:
 
     print(f"{"Tencent Cloud Template List":=^{HEADER_WIDTH}}")
     print(header)
-    print(f"-" * HEADER_WIDTH)
+    print("-" * HEADER_WIDTH)
 
     for i, template in enumerate(tpl_resp["Response"]["AddressTemplateSet"], 1):
         template_ids.append(template["AddressTemplateId"])
@@ -66,14 +63,6 @@ def print_template(common_client) -> List[str]:
     print("-" * HEADER_WIDTH)
 
     return template_ids
-
-
-def _get_iplist(proxy=None):
-
-    client_ip_list = detectors.get_local_ips(proxy)
-    client_ip_list = list(set(client_ip_list))
-
-    return client_ip_list
 
 
 def _modify_template_address(common_client, target_id, client_ips):
@@ -121,7 +110,7 @@ def set_template(common_client, target_id, proxy=None):
         logging.warning("[template] set failed, reason=wrong template id, hint=check prefix")
         return False
 
-    client_iplist = _get_iplist(proxy)
+    client_iplist = get_iplist(proxy)
 
     if _modify_template_address(common_client, target_id, client_iplist):
         print(f"✅ [成功] 模板 {target_id} 已更新 -> {client_iplist}")
@@ -171,7 +160,7 @@ def create_template(common_client, proxy=None):
             set_template(common_client, template_id)
             return template_id, 1
 
-        ip_list = _get_iplist(proxy)
+        ip_list = get_iplist(proxy)
         random_suffix = random.randint(1, 9999)
         template_name = f"{TEMPLATE_PREFIX}{random_suffix:04d}"
         params = {
