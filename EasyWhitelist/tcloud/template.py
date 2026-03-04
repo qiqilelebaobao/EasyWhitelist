@@ -126,8 +126,6 @@ def create_template_and_associate(common_client, rule_id, proxy=None):
     if not rule_id:
         logging.error("[template] security group ID required but missing")
         return False
-    # check rule_id
-    pass
 
     template_id, ret_val = create_template(common_client, proxy)
 

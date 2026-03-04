@@ -30,11 +30,3 @@ def aliyun_main(action: str, target: str, target_id: str | None, region: Optiona
             logging.error("[cli] unsupported operation, reason=unknown action, detail=%s", action)
     else:
         logging.error("[cli] unsupported target, reason=not implemented, detail=%s", target)
-
-
-if __name__ == '__main__':
-
-    # for i in range(1, 10):
-    #     Prefix.create_prefix_list(PrefixListName=f'{TEMPLATE_PREFIX}{i}', Description=f'{TEMPLATE_PREFIX}{i}_desc')
-    #     # Prefix.create_prefix_list()
-    pass

@@ -19,7 +19,7 @@ def main() -> None:
 
     if cloud_provider == "tencent":
         t_main(args.action, args.target, args.target_id, args.region, args.proxy)
-    elif cloud_provider == 'alibaba':
+    elif cloud_provider == "alibaba":
         aliyun_main(args.action, args.target, args.target_id, args.region, args.proxy)
     else:
         logging.error("[cli] unsupported cloud provider, reason=unknown provider, detail=%s", cloud_provider)

@@ -65,7 +65,7 @@ class Prefix:
         Returns SDK response dict on success or None on failure.
         """
         client = ClientFactory.create_client()
-        client_ip_list = get_iplist()
+        client_ip_list = get_iplist(self.proxy)
 
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
@@ -135,7 +135,7 @@ class Prefix:
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
             for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                 logging.debug(prefix)
-                if re.search(prefix_list_name, prefix['PrefixListName']):
+                if re.search(re.escape(prefix_list_name), prefix['PrefixListName']):
                     logging.info("Found prefix list with name: %s, id: %s" % (prefix_list_name, prefix['PrefixListId']))
                     return prefix["PrefixListId"]
 
