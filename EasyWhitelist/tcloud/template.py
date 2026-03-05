@@ -219,12 +219,11 @@ def associate_template_2_rule(common_client, template_id, rule_id):
         respon = common_client.call_json("CreateSecurityGroupPolicies", params)
         logging.info("[template] API response, detail=%s", json.dumps(respon, ensure_ascii=False))
         print(f"✅ [成功] 模板 {template_id} 已关联到 {rule_id}")
+        return True
 
     except TencentCloudSDKException as err:
         logging.error("[template] api failed, reason=exception, detail=%s", err)
         return False
-
-    return True
 
 
 class CommandAction(Enum):

@@ -162,7 +162,7 @@ class Prefix:
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
             for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                 logging.debug(prefix)
-                if re.search(prefix_list_name, prefix['PrefixListName']):
+                if re.match(re.escape(prefix_list_name), prefix['PrefixListName']):
                     logging.info("[prefix] found prefix list, name=%s id=%s", prefix_list_name, prefix['PrefixListId'])
                     return prefix["PrefixListId"]
 
@@ -189,7 +189,7 @@ class Prefix:
         for i, prefix in enumerate(prefix_lists["PrefixLists"]["PrefixList"], 1):
             template_ids.append(prefix["PrefixListId"])
             # addr_set = prefix["AddressSet"]
-            addreset = "placeholder for addresses"
+            addreset = "placeholder for addresses"  # keep
             t_id = prefix["PrefixListId"]
             t_time = prefix["CreationTime"]
             t_name = prefix["PrefixListName"]

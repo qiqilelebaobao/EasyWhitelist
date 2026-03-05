@@ -12,7 +12,7 @@ curl_user_agent = ["curl/8.6.0", "curl/7.29.0", "curl/8.7.1"]
 
 # 使用更具体的 IP 正则，避免匹配到错误页等非 IP 内容
 IFCONFIG_ME_PATTERN = r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
-CIP_CC_PATTERN = r"URL\s+?:\s+?http://www.cip.cc/(.+)"
+CIP_CC_PATTERN = r"URL\s+?:\s+?http://www\.cip\.cc/(.+)"
 TOOL_LU_PATTERN = r"<p>你的外网IP地址是：\s*?(.+)</p>"
 IP_SB_PATTERN = r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
 

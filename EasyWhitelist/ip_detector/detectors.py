@@ -40,10 +40,7 @@ def validate_ip(l_ip):
     # r"((?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])" # wip
     # r"(?<![\.\d])(?:25[0-5]\.|2[0-4]\d\.|[01]?\d\d?\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?![\.\d])" # wip
     pat = r"((?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])"
-    if re.fullmatch(pat, l_ip):
-        return True
-    else:
-        return False
+    return bool(re.fullmatch(pat, l_ip))
 
 
 def get_local_ips(proxy=None):
