@@ -15,8 +15,8 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
         region: 阿里云区域（可选，默认使用 Prefix 的默认 region）。
         proxy: 可选代理配置。
     """
-    logging.info("[core] enter aliyun (action: %s) (target: %s) (target_id: %s) (region: %s)",
-                 action, target, target_id, region)
+    logging.info("[core] enter aliyun (action: %s) (target: %s) (target_id: %s) (region: %s) (proxy: %s)",
+                 action, target, target_id, region, proxy)
 
     prefix = Prefix(region=region, proxy=proxy)
 

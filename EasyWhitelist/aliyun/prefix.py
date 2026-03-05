@@ -130,7 +130,7 @@ class Prefix:
 
     def list_prefix_list(self) -> Optional[dict]:
         """List prefix lists in the configured region. Returns response dict or None."""
-        logging.info("[prefix] list prefix list of region: %s...", self.region)
+        logging.info("[prefix] list prefix list of region: %s %s...", self.region, self.proxy)
         client = ClientFactory.create_client(self.region, self.proxy)
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(

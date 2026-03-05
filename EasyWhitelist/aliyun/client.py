@@ -39,6 +39,7 @@ class ClientFactory:
                 access_key_secret=access_key_secret,  # type: ignore
                 endpoint=endpoint,
                 http_proxy=f"http://127.0.0.1:{proxy}",
+                https_proxy=f"http://127.0.0.1:{proxy}"
             )
         else:
             config = Config(
