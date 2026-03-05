@@ -230,7 +230,7 @@ def associate_template_2_rule(common_client, template_id, rule_id):
 class CommandAction(Enum):
     CONTINUE = auto()
     BREAK = auto()
-    NOTHING = auto()
+    NOTHING = auto()  # keep for future use, e.g. invalid command but do not want to print warning
 
 
 CMD_LIST = "l"
@@ -280,7 +280,6 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
     """
 
     command_handlers = {
-        CMD_LIST: (lambda: print_template(common_client), CommandAction.CONTINUE),
         CMD_EMPTY: (lambda: None, CommandAction.CONTINUE),
         CMD_CREATE: (
             lambda: logging.warning("[template] create command not yet implemented, hint=use 'ew template create <sg_id>'"),
@@ -316,9 +315,11 @@ def loop_list(common_client, proxy: Optional[str] = None) -> None:
             if user_input.isdigit():
                 _handle_digit_input(
                     user_input, common_client, template_ids, proxy)
+            elif user_input == CMD_LIST:
+                # 重新拉取列表并刷新本地 template_ids
+                template_ids = print_template(common_client)
             else:
-                action = _handle_command_input(
-                    user_input, common_client, template_ids, proxy)
+                action = _handle_command_input(user_input, common_client, template_ids, proxy)
                 if action == CommandAction.BREAK:
                     break
 
