@@ -10,6 +10,14 @@ from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentClo
 from ..ip_detector.detectors import get_iplist
 from ..util.nm import TEMPLATE_PREFIX, TEMPLATE_ID_PREFIX
 
+
+class CreateResult(Enum):
+    """create_template 返回的状态，替代魔法数字 1/2/3。"""
+    UPDATED_EXISTING = auto()   # 已有模板，直接更新完毕
+    CREATED_NEW = auto()        # 新建模板成功，需要关联
+    FAILED = auto()             # 异常失败
+
+
 HEADER_WIDTH = 150
 COLS = {
     "idx": 10,
@@ -19,12 +27,10 @@ COLS = {
     "name": 30,
 }
 
-# 这段是获取和打印模板
-
 
 def _get_template(common_client) -> Optional[dict]:
     try:
-        # templates = common_client.call_json("DescribeAddressTemplates", params, options = {"SkipSign": True})
+        # templates = common_client.call_json("DescribeAddressTemplates", params, options = {"SkipSign": True}) # keep
         return common_client.call_json("DescribeAddressTemplates", {})
 
     except TencentCloudSDKException as e:
@@ -135,9 +141,9 @@ def create_template_and_associate(common_client, rule_id, proxy=None):
 
     template_id, ret_val = create_template(common_client, proxy)
 
-    if ret_val == 1:
+    if ret_val == CreateResult.UPDATED_EXISTING:
         return True
-    elif ret_val == 2:
+    elif ret_val == CreateResult.CREATED_NEW:
         return associate_template_2_rule(common_client, template_id, rule_id)
     else:
         return False
@@ -161,7 +167,7 @@ def create_template(common_client, proxy=None):
             print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
 
             set_template(common_client, template_id)
-            return template_id, 1
+            return template_id, CreateResult.UPDATED_EXISTING
 
         ip_list = get_iplist(proxy)
         random_suffix = random.randint(1, 9999)
@@ -178,11 +184,11 @@ def create_template(common_client, proxy=None):
 
         print(f"🔄 [进行中] 模板 {template_id} 已创建")
 
-        return template_id, 2
+        return template_id, CreateResult.CREATED_NEW
 
     except TencentCloudSDKException as err:
         logging.error("[template] API failed, reason=exception, detail=%s", err)
-        return None, 3
+        return None, CreateResult.FAILED
 
 
 def associate_template_2_rule(common_client, template_id, rule_id):
@@ -201,11 +207,11 @@ def associate_template_2_rule(common_client, template_id, rule_id):
             return False
 
         # 进入规则设置
-        params = {"SecurityGroupId": f"{rule_id}",
+        params = {"SecurityGroupId": rule_id,
                   "SecurityGroupPolicySet":
                   {"Ingress": [
                       {"PolicyIndex": 0, "Protocol": "ALL", "AddressTemplate": {
-                          "AddressId": f"{template_id}"},
+                          "AddressId": template_id},
                        "Action": "ACCEPT", "PolicyDescription": "Easy Whitelist"}
                   ]}
                   }

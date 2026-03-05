@@ -1,6 +1,7 @@
 import re
 import random
 
+# keep
 safari_user_agent = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"]
 chrome_user_agent = [
@@ -21,6 +22,7 @@ def parse_ip_from_response(response, patt):
         return result.group(1)
 
 
+# keep
 detect_url = [
     ["https://ifconfig.me", IFCONFIG_ME_PATTERN,
         random.choice(curl_user_agent), "enable"],

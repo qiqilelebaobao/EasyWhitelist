@@ -11,7 +11,7 @@ from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
 
 
 class SecurityGroup:
-    def __init__(self):
+    def __init__(self):  # keep
         pass
 
     @staticmethod
