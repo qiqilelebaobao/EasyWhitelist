@@ -236,7 +236,7 @@ CMD_LIST = "l"
 CMD_EMPTY = ""
 CMD_CREATE = "c"
 CMD_EXIT = "q"
-INPUT_PROMPT = "Please choose # template to set (or [L]ist, [C]reate, [Q]uit): "
+INPUT_PROMPT = "Please choose # template to set (or [L]ist, [C]reate, [Q]uit, Enter\u00d72 to exit): "
 
 
 def _handle_digit_input(user_input: str, common_client, template_ids: list, proxy: Optional[str]) -> None:
@@ -280,6 +280,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
 
     command_handlers = {
         CMD_EMPTY: (lambda: None, CommandAction.CONTINUE),
+        CMD_LIST: (lambda: None, CommandAction.CONTINUE),  # list refresh handled by caller; prevents invalid-command fallthrough
         CMD_CREATE: (
             lambda: logging.warning("[template] create command not yet implemented, hint=use 'ew template create <sg_id>'"),
             CommandAction.CONTINUE,

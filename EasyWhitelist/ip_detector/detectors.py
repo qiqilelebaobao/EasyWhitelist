@@ -9,7 +9,7 @@ def get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy=None):
     # 发送GET请求
     headers = {"user-agent": ag}
 
-    if not re.search("enable", if_enable, re.IGNORECASE):
+    if if_enable.strip().lower() != "enable":
         return None
 
     try:
@@ -55,7 +55,8 @@ def get_local_ips(proxy=None):
 def get_iplist(proxy=None):
 
     client_ip_list = get_local_ips(proxy)
-    client_ip_list = list(set(client_ip_list))
+    # 用 dict.fromkeys 去重，同时保留顺序（set() 会破坏顺序）
+    client_ip_list = list(dict.fromkeys(client_ip_list))
 
     return client_ip_list
 

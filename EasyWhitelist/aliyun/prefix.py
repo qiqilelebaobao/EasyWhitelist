@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import ipaddress
 from typing import List, Optional
 
@@ -41,7 +40,7 @@ class Prefix:
 
         Returns the SDK response as a dict on success, or None on failure.
         """
-        client = ClientFactory.create_client(self.region)
+        client = ClientFactory.create_client(self.region, self.proxy)
         # 构造请求对象
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
             region_id=self.region,
@@ -74,8 +73,8 @@ class Prefix:
         先查询旧条目并全部移除，再写入最新 IP，避免历史条目堆积。
         Returns SDK response dict on success or None on failure.
         """
-        client = ClientFactory.create_client(self.region)
-        client_ip_list = get_iplist()
+        client = ClientFactory.create_client(self.region, self.proxy)
+        client_ip_list = get_iplist(self.proxy)
 
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
@@ -132,7 +131,7 @@ class Prefix:
     def list_prefix_list(self) -> Optional[dict]:
         """List prefix lists in the configured region. Returns response dict or None."""
         logging.info("[prefix] list prefix list of region: %s...", self.region)
-        client = ClientFactory.create_client(self.region)
+        client = ClientFactory.create_client(self.region, self.proxy)
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
             region_id=self.region,
@@ -162,7 +161,7 @@ class Prefix:
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
             for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                 logging.debug(prefix)
-                if re.match(re.escape(prefix_list_name), prefix['PrefixListName']):
+                if prefix['PrefixListName'].startswith(prefix_list_name):
                     logging.info("[prefix] found prefix list, name=%s id=%s", prefix_list_name, prefix['PrefixListId'])
                     return prefix["PrefixListId"]
 
