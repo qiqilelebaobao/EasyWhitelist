@@ -9,7 +9,6 @@ from .aliyun.core import aliyun_main
 
 def main() -> None:
 
-    # tencent, alibaba, action, target, target_id, proxy, verbose = arg.init_arg()
     args = arg.init_arg()
 
     set_log(args.verbose)

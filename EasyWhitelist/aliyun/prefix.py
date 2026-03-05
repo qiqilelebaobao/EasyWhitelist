@@ -24,7 +24,7 @@ COLS = {
 
 
 class Prefix:
-    def __init__(self, region: Optional[str] = None, proxy: Optional[str] = None) -> None:
+    def __init__(self, region: Optional[str] = None, proxy: Optional[int] = None) -> None:
         """Initialize Prefix helper.
 
         Args:
@@ -94,17 +94,17 @@ class Prefix:
             logging.exception("[aliyun] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
             current_entries = []
 
-        remove_entries = [
-            ecs_20140526_models.ModifyPrefixListRequestRemoveEntry(cidr=entry['Cidr'])
-            for entry in current_entries
-            if entry.get('Cidr')
-        ]
+        # remove_entries = [
+        #     ecs_20140526_models.ModifyPrefixListRequestRemoveEntry(cidr=entry['Cidr'])
+        #     for entry in current_entries
+        #     if entry.get('Cidr')
+        # ]
 
         # 构造请求对象
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
             region_id=self.region,
             prefix_list_id=prefix_list_id,
-            remove_entry=remove_entries if remove_entries else None,
+            # remove_entry=remove_entries if remove_entries else None,
             add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
                 cidr=ip,
                 description='added by EasyWhitelist'
@@ -154,7 +154,7 @@ class Prefix:
             logging.exception("Unexpected error when describing prefix lists")
             return None
 
-    def _search_prefix_by_name(self, prefix_list_name):
+    def _search_prefix_by_name(self, prefix_list_name: str) -> Optional[str]:
         logging.info("[prefix] search prefix list, name=%s region=%s", prefix_list_name, self.region)
         prefix_lists = self.list_prefix_list()
         logging.debug(prefix_lists)
@@ -236,7 +236,7 @@ class Prefix:
 
         return normalized
 
-    def set_prefix(self):
+    def set_prefix(self) -> Optional[dict]:
         prefix_id = self._search_prefix_by_name(TEMPLATE_PREFIX)
         if not prefix_id:
             logging.warning("Prefix with template %s not found in region %s", TEMPLATE_PREFIX, self.region)

@@ -8,7 +8,7 @@ from tencentcloud.common.common_client import CommonClient
 DEFAULT_REGION = "ap-guangzhou"
 
 
-def get_common_client(proxy_port, region):
+def get_common_client(region, proxy_port=None) -> CommonClient:
     # cred = credential.Credential(
     #     os.environ.get("TENCENTCLOUD_SECRET_ID"),
     #     os.environ.get("TENCENTCLOUD_SECRET_KEY"))

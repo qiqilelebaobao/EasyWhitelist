@@ -111,7 +111,7 @@ def _modify_template_address(common_client, target_id, client_ips):
     return True
 
 
-def set_template(common_client, target_id, proxy=None):
+def set_template(common_client, target_id, proxy: Optional[int] = None):
     """更新模板 IP，返回是否成功"""
     if not target_id:
         logging.error("[template] missing template_id, reason=empty input")
@@ -133,7 +133,7 @@ def set_template(common_client, target_id, proxy=None):
         return False
 
 
-def create_template_and_associate(common_client, rule_id, proxy=None):
+def create_template_and_associate(common_client, rule_id, proxy: Optional[int] = None):
 
     if not rule_id:
         logging.error("[template] security group ID required but missing")
@@ -298,7 +298,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         return CommandAction.CONTINUE
 
 
-def loop_list(common_client, proxy: Optional[str] = None) -> None:
+def loop_list(common_client, proxy: Optional[int] = None) -> None:
     template_ids = print_template(common_client)
     last_input = None
 

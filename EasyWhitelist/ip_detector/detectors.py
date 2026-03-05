@@ -45,7 +45,7 @@ def validate_ip(l_ip):
 
 def get_local_ips(proxy=None):
     ip_list = []
-    for i, u in enumerate(utils.detect_url, 1):
+    for u in utils.detect_url:
         l_ip = get_local_ip_from_url_and_parse(u[0], u[1], u[2], u[3], proxy)
         if l_ip and validate_ip(l_ip):
             ip_list.append(l_ip)
