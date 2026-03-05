@@ -11,7 +11,8 @@ class ClientFactory:
     # Endpoint 根据 region 动态派生，格式为 'ecs.<region>.aliyuncs.com'。
     # 可通过环境变量 ALIBABA_CLOUD_ENDPOINT 覆盖（用于私有化部署或测试）。
     @staticmethod
-    def create_client(region: str = DEFAULT_REGION, proxy: Optional[int] = None) -> Ecs20140526Client:
+    def create_client(region: Optional[str] = None, proxy: Optional[int] = None) -> Ecs20140526Client:
+        region = region if region is not None else DEFAULT_REGION
         endpoint = os.getenv('ALIBABA_CLOUD_ENDPOINT') or f"ecs.{region}.aliyuncs.com"
 
         access_key_id = os.getenv('ALIBABA_CLOUD_ACCESS_KEY_ID')

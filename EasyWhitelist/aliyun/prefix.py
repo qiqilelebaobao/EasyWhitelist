@@ -8,29 +8,20 @@ from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 from .defaults import DEFAULT_MAX_ENTRIES, DEFAULT_REGION
-from .client import ClientFactory
 from ..util.nm import TEMPLATE_PREFIX
 from ..ip_detector.detectors import get_iplist
-
-
-HEADER_WIDTH = 150
-COLS = {
-    "idx": 10,
-    "id": 30,
-    "ctime": 30,
-    "addrs": 60,
-    "name": 30,
-}
+from ..util.cli import print_header, print_tail, COLS
 
 
 class Prefix:
-    def __init__(self, region: Optional[str] = None, proxy: Optional[int] = None) -> None:
+    def __init__(self, client, region: Optional[str] = None, proxy: Optional[int] = None) -> None:
         """Initialize Prefix helper.
 
         Args:
             region: Alibaba Cloud region, defaults to DEFAULT_REGION when not provided.
             proxy: Optional proxy configuration (currently stored but not used).
         """
+        self.client = client
         self.region = region if region else DEFAULT_REGION
         self.proxy = proxy
         logging.info("[config] region set to %s", self.region)
@@ -40,7 +31,6 @@ class Prefix:
 
         Returns the SDK response as a dict on success, or None on failure.
         """
-        client = ClientFactory.create_client(self.region, self.proxy)
         # 构造请求对象
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
             region_id=self.region,
@@ -53,7 +43,7 @@ class Prefix:
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 CreatePrefixList 接口
-            create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)
+            create_prefix_list_response = self.client.create_prefix_list_with_options(create_prefix_list_request, runtime)
             logging.info(json.dumps(create_prefix_list_response.body.to_map()))
             return create_prefix_list_response.body.to_map()
 
@@ -73,7 +63,6 @@ class Prefix:
         先查询旧条目并全部移除，再写入最新 IP，避免历史条目堆积。
         Returns SDK response dict on success or None on failure.
         """
-        client = ClientFactory.create_client(self.region, self.proxy)
         client_ip_list = get_iplist(self.proxy)
 
         # 校验、去重并限制数量
@@ -88,7 +77,7 @@ class Prefix:
                 region_id=self.region,
                 prefix_list_id=prefix_list_id,
             )
-            describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)
+            describe_resp = self.client.describe_prefix_list_attributes_with_options(describe_req, runtime)
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
         except Exception:
             logging.exception("[aliyun] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
@@ -131,7 +120,6 @@ class Prefix:
     def list_prefix_list(self) -> Optional[dict]:
         """List prefix lists in the configured region. Returns response dict or None."""
         logging.info("[prefix] list prefix list of region: %s %s...", self.region, self.proxy)
-        client = ClientFactory.create_client(self.region, self.proxy)
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
             region_id=self.region,
@@ -141,7 +129,7 @@ class Prefix:
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 DescribePrefixLists 接口
-            describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
+            describe_prefix_lists_response = self.client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
             logging.info("[prefix] API response, detail=%s", json.dumps(describe_prefix_lists_response.body.to_map()))
             return describe_prefix_lists_response.body.to_map()
         except UnretryableException:
@@ -169,21 +157,12 @@ class Prefix:
         """Print prefix list information in a human-readable format."""
         prefix_lists = self.list_prefix_list()
         if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
-            logging.info("No prefix list information to display.")
+            logging.warning("No prefix list information to display.")
             return
 
-        # 表头
-        header = (f"{'#':<{COLS['idx']}}"
-                  f"{'Template ID':<{COLS['id']}}"
-                  f"{'CreatedTime':<{COLS['ctime']}}"
-                  f"{'Addresses':<{COLS['addrs']}}"
-                  f"{'AddressTemplateName':<{COLS['name']}}")
-
-        print(f"{'Alibaba Cloud Prefix List':=^{HEADER_WIDTH}}")
-        print(header)
-        print("-" * HEADER_WIDTH)
-
         template_ids = []
+
+        print_header('Alibaba Cloud Prefix List')
 
         for i, prefix in enumerate(prefix_lists["PrefixLists"]["PrefixList"], 1):
             template_ids.append(prefix["PrefixListId"])
@@ -198,7 +177,8 @@ class Prefix:
                   f"{addreset:<{COLS['addrs']}}"
                   f"{t_name:{COLS['name']}}"
                   )
-        print("-" * HEADER_WIDTH)
+
+        print_tail()
 
         return template_ids
 

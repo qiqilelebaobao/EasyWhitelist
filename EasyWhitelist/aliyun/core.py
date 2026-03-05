@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 
+from .client import ClientFactory
 # from .sg import SecurityGroup
 from .prefix import Prefix
 
@@ -18,7 +19,9 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
     logging.info("[core] enter aliyun (action: %s) (target: %s) (target_id: %s) (region: %s) (proxy: %s)",
                  action, target, target_id, region, proxy)
 
-    prefix = Prefix(region=region, proxy=proxy)
+    aliyun_client = ClientFactory.create_client(region, proxy)
+
+    prefix = Prefix(aliyun_client, region=region, proxy=proxy)
 
     if target == "template":
         ACTION_MAP = {

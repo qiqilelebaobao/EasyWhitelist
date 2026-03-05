@@ -9,6 +9,7 @@ from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentClo
 
 from ..ip_detector.detectors import get_iplist
 from ..util.nm import TEMPLATE_PREFIX, TEMPLATE_ID_PREFIX
+from ..util.cli import print_header, print_tail, COLS
 
 
 class CreateResult(Enum):
@@ -16,16 +17,6 @@ class CreateResult(Enum):
     UPDATED_EXISTING = auto()   # 已有模板，直接更新完毕
     CREATED_NEW = auto()        # 新建模板成功，需要关联
     FAILED = auto()             # 异常失败
-
-
-HEADER_WIDTH = 150
-COLS = {
-    "idx": 10,
-    "id": 30,
-    "ctime": 30,
-    "addrs": 60,
-    "name": 30,
-}
 
 
 def _get_template(common_client) -> Optional[dict]:
@@ -45,16 +36,7 @@ def print_template(common_client) -> List[str]:
 
     template_ids = []
 
-    # 表头
-    header = (f"{'#':<{COLS['idx']}}"
-              f"{'Template ID':<{COLS['id']}}"
-              f"{'CreatedTime':<{COLS['ctime']}}"
-              f"{'Addresses':<{COLS['addrs']}}"
-              f"{'AddressTemplateName':<{COLS['name']}}")
-
-    print(f"{'Tencent Cloud Template List':=^{HEADER_WIDTH}}")
-    print(header)
-    print("-" * HEADER_WIDTH)
+    print_header('Tencent Cloud Template List')
 
     for i, template in enumerate(tpl_resp["Response"]["AddressTemplateSet"], 1):
         template_ids.append(template["AddressTemplateId"])
@@ -71,7 +53,8 @@ def print_template(common_client) -> List[str]:
               f"{addreset:<{COLS['addrs']}}"
               f"{t_name:{COLS['name']}}"
               )
-    print("-" * HEADER_WIDTH)
+
+    print_tail()
 
     return template_ids
 
