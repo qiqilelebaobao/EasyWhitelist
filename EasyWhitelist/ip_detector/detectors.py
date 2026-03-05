@@ -65,9 +65,9 @@ def get_iplist(proxy=None):
 
 def print_ip_list(ip_list):
     number = 100
-    print(f"{"Detected Local IP List":=^{number}}\n"
-          f"{"#":<38}IP Address\n"
-          f"{"-" * number}"
+    print(f"{'Detected Local IP List':=^{number}}\n"
+          f"{'#':<38}IP Address\n"
+          f"{'-' * number}"
           )
 
     for i, ip in enumerate(ip_list, 1):
