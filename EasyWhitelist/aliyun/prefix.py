@@ -8,13 +8,13 @@ from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 from .defaults import DEFAULT_MAX_ENTRIES, DEFAULT_REGION
-from ..util.nm import TEMPLATE_PREFIX
+from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..ip_detector.detectors import get_iplist
 from ..util.cli import print_header, print_tail, COLS
 
 
 class Prefix:
-    def __init__(self, client, region: Optional[str] = None, proxy: Optional[int] = None) -> None:
+    def __init__(self, client, region: str, proxy: Optional[int] = None) -> None:
         """Initialize Prefix helper.
 
         Args:
@@ -26,7 +26,7 @@ class Prefix:
         self.proxy = proxy
         logging.info("[config] region set to %s", self.region)
 
-    def create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_PREFIX}0', description: str = f'{TEMPLATE_PREFIX}0_desc') -> Optional[dict]:
+    def _create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_NAME_PREFIX}0', description: str = f'{TEMPLATE_NAME_PREFIX}0_desc') -> str:
         """Create a prefix list in the configured region.
 
         Returns the SDK response as a dict on success, or None on failure.
@@ -44,30 +44,25 @@ class Prefix:
         try:
             # 调用 CreatePrefixList 接口
             create_prefix_list_response = self.client.create_prefix_list_with_options(create_prefix_list_request, runtime)
-            logging.info(json.dumps(create_prefix_list_response.body.to_map()))
-            return create_prefix_list_response.body.to_map()
+            ret_data = create_prefix_list_response.body.to_map()
+            logging.info(json.dumps(ret_data))
+            return ret_data["PrefixListId"] if "PrefixListId" in ret_data else ''
 
         except UnretryableException:
             logging.exception("Network error when creating prefix list")
-            return None
+            return ''
         except TeaException:
             logging.exception("Tea API error when creating prefix list")
-            return None
+            return ''
         except Exception:
             logging.exception("Unexpected error when creating prefix list")
-            return None
+            return ''
 
-    def _associate_prefix_list_with_id(self, prefix_list_id: str) -> Optional[dict]:
-        """Replace all entries in the prefix list with current client IPs.
+    def _update_prefix_list_by_id(self, prefix_list_id: str) -> Optional[dict]:
 
-        先查询旧条目并全部移除，再写入最新 IP，避免历史条目堆积。
-        Returns SDK response dict on success or None on failure.
-        """
         client_ip_list = get_iplist(self.proxy)
-
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
-
         logging.warning("[aliyun] Replacing prefix list %s in region %s with client IPs: %s", prefix_list_id, self.region, client_ip_list)
 
         # 查询当前条目，以便全量替换
@@ -103,7 +98,7 @@ class Prefix:
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 ModifyPrefixList 接口
-            modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)
+            modify_prefix_list_response = self.client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)
             logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
             return modify_prefix_list_response.body.to_map()
 
@@ -117,21 +112,41 @@ class Prefix:
             logging.exception("Unexpected error when modifying prefix list")
             return None
 
-    def list_prefix_list(self) -> Optional[dict]:
+    def init_prefix_list(self, sg):
+        # 1. 查找安全组,如果失败返回
+        pass
+
+        # 2. 查找前缀列表，如果存在则复用，否则新建
+        prefix_list_id = self._auto_search_prefix_by_name()
+        if prefix_list_id:
+            logging.info("[prefix] Prefix with template %s already exists in region %s, id=%s", TEMPLATE_NAME_PREFIX, self.region, prefix_list_id)
+        # 3. 否则新建
+        else:
+            prefix_list_id = self._create_prefix_list()
+
+        if not prefix_list_id:
+            logging.error("Failed to find or create prefix list with template %s in region %s", TEMPLATE_NAME_PREFIX, self.region)
+            return False
+
+        self._update_prefix_list_by_id(prefix_list_id)
+
+        return True
+
+    def get_prefix_list(self) -> Optional[dict]:
         """List prefix lists in the configured region. Returns response dict or None."""
-        logging.info("[prefix] list prefix list of region: %s %s...", self.region, self.proxy)
+        logging.info("[prefix] get prefix list of region: %s", self.region)
         # 构造请求对象
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
-            region_id=self.region,
-            # prefix_list_name=f'{TEMPLATE_PREFIX}'
+            region_id=self.region
         )
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 DescribePrefixLists 接口
             describe_prefix_lists_response = self.client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
-            logging.info("[prefix] API response, detail=%s", json.dumps(describe_prefix_lists_response.body.to_map()))
-            return describe_prefix_lists_response.body.to_map()
+            body_map = describe_prefix_lists_response.body.to_map()
+            logging.info("[prefix] API response, detail=%s", json.dumps(body_map))
+            return body_map
         except UnretryableException:
             logging.exception("Network error when describing prefix lists")
             return None
@@ -142,22 +157,23 @@ class Prefix:
             logging.exception("Unexpected error when describing prefix lists")
             return None
 
-    def _search_prefix_by_name(self, prefix_list_name: str) -> Optional[str]:
-        logging.info("[prefix] search prefix list, name=%s region=%s", prefix_list_name, self.region)
-        prefix_lists = self.list_prefix_list()
+    def _auto_search_prefix_by_name(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[str]:
+        '''Search for a prefix list by name prefix. Returns the prefix list ID if found, or None if not found.'''
+        logging.info("[prefix] search prefix list, region=%s, prefix_name=%s ", self.region, prefix_name)
+        prefix_lists = self.get_prefix_list()
         logging.debug(prefix_lists)
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
             for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                 logging.debug(prefix)
-                if prefix['PrefixListName'].startswith(prefix_list_name):
-                    logging.info("[prefix] found prefix list, name=%s id=%s", prefix_list_name, prefix['PrefixListId'])
+                if prefix['PrefixListName'].startswith(prefix_name):
+                    logging.info("[prefix] found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
                     return prefix["PrefixListId"]
 
     def print_prefix_list(self) -> Optional[List[str]]:
         """Print prefix list information in a human-readable format."""
-        prefix_lists = self.list_prefix_list()
+        prefix_lists = self.get_prefix_list()
         if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
-            logging.warning("No prefix list information to display.")
+            logging.error("No prefix list information to display.")
             return
 
         template_ids = []
@@ -217,8 +233,8 @@ class Prefix:
         return normalized
 
     def set_prefix(self) -> Optional[dict]:
-        prefix_id = self._search_prefix_by_name(TEMPLATE_PREFIX)
+        prefix_id = self._auto_search_prefix_by_name()
         if not prefix_id:
-            logging.warning("Prefix with template %s not found in region %s", TEMPLATE_PREFIX, self.region)
-            return None
-        return self._associate_prefix_list_with_id(prefix_id)
+            logging.warning("Prefix with template %s not found in region %s", TEMPLATE_NAME_PREFIX, self.region)
+            return
+        return self._update_prefix_list_by_id(prefix_id)

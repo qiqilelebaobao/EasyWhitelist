@@ -8,7 +8,7 @@ from enum import Enum, auto
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
 from ..ip_detector.detectors import get_iplist
-from ..util.nm import TEMPLATE_PREFIX, TEMPLATE_ID_PREFIX
+from ..util.nm import TEMPLATE_NAME_PREFIX, TEMPLATE_ID_PREFIX
 from ..util.cli import print_header, print_tail, COLS
 
 
@@ -69,7 +69,7 @@ def _modify_template_address(common_client, target_id, client_ips):
         {"Name": "address-template-id", "Values": [target_id]}]}
     try:
         respon = common_client.call_json("DescribeAddressTemplates", params)
-        if (TemplateSet := respon["Response"]["AddressTemplateSet"]) and TemplateSet[0]["AddressTemplateName"].startswith(TEMPLATE_PREFIX):
+        if (TemplateSet := respon["Response"]["AddressTemplateSet"]) and TemplateSet[0]["AddressTemplateName"].startswith(TEMPLATE_NAME_PREFIX):
             pass
         else:
             logging.error("[template] this is not a template generated from this tool. Shall not be modified.")
@@ -134,7 +134,7 @@ def create_template_and_associate(common_client, rule_id, proxy: Optional[int] =
 
 def create_template(common_client, proxy=None):
     try:
-        params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_PREFIX]}]}
+        params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
         respon = common_client.call_json("DescribeAddressTemplates", params)
 
         logging.debug("[template] API response, detail=%s", json.dumps(respon, ensure_ascii=False))
@@ -154,7 +154,7 @@ def create_template(common_client, proxy=None):
 
         ip_list = get_iplist(proxy)
         random_suffix = random.randint(1, 9999)
-        template_name = f"{TEMPLATE_PREFIX}{random_suffix:04d}"
+        template_name = f"{TEMPLATE_NAME_PREFIX}{random_suffix:04d}"
         params = {
             "AddressTemplateName": template_name,
             "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in ip_list]

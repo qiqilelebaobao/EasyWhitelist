@@ -4,6 +4,7 @@ from typing import Optional
 from .client import ClientFactory
 # from .sg import SecurityGroup
 from .prefix import Prefix
+from .defaults import DEFAULT_REGION
 
 
 def aliyun_main(action: str, target: str, target_id: Optional[str], region: Optional[str], proxy: Optional[int] = None) -> None:
@@ -19,13 +20,15 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
     logging.info("[core] enter aliyun (action: %s) (target: %s) (target_id: %s) (region: %s) (proxy: %s)",
                  action, target, target_id, region, proxy)
 
+    region = region or DEFAULT_REGION
+
     aliyun_client = ClientFactory.create_client(region, proxy)
 
     prefix = Prefix(aliyun_client, region=region, proxy=proxy)
 
     if target == "template":
         ACTION_MAP = {
-            "create": lambda: prefix.create_prefix_list(),
+            "init": lambda: prefix.init_prefix_list(target_id),
             "list": lambda: prefix.print_prefix_list(),
             "set": lambda: prefix.set_prefix(),
         }

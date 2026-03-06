@@ -37,13 +37,13 @@ def init_arg():
     parser.add_argument("-v", "--verbose", action="count", default=0)
 
     # 位置参数
-    parser.add_argument("-r", "--region", help="region or rule")
+    parser.add_argument("-r", "--region", help="region")
 
     parser.add_argument("target", help="template or rule",
                         choices=["template", "rule"])
 
     parser.add_argument("action", help="action to perform", choices=[
-                        "list", "set", "create"])
+                        "init", "list", "set"])
 
     parser.add_argument("target_id", help="template id or rule id", nargs="?")
 
