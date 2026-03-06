@@ -1,10 +1,12 @@
 import json
 import logging
 import ipaddress
+from datetime import datetime
 from typing import List, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
+from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 from .defaults import DEFAULT_MAX_ENTRIES, DEFAULT_REGION
@@ -14,7 +16,7 @@ from ..util.cli import print_header, print_tail, COLS
 
 
 class Prefix:
-    def __init__(self, client, region: str, proxy: Optional[int] = None) -> None:
+    def __init__(self, client: Ecs20140526Client, region: str, proxy: Optional[int] = None) -> None:
         """Initialize Prefix helper.
 
         Args:
@@ -43,7 +45,7 @@ class Prefix:
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 CreatePrefixList 接口
-            create_prefix_list_response = self.client.create_prefix_list_with_options(create_prefix_list_request, runtime)
+            create_prefix_list_response = self.client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
             ret_data = create_prefix_list_response.body.to_map()
             logging.info(json.dumps(ret_data))
             return ret_data["PrefixListId"] if "PrefixListId" in ret_data else ''
@@ -58,77 +60,77 @@ class Prefix:
             logging.exception("Unexpected error when creating prefix list")
             return ''
 
-    def _update_prefix_list_by_id(self, prefix_list_id: str) -> Optional[dict]:
-
-        client_ip_list = get_iplist(self.proxy)
-        # 校验、去重并限制数量
-        client_ip_list = self._normalize_ip_list(client_ip_list)
-        logging.warning("[aliyun] Replacing prefix list %s in region %s with client IPs: %s", prefix_list_id, self.region, client_ip_list)
-
-        # 查询当前条目，以便全量替换
+    def _get_prefix_detail_by_id(self, prefix_list_id: str):
         runtime = util_models.RuntimeOptions()
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
                 region_id=self.region,
                 prefix_list_id=prefix_list_id,
             )
-            describe_resp = self.client.describe_prefix_list_attributes_with_options(describe_req, runtime)
+            describe_resp = self.client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
         except Exception:
             logging.exception("[aliyun] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
             current_entries = []
 
-        # remove_entries = [
-        #     ecs_20140526_models.ModifyPrefixListRequestRemoveEntry(cidr=entry['Cidr'])
-        #     for entry in current_entries
-        #     if entry.get('Cidr')
-        # ]
+    def _update_prefix_list_by_id(self, prefix_list_id: str) -> None:
+
+        client_ip_list = get_iplist(self.proxy)
+        # 校验、去重并限制数量
+        client_ip_list = self._normalize_ip_list(client_ip_list)
+        print(f"\033[1;95m[aliyun] Updating prefix list {prefix_list_id} in region \"{self.region}\" with client IPs: {client_ip_list}\033[0m")
 
         # 构造请求对象
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
             region_id=self.region,
             prefix_list_id=prefix_list_id,
-            # remove_entry=remove_entries if remove_entries else None,
             add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
                 cidr=ip,
-                description='added by EasyWhitelist'
+                description=f"EasyWhitelist@{datetime.now().strftime('%Y-%m-%d %H:%M')}"
             ) for ip in client_ip_list]
         )
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 ModifyPrefixList 接口
-            modify_prefix_list_response = self.client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)
+            modify_prefix_list_response = self.client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
             logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
-            return modify_prefix_list_response.body.to_map()
+            return
 
         except UnretryableException:
             logging.exception("Network error when modifying prefix list")
-            return None
+            return
         except TeaException:
             logging.exception("Tea API error when modifying prefix list")
-            return None
+            return
         except Exception:
             logging.exception("Unexpected error when modifying prefix list")
-            return None
+            return
 
-    def init_prefix_list(self, sg):
+    def init_prefix_list(self, sg_id: Optional[str] = ''):
         # 1. 查找安全组,如果失败返回
         pass
 
         # 2. 查找前缀列表，如果存在则复用，否则新建
         prefix_list_id = self._auto_search_prefix_by_name()
         if prefix_list_id:
-            logging.info("[prefix] Prefix with template %s already exists in region %s, id=%s", TEMPLATE_NAME_PREFIX, self.region, prefix_list_id)
+            print(f"\033[1;95m[aliyun] Prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" already exists in region \"{self.region}\", id=\"{prefix_list_id}\"\033[0m")
         # 3. 否则新建
         else:
             prefix_list_id = self._create_prefix_list()
+            print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{self.region}\", id=\"{prefix_list_id}\"\033[0m")
 
         if not prefix_list_id:
+            print(f"\033[1;91m[aliyun] Failed to find or create prefix list with template "
+                  f"\"{TEMPLATE_NAME_PREFIX}\" in region \"{self.region}\". "
+                  f"Please check the logs for details.\033[0m")
             logging.error("Failed to find or create prefix list with template %s in region %s", TEMPLATE_NAME_PREFIX, self.region)
             return False
 
         self._update_prefix_list_by_id(prefix_list_id)
+
+        if sg_id:
+            pass
 
         return True
 
@@ -136,14 +138,13 @@ class Prefix:
         """List prefix lists in the configured region. Returns response dict or None."""
         logging.info("[prefix] get prefix list of region: %s", self.region)
         # 构造请求对象
-        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(
-            region_id=self.region
-        )
+        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=self.region)
+
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 DescribePrefixLists 接口
-            describe_prefix_lists_response = self.client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)
+            describe_prefix_lists_response = self.client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
             body_map = describe_prefix_lists_response.body.to_map()
             logging.info("[prefix] API response, detail=%s", json.dumps(body_map))
             return body_map
@@ -237,4 +238,4 @@ class Prefix:
         if not prefix_id:
             logging.warning("Prefix with template %s not found in region %s", TEMPLATE_NAME_PREFIX, self.region)
             return
-        return self._update_prefix_list_by_id(prefix_id)
+        self._update_prefix_list_by_id(prefix_id)
