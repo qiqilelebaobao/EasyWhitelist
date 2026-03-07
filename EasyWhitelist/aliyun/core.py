@@ -1,13 +1,30 @@
 import logging
 from typing import Optional
 
-from .client import ClientFactory
 # from .sg import SecurityGroup
 from .prefix import Prefix
+from .sg import SecurityGroup
 from .defaults import DEFAULT_REGION
 
 
-def aliyun_main(action: str, target: str, target_id: Optional[str], region: Optional[str], proxy: Optional[int] = None) -> None:
+def init_whitelist(prefix: Prefix, sg_id: str):
+
+    if not sg_id:
+        print("\033[1;91m[aliyun] Security group ID is required for initialization\033[0m")
+        return 1
+
+    # 1. 查找安全组,如果失败返回
+    sg = SecurityGroup(sg_id)
+    sg_obj = sg.search_sg()
+
+    if not sg_obj:
+        print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
+        return 2
+
+    return 3
+
+
+def aliyun_main(action: str, target: str, target_id: str, region: Optional[str], proxy: Optional[int] = None) -> None:
     """Entry point for aliyun operations used by the CLI.
 
     Args:
@@ -22,13 +39,11 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
 
     region = region or DEFAULT_REGION
 
-    aliyun_client = ClientFactory.create_client(region, proxy)
-
-    prefix = Prefix(aliyun_client, region=region, proxy=proxy)
+    prefix = Prefix(region=region, proxy=proxy)
 
     if target == "template":
         ACTION_MAP = {
-            "init": lambda: prefix.init_prefix_list(target_id),
+            "init": lambda: init_whitelist(prefix, target_id),
             "list": lambda: prefix.print_prefix_list(),
             "set": lambda: prefix.set_prefix(),
         }

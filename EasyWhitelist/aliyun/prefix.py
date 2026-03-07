@@ -6,26 +6,31 @@ from typing import List, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
-from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 from .defaults import DEFAULT_MAX_ENTRIES, DEFAULT_REGION
 from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..ip_detector.detectors import get_iplist
 from ..util.cli import print_header, print_tail, COLS
+from .client import ClientFactory
 
 
 class Prefix:
-    def __init__(self, client: Ecs20140526Client, region: str, proxy: Optional[int] = None) -> None:
+    def __init__(self, region: str, proxy: Optional[int] = None) -> None:
         """Initialize Prefix helper.
 
         Args:
             region: Alibaba Cloud region, defaults to DEFAULT_REGION when not provided.
             proxy: Optional proxy configuration (currently stored but not used).
         """
-        self.client = client
+        self.client = ClientFactory.create_client(region, proxy)
         self.region = region if region else DEFAULT_REGION
         self.proxy = proxy
+        self.prefix_list_id = self._get_or_create_prefix_list()
+
+        if self.prefix_list_id:
+            self._update_prefix_list_by_id(self.prefix_list_id)
+
         logging.info("[config] region set to %s", self.region)
 
     def _create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_NAME_PREFIX}0', description: str = f'{TEMPLATE_NAME_PREFIX}0_desc') -> str:
@@ -69,9 +74,11 @@ class Prefix:
             )
             describe_resp = self.client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
+            logging.info(current_entries)
         except Exception:
             logging.exception("[aliyun] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
             current_entries = []
+        return current_entries
 
     def _update_prefix_list_by_id(self, prefix_list_id: str) -> None:
 
@@ -107,15 +114,13 @@ class Prefix:
             logging.exception("Unexpected error when modifying prefix list")
             return
 
-    def init_prefix_list(self, sg_id: Optional[str] = ''):
-        # 1. 查找安全组,如果失败返回
-        pass
+    def _get_or_create_prefix_list(self, sg_id: Optional[str] = ''):
 
-        # 2. 查找前缀列表，如果存在则复用，否则新建
+        # 1. 查找前缀列表，如果存在则复用，否则新建
         prefix_list_id = self._auto_search_prefix_by_name()
         if prefix_list_id:
             print(f"\033[1;95m[aliyun] Prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" already exists in region \"{self.region}\", id=\"{prefix_list_id}\"\033[0m")
-        # 3. 否则新建
+        # 2. 否则新建
         else:
             prefix_list_id = self._create_prefix_list()
             print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{self.region}\", id=\"{prefix_list_id}\"\033[0m")
@@ -125,14 +130,9 @@ class Prefix:
                   f"\"{TEMPLATE_NAME_PREFIX}\" in region \"{self.region}\". "
                   f"Please check the logs for details.\033[0m")
             logging.error("Failed to find or create prefix list with template %s in region %s", TEMPLATE_NAME_PREFIX, self.region)
-            return False
+            return None
 
-        self._update_prefix_list_by_id(prefix_list_id)
-
-        if sg_id:
-            pass
-
-        return True
+        return prefix_list_id
 
     def get_prefix_list(self) -> Optional[dict]:
         """List prefix lists in the configured region. Returns response dict or None."""
@@ -236,6 +236,7 @@ class Prefix:
     def set_prefix(self) -> Optional[dict]:
         prefix_id = self._auto_search_prefix_by_name()
         if not prefix_id:
-            logging.warning("Prefix with template %s not found in region %s", TEMPLATE_NAME_PREFIX, self.region)
+            print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in region \"{self.region}\". "
+                  f"Please run the init action first to create it.\033[0m")
             return
         self._update_prefix_list_by_id(prefix_id)

@@ -7,12 +7,36 @@ from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 from .client import ClientFactory
+from .region import Regions
 from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
 
 
 class SecurityGroup:
-    def __init__(self):  # keep
-        pass
+    def __init__(self, sg_id, sg_name=''):
+        self.sg_id = sg_id
+        self.id_checked = False
+        self.sg_name = sg_name
+        self.regions = Regions()
+
+    def _search_sg_by_region_and_id(self, region_id, sg_id):
+        # 构造请求对象
+        security_groups = self._describe_security_groups(region_id)
+        if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
+            for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
+                if sg["SecurityGroupId"] == sg_id:
+                    print(f"\033[1;92m[aliyun] Found security group with ID {sg_id} in region {region_id}\033[0m")
+                    return sg
+        print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in region {region_id}\033[0m")
+        return None
+
+    def search_sg(self):
+        for region_id in self.regions.region_ids:
+            sg = self._search_sg_by_region_and_id(region_id, self.sg_id)
+            if sg:
+                self.id_checked = True
+                return sg
+
+        return None
 
     @staticmethod
     def create_security_group(description: str = 'test_sg_desc', region_id: str = DEFAULT_REGION, vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
@@ -49,7 +73,7 @@ class SecurityGroup:
             return None
 
     @staticmethod
-    def describe_security_groups(region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
+    def _describe_security_groups(region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
         """Describe security groups in the given region.
 
         Args:
