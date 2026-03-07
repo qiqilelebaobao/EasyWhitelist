@@ -7,24 +7,28 @@ from .sg import SecurityGroup
 from .defaults import DEFAULT_REGION
 
 
-def init_whitelist(prefix: Prefix, sg_id: str):
+def init_whitelist(_prefix: Prefix, sg_id: Optional[str]) -> int:
 
     if not sg_id:
         print("\033[1;91m[aliyun] Security group ID is required for initialization\033[0m")
         return 1
 
     # 1. 查找安全组,如果失败返回
-    sg = SecurityGroup(sg_id)
-    sg_obj = sg.search_sg()
+    try:
+        sg = SecurityGroup(sg_id)
+        sg_obj = sg.search_sg()
+    except Exception:
+        logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
+        return 3
 
     if not sg_obj:
         print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
         return 2
 
-    return 3
+    return 0
 
 
-def aliyun_main(action: str, target: str, target_id: str, region: Optional[str], proxy: Optional[int] = None) -> None:
+def aliyun_main(action: str, target: str, target_id: Optional[str], region: Optional[str], proxy: Optional[int] = None) -> int:
     """Entry point for aliyun operations used by the CLI.
 
     Args:
@@ -42,14 +46,16 @@ def aliyun_main(action: str, target: str, target_id: str, region: Optional[str],
     prefix = Prefix(region=region, proxy=proxy)
 
     if target == "template":
-        ACTION_MAP = {
+        action_map = {
             "init": lambda: init_whitelist(prefix, target_id),
-            "list": lambda: prefix.print_prefix_list(),
-            "set": lambda: prefix.set_prefix(),
+            "list": lambda: prefix.print_prefix_list() or 0,
+            "set": lambda: prefix.set_prefix() or 0,
         }
-        if action in ACTION_MAP:
-            ACTION_MAP[action]()
-        else:
-            logging.error("[cli] unsupported operation, reason=unknown action, detail=%s", action)
-    else:
-        logging.error("[cli] unsupported target, reason=not implemented, detail=%s", target)
+        if action in action_map:
+            return action_map[action]()
+
+        logging.error("[cli] unsupported operation, reason=unknown action, detail=%s", action)
+        return 1
+
+    logging.error("[cli] unsupported target, reason=not implemented, detail=%s", target)
+    return 1
