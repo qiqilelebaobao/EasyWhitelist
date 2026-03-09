@@ -80,7 +80,9 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
             return action_map[action]()
 
         logging.error("[aliyun] unsupported operation, reason=unknown action, detail=%s", action)
+        print(f"\033[1;91m[aliyun] Unsupported action: '{action}'. Valid actions are: {list(action_map.keys())}\033[0m")
         return 1
 
     logging.error("[aliyun] unsupported target, reason=not implemented, detail=%s", target)
+    print(f"\033[1;91m[aliyun] Unsupported target: '{target}'. Currently supported: 'template'\033[0m")
     return 1

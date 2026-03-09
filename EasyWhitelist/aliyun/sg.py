@@ -17,6 +17,7 @@ class SecurityGroup:
         self.sg_id = sg_id
         self.id_checked = False
         self.sg_name = sg_name
+        self.region_id: Optional[str] = None
         self.regions = Regions(client)
 
     def _search_sg_by_region_and_id(self, region_id, sg_id):
@@ -43,6 +44,9 @@ class SecurityGroup:
     '''阿里云如果安全组已经有了前缀列表，不会有异常返回，会不做修改。如果没有前缀列表，直接尝试创建安全组规则。'''
 
     def create_sg_rule_with_prefix(self, prefix_list_id: str):
+        if not self.region_id:
+            logging.error("[aliyun] region_id not set; call search_sg() before create_sg_rule_with_prefix()")
+            return False
         # 构造请求对象
         create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(
             region_id=self.region_id,
