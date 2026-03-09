@@ -41,7 +41,7 @@ def init_whitelist(client, prefix: Prefix, sg_id: Optional[str]) -> int:
         return 2
 
     # 2. 获取或创建前缀列表并更新 IP
-    if not prefix.init_prefix() or prefix.prefix_list_id is None:
+    if prefix.init_prefix() or prefix.prefix_list_id is None:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
 

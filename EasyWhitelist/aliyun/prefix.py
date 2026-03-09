@@ -29,20 +29,20 @@ class Prefix:
         self.prefix_list_id: Optional[str] = None
         logging.info("[config] region set to %s", self.region)
 
-    def init_prefix(self) -> bool:
+    def init_prefix(self) -> int:
         """Find or create the prefix list and populate it with current IPs.
 
-        Returns True on success, False otherwise.
+        Returns 0 on success, non-zero error code on failure.
         """
         self.prefix_list_id = self._get_or_create_prefix_list()
         if not self.prefix_list_id:
-            return False
+            return 1
         return self._update_prefix_list_by_id(self.prefix_list_id)
 
     def _create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_NAME_PREFIX}0', description: str = f'{TEMPLATE_NAME_PREFIX}0_desc') -> str:
         """Create a prefix list in the configured region.
 
-        Returns the SDK response as a dict on success, or None on failure.
+        Returns the prefix list ID string on success, or empty string on failure.
         """
         # 构造请求对象
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
@@ -175,6 +175,7 @@ class Prefix:
                 if prefix['PrefixListName'].startswith(prefix_name):
                     logging.info("[prefix] found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
                     return prefix["PrefixListId"]
+        return None
 
     def print_prefix_list(self) -> int:
         """Print prefix list information in a human-readable format."""
@@ -241,6 +242,10 @@ class Prefix:
         return normalized
 
     def set_prefix(self) -> int:
+        """Update the existing prefix list with current client IPs.
+
+        Returns 0 on success, 1 on failure (prefix list not found or update error).
+        """
         prefix_id = self._auto_search_prefix_by_name()
         if not prefix_id:
             print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in region \"{self.region}\". "
