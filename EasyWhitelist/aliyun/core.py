@@ -2,12 +2,13 @@ import logging
 from typing import Optional
 
 # from .sg import SecurityGroup
+from .client import ClientFactory
 from .prefix import Prefix
 from .sg import SecurityGroup
 from .defaults import DEFAULT_REGION
 
 
-def init_whitelist(_prefix: Prefix, sg_id: Optional[str]) -> int:
+def init_whitelist(client, _prefix: Prefix, sg_id: Optional[str]) -> int:
 
     if not sg_id:
         print("\033[1;91m[aliyun] Security group ID is required for initialization\033[0m")
@@ -15,7 +16,7 @@ def init_whitelist(_prefix: Prefix, sg_id: Optional[str]) -> int:
 
     # 1. 查找安全组,如果失败返回
     try:
-        sg = SecurityGroup(sg_id)
+        sg = SecurityGroup(client, sg_id)
         sg_obj = sg.search_sg()
     except Exception:
         print("\033[1;91m[aliyun] failed to search security group, sg_id=%s\033[0m", sg_id)
@@ -51,11 +52,13 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
 
     region = region or DEFAULT_REGION
 
-    prefix = Prefix(region=region, proxy=proxy)
+    client = ClientFactory.create_client(region, proxy)
+
+    prefix = Prefix(client=client, proxy=proxy)
 
     if target == "template":
         action_map = {
-            "init": lambda: init_whitelist(prefix, target_id),
+            "init": lambda: init_whitelist(client, prefix, target_id),
             "list": lambda: prefix.print_prefix_list() or 0,
             "set": lambda: prefix.set_prefix() or 0,
         }

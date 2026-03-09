@@ -7,8 +7,7 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 
 class Regions:
-    def __init__(self):
-        client = ClientFactory.create_client("cn-hangzhou")
+    def __init__(self, client):
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = util_models.RuntimeOptions()
         try:

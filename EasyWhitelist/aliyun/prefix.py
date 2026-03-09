@@ -12,19 +12,19 @@ from .defaults import DEFAULT_MAX_ENTRIES, DEFAULT_REGION
 from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..ip_detector.detectors import get_iplist
 from ..util.cli import print_header, print_tail, COLS
-from .client import ClientFactory
+from .client import Ecs20140526Client
 
 
 class Prefix:
-    def __init__(self, region: str, proxy: Optional[int] = None) -> None:
+    def __init__(self, client: Ecs20140526Client, proxy: Optional[int] = None) -> None:
         """Initialize Prefix helper.
 
         Args:
             region: Alibaba Cloud region, defaults to DEFAULT_REGION when not provided.
             proxy: Optional proxy configuration (currently stored but not used).
         """
-        self.client = ClientFactory.create_client(region, proxy)
-        self.region = region if region else DEFAULT_REGION
+        self.client = client
+        self.region = client._endpoint.split('.')[1] if client and client._endpoint else DEFAULT_REGION
         self.proxy = proxy
         self.prefix_list_id = self._get_or_create_prefix_list()
 
