@@ -17,21 +17,27 @@ from .client import Ecs20140526Client
 
 class Prefix:
     def __init__(self, client: Ecs20140526Client, proxy: Optional[int] = None) -> None:
-        """Initialize Prefix helper.
+        """初始化 Prefix helper。
 
         Args:
-            region: Alibaba Cloud region, defaults to DEFAULT_REGION when not provided.
-            proxy: Optional proxy configuration (currently stored but not used).
+            client: Alibaba Cloud ECS client。
+            proxy: 可选代理配置（目前仅存储，未使用）。
         """
         self.client = client
         self.region = client._endpoint.split('.')[1] if client and client._endpoint else DEFAULT_REGION
         self.proxy = proxy
-        self.prefix_list_id = self._get_or_create_prefix_list()
-
-        if self.prefix_list_id:
-            self._update_prefix_list_by_id(self.prefix_list_id)
-
+        self.prefix_list_id: Optional[str] = None
         logging.info("[config] region set to %s", self.region)
+
+    def init_prefix(self) -> bool:
+        """Find or create the prefix list and populate it with current IPs.
+
+        Returns True on success, False otherwise.
+        """
+        self.prefix_list_id = self._get_or_create_prefix_list()
+        if not self.prefix_list_id:
+            return False
+        return self._update_prefix_list_by_id(self.prefix_list_id)
 
     def _create_prefix_list(self, prefix_list_name: str = f'{TEMPLATE_NAME_PREFIX}0', description: str = f'{TEMPLATE_NAME_PREFIX}0_desc') -> str:
         """Create a prefix list in the configured region.
@@ -80,7 +86,7 @@ class Prefix:
             current_entries = []
         return current_entries
 
-    def _update_prefix_list_by_id(self, prefix_list_id: str) -> bool:
+    def _update_prefix_list_by_id(self, prefix_list_id: str) -> int:
 
         client_ip_list = get_iplist(self.proxy)
         # 校验、去重并限制数量
@@ -102,19 +108,19 @@ class Prefix:
             # 调用 ModifyPrefixList 接口
             modify_prefix_list_response = self.client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
             logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
-            return True
+            return 0
 
         except UnretryableException:
             logging.exception("Network error when modifying prefix list")
-            return False
+            return 1
         except TeaException:
             logging.exception("Tea API error when modifying prefix list")
-            return False
+            return 1
         except Exception:
             logging.exception("Unexpected error when modifying prefix list")
-            return False
+            return 1
 
-    def _get_or_create_prefix_list(self, sg_id: Optional[str] = ''):
+    def _get_or_create_prefix_list(self) -> Optional[str]:
 
         # 1. 查找前缀列表，如果存在则复用，否则新建
         prefix_list_id = self._auto_search_prefix_by_name()
@@ -170,12 +176,12 @@ class Prefix:
                     logging.info("[prefix] found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
                     return prefix["PrefixListId"]
 
-    def print_prefix_list(self) -> Optional[List[str]]:
+    def print_prefix_list(self) -> int:
         """Print prefix list information in a human-readable format."""
         prefix_lists = self.get_prefix_list()
         if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
             logging.error("No prefix list information to display.")
-            return
+            return 1
 
         template_ids = []
 
@@ -195,9 +201,10 @@ class Prefix:
                   f"{t_name:{COLS['name']}}"
                   )
 
+        logging.info("[aliyun] template is %s", template_ids)
         print_tail()
 
-        return template_ids
+        return 0
 
     def _normalize_ip_list(self, ip_list: List[str]) -> List[str]:
         """Validate, normalize to CIDR strings, deduplicate and limit to DEFAULT_MAX_ENTRIES.
@@ -233,10 +240,10 @@ class Prefix:
 
         return normalized
 
-    def set_prefix(self) -> bool:
+    def set_prefix(self) -> int:
         prefix_id = self._auto_search_prefix_by_name()
         if not prefix_id:
             print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in region \"{self.region}\". "
                   f"Please run the init action first to create it.\033[0m")
-            return False
+            return 1
         return self._update_prefix_list_by_id(prefix_id)

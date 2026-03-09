@@ -1,36 +1,51 @@
 import logging
 from typing import Optional
 
-# from .sg import SecurityGroup
 from .client import ClientFactory
 from .prefix import Prefix
 from .sg import SecurityGroup
 from .defaults import DEFAULT_REGION
 
 
-def init_whitelist(client, _prefix: Prefix, sg_id: Optional[str]) -> int:
+def init_whitelist(client, prefix: Prefix, sg_id: Optional[str]) -> int:
+    """Initialize whitelist by associating a prefix list with a security group.
 
+    Args:
+        client: Alibaba Cloud ECS client.
+        prefix: Prefix list helper instance.
+        sg_id: Security group ID to associate the prefix list with.
+
+    Returns:
+        0 on success, non-zero error code on failure:
+        1 - sg_id not provided
+        2 - security group not found
+        3 - error searching for security group
+        4 - failed to get/create/update prefix list
+        5 - failed to create security group rule
+    """
     if not sg_id:
         print("\033[1;91m[aliyun] Security group ID is required for initialization\033[0m")
         return 1
 
-    # 1. 查找安全组,如果失败返回
+    # 1. 查找安全组，如果失败返回
     try:
         sg = SecurityGroup(client, sg_id)
         sg_obj = sg.search_sg()
     except Exception:
-        print("\033[1;91m[aliyun] failed to search security group, sg_id=%s\033[0m", sg_id)
+        logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
+        print(f"\033[1;91m[aliyun] failed to search security group, sg_id={sg_id}\033[0m")
         return 3
 
     if not sg_obj:
         print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
         return 2
 
-    if not _prefix.prefix_list_id:
+    # 2. 获取或创建前缀列表并更新 IP
+    if not prefix.init_prefix() or prefix.prefix_list_id is None:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
 
-    if not sg.create_sg_rule_with_prefix(_prefix.prefix_list_id):
+    if not sg.create_sg_rule_with_prefix(prefix.prefix_list_id):
         print("\033[1;91m[aliyun] Failed to create security group rule with prefix list, cannot proceed with whitelist initialization\033[0m")
         return 5
 
@@ -52,21 +67,20 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
 
     region = region or DEFAULT_REGION
 
-    client = ClientFactory.create_client(region, proxy)
-
-    prefix = Prefix(client=client, proxy=proxy)
-
     if target == "template":
+        client = ClientFactory.create_client(region, proxy)
+        prefix = Prefix(client=client, proxy=proxy)
+
         action_map = {
             "init": lambda: init_whitelist(client, prefix, target_id),
-            "list": lambda: prefix.print_prefix_list() or 0,
-            "set": lambda: prefix.set_prefix() or 0,
+            "list": lambda: prefix.print_prefix_list(),
+            "set": lambda: prefix.set_prefix(),
         }
         if action in action_map:
             return action_map[action]()
 
-        logging.error("[cli] unsupported operation, reason=unknown action, detail=%s", action)
+        logging.error("[aliyun] unsupported operation, reason=unknown action, detail=%s", action)
         return 1
 
-    logging.error("[cli] unsupported target, reason=not implemented, detail=%s", target)
+    logging.error("[aliyun] unsupported target, reason=not implemented, detail=%s", target)
     return 1

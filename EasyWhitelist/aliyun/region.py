@@ -1,6 +1,5 @@
 import logging
 
-from .client import ClientFactory
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
