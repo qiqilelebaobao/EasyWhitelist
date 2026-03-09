@@ -18,12 +18,20 @@ def init_whitelist(_prefix: Prefix, sg_id: Optional[str]) -> int:
         sg = SecurityGroup(sg_id)
         sg_obj = sg.search_sg()
     except Exception:
-        logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
+        print("\033[1;91m[aliyun] failed to search security group, sg_id=%s\033[0m", sg_id)
         return 3
 
     if not sg_obj:
         print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
         return 2
+
+    if not _prefix.prefix_list_id:
+        print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
+        return 4
+
+    if not sg.create_sg_rule_with_prefix(_prefix.prefix_list_id):
+        print("\033[1;91m[aliyun] Failed to create security group rule with prefix list, cannot proceed with whitelist initialization\033[0m")
+        return 5
 
     return 0
 

@@ -80,7 +80,7 @@ class Prefix:
             current_entries = []
         return current_entries
 
-    def _update_prefix_list_by_id(self, prefix_list_id: str) -> None:
+    def _update_prefix_list_by_id(self, prefix_list_id: str) -> bool:
 
         client_ip_list = get_iplist(self.proxy)
         # 校验、去重并限制数量
@@ -102,17 +102,17 @@ class Prefix:
             # 调用 ModifyPrefixList 接口
             modify_prefix_list_response = self.client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
             logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
-            return
+            return True
 
         except UnretryableException:
             logging.exception("Network error when modifying prefix list")
-            return
+            return False
         except TeaException:
             logging.exception("Tea API error when modifying prefix list")
-            return
+            return False
         except Exception:
             logging.exception("Unexpected error when modifying prefix list")
-            return
+            return False
 
     def _get_or_create_prefix_list(self, sg_id: Optional[str] = ''):
 
@@ -233,10 +233,10 @@ class Prefix:
 
         return normalized
 
-    def set_prefix(self) -> Optional[dict]:
+    def set_prefix(self) -> bool:
         prefix_id = self._auto_search_prefix_by_name()
         if not prefix_id:
             print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in region \"{self.region}\". "
                   f"Please run the init action first to create it.\033[0m")
-            return
-        self._update_prefix_list_by_id(prefix_id)
+            return False
+        return self._update_prefix_list_by_id(prefix_id)
