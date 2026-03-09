@@ -7,6 +7,7 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 class Regions:
     def __init__(self, client):
+        self.proxy = client._https_proxy if client else None
         self.region_ids: list = []
         self.region_endpoints: list = []
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()

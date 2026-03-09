@@ -6,19 +6,21 @@ from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
-from .client import Ecs20140526Client
+from .client import ClientFactory
 from .region import Regions
 from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
 
 
 class SecurityGroup:
-    def __init__(self, client: Ecs20140526Client, sg_id: str, sg_name: str = ''):
-        self.client = client
+    def __init__(self, sg_id: str, regions: Regions, proxy, sg_name: str = ''):
+        self.regions = regions
         self.sg_id = sg_id
+        self.proxy = proxy
+
+        self.region_id: Optional[str] = DEFAULT_REGION
+        self.client = ClientFactory.create_client(self.region_id, proxy=self.proxy)  # type: ignore
         self.id_checked = False
         self.sg_name = sg_name
-        self.region_id: Optional[str] = None
-        self.regions = Regions(client)
 
     def _search_sg_by_region_and_id(self, region_id, sg_id):
         # 构造请求对象

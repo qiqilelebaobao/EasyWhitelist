@@ -8,24 +8,25 @@ from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
-from .defaults import DEFAULT_MAX_ENTRIES, DEFAULT_REGION
+from .defaults import DEFAULT_MAX_ENTRIES
 from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..ip_detector.detectors import get_iplist
 from ..util.cli import print_header, print_tail, COLS
-from .client import Ecs20140526Client
+from .region import Regions
+from .client import ClientFactory, Ecs20140526Client
 
 
 class Prefix:
-    def __init__(self, client: Ecs20140526Client) -> None:
+    def __init__(self, regions: Regions) -> None:
         """初始化 Prefix helper。
 
         Args:
             client: Alibaba Cloud ECS client。
         """
-        self.client = client
-        self.region = client._endpoint.split('.')[1] if client and client._endpoint else DEFAULT_REGION
-        self.proxy = client._https_proxy if client else None
-        self.prefix_list_id: Optional[str] = None
+        self.regions = regions
+        self.proxy = regions.proxy
+        self.prefix_list_id, self.region = self._auto_get_region_by_prefix_name_from_all_regions()
+        self.client = ClientFactory.create_client(self.region, self.proxy)
         logging.info("[config] region set to %s", self.region)
 
     def init_prefix(self) -> int:
@@ -139,17 +140,18 @@ class Prefix:
 
         return prefix_list_id
 
-    def get_prefix_list(self) -> Optional[dict]:
+    @staticmethod
+    def get_prefix_list(client: Ecs20140526Client, region: str) -> Optional[dict]:
         """List prefix lists in the configured region. Returns response dict or None."""
-        logging.info("[prefix] get prefix list of region: %s", self.region)
         # 构造请求对象
-        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=self.region)
+        print(f"\033[1;95m[aliyun] Retrieving prefix lists in region \"{region}\"...\033[0m", flush=True)
+        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=region)
 
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
         try:
             # 调用 DescribePrefixLists 接口
-            describe_prefix_lists_response = self.client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
+            describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
             body_map = describe_prefix_lists_response.body.to_map()
             logging.info("[prefix] API response, detail=%s", json.dumps(body_map))
             return body_map
@@ -163,10 +165,26 @@ class Prefix:
             logging.exception("Unexpected error when describing prefix lists")
             return None
 
+    def _auto_get_region_by_prefix_name_from_all_regions(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> (Optional[str], Optional[str]):
+        '''Search for a prefix list by name prefix across all regions. Returns the prefix list ID if found, or None if not found.'''
+        logging.info("[prefix] search prefix list across all regions, prefix_name=%s ", prefix_name)
+        for region in self.regions.region_ids:
+            logging.info("[prefix] searching in region %s", region)
+            client = ClientFactory.create_client(region, self.proxy)
+            prefix_lists = self.get_prefix_list(client, region)
+            logging.debug(prefix_lists)
+            if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
+                for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
+                    logging.debug(prefix)
+                    if prefix['PrefixListName'].startswith(prefix_name):
+                        logging.info("[prefix] found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
+                        return prefix["PrefixListId"], region
+        return None, None
+
     def _auto_search_prefix_by_name(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[str]:
         '''Search for a prefix list by name prefix. Returns the prefix list ID if found, or None if not found.'''
         logging.info("[prefix] search prefix list, region=%s, prefix_name=%s ", self.region, prefix_name)
-        prefix_lists = self.get_prefix_list()
+        prefix_lists = self.get_prefix_list(self.client, self.region)
         logging.debug(prefix_lists)
         if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
             for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
@@ -178,7 +196,7 @@ class Prefix:
 
     def print_prefix_list(self) -> int:
         """Print prefix list information in a human-readable format."""
-        prefix_lists = self.get_prefix_list()
+        prefix_lists = self.get_prefix_list(self.client, self.region)
         if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
             logging.error("No prefix list information to display.")
             return 1
