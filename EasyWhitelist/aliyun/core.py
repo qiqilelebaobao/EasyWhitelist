@@ -69,7 +69,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], region: Opti
 
     if target == "template":
         client = ClientFactory.create_client(region, proxy)
-        prefix = Prefix(client=client, proxy=proxy)
+        prefix = Prefix(client=client)
 
         action_map = {
             "init": lambda: init_whitelist(client, prefix, target_id),

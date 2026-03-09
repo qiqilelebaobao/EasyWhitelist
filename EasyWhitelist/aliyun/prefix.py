@@ -16,16 +16,15 @@ from .client import Ecs20140526Client
 
 
 class Prefix:
-    def __init__(self, client: Ecs20140526Client, proxy: Optional[int] = None) -> None:
+    def __init__(self, client: Ecs20140526Client) -> None:
         """初始化 Prefix helper。
 
         Args:
             client: Alibaba Cloud ECS client。
-            proxy: 可选代理配置（目前仅存储，未使用）。
         """
         self.client = client
         self.region = client._endpoint.split('.')[1] if client and client._endpoint else DEFAULT_REGION
-        self.proxy = proxy
+        self.proxy = client._https_proxy if client else None
         self.prefix_list_id: Optional[str] = None
         logging.info("[config] region set to %s", self.region)
 
