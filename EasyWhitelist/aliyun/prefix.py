@@ -24,7 +24,7 @@ class Prefix:
             regions: 包含所有目标 region 信息的 Regions 对象。
         """
         self.regions = regions
-        self.proxy_port = regions.proxy
+        self.proxy_port = int(regions.proxy.split(':')[-1]) if regions.proxy else None
         self.prefix_list_id, self.region = self._auto_get_region_by_prefix_name_from_all_regions()
         logging.info("[config] prefix_list is %s from region %s", self.prefix_list_id, self.region)
         self.client = ClientFactory.create_client(self.region, self.proxy_port) if self.region else None
@@ -65,7 +65,6 @@ class Prefix:
             print(f"\033[1;91m[aliyun] Failed to find or create prefix list with template "
                   f"\"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\". "
                   f"Please check the logs for details.\033[0m")
-            logging.error("Failed to find or create prefix list with template %s in region %s", TEMPLATE_NAME_PREFIX, region_id)
             return None
 
         return self.prefix_list_id
