@@ -43,6 +43,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         return 3
 
     # 2. 获取或创建前缀列表并更新 IP
+    # init_prefix 返回非零值表示失败；后半段作为双重保险防止返回 0 但 prefix_list_id 仍为空
     if prefix.init_prefix(region_id) or prefix.prefix_list_id is None:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
