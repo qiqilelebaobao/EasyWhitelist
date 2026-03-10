@@ -8,19 +8,20 @@ from .defaults import DEFAULT_REGION
 from .region import Regions
 
 
-def init_whitelist(prefix: Prefix, regions: Regions, proxy: Optional[int], sg_id: Optional[str]) -> int:
+def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], sg_id: Optional[str]) -> int:
     """Initialize whitelist by associating a prefix list with a security group.
 
     Args:
         prefix: Prefix list helper instance.
         regions: Regions helper instance.
+        proxy_port: Optional proxy port for network requests.
         sg_id: Security group ID to associate the prefix list with.
 
     Returns:
         0 on success, non-zero error code on failure:
         1 - sg_id not provided
-        2 - security group not found
-        3 - error searching for security group
+        2 - error searching for security group
+        3 - security group not found
         4 - failed to get/create/update prefix list
         5 - failed to create security group rule
     """
@@ -30,7 +31,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy: Optional[int], sg_id
 
     # 1. 查找安全组，如果失败返回
     try:
-        sg = SecurityGroup(sg_id, regions, proxy=proxy)
+        sg = SecurityGroup(sg_id, regions, proxy=proxy_port)
         sg_obj, region_id = sg.search_sg()
     except Exception:
         logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
@@ -60,8 +61,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         action: 操作，例如 'list'/'create'/'set'.
         target: 目标对象，例如 'template'.
         target_id: 目标对象的 ID（可选）。
-        region: 阿里云区域（可选，默认使用 Prefix 的默认 region）。
-        proxy: 可选代理配置。
+        proxy_port: 代理端口（1–65535），不使用代理则为 None。
     """
     logging.info("[aliyun] enter aliyun (action: %s) (target: %s) (target_id: %s) (proxy: %s)",
                  action, target, target_id, proxy_port)
