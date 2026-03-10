@@ -43,8 +43,7 @@ class SecurityGroup:
 
         return None, None
 
-    '''阿里云如果安全组已经有了前缀列表，不会有异常返回，会不做修改。如果没有前缀列表，直接尝试创建安全组规则。'''
-
+    # 阿里云如果安全组已经有了前缀列表，不会有异常返回，会不做修改。如果没有前缀列表，直接尝试创建安全组规则
     def create_sg_rule_with_prefix(self, prefix_list_id: str):
         if not self.region_id:
             logging.error("[aliyun] region_id not set; call search_sg() before create_sg_rule_with_prefix()")
@@ -115,7 +114,6 @@ class SecurityGroup:
         Returns:
             成功返回响应字典；失败返回 None 并记录日志。
         """
-        # 构造请求对象，使用 security_group_id 精确过滤，避免全量拉取
         describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
             region_id=region_id
         )
