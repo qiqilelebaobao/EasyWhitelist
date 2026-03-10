@@ -7,9 +7,9 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 class Regions:
     def __init__(self, client):
-        self.proxy = client._https_proxy if client else None
-        self.region_ids: list = []
-        self.region_endpoints: list = []
+        self.proxy = getattr(client, '_https_proxy', None)
+        self.region_ids: list[str] = []
+        self.region_endpoints: list[str] = []
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = util_models.RuntimeOptions()
         try:
@@ -18,6 +18,7 @@ class Regions:
             logging.debug("[aliyun] DescribeRegions response: %s", regions)
             self.region_ids = [region['RegionId'] for region in regions]
             self.region_endpoints = [region['RegionEndpoint'] for region in regions]
-        except (UnretryableException, TeaException) as e:
+        except (UnretryableException, TeaException, KeyError) as e:
             print(f"\033[1;91m[aliyun] Failed to describe regions, reason={e}\033[0m")
             logging.exception("[aliyun] Failed to describe regions")
+            raise
