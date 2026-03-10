@@ -18,7 +18,7 @@ class SecurityGroup:
         self.proxy = proxy
 
         self.region_id: Optional[str] = DEFAULT_REGION
-        self.client = ClientFactory.create_client(self.region_id, proxy=self.proxy)  # type: ignore
+        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy)  # type: ignore
         self.id_checked = False
         self.sg_name = sg_name
 
