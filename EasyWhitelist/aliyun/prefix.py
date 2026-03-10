@@ -21,17 +21,22 @@ class Prefix:
         """初始化 Prefix helper。
 
         Args:
-            client: Alibaba Cloud ECS client。
+            regions: 包含所有目标 region 信息的 Regions 对象。
         """
         self.regions = regions
         self.proxy = regions.proxy
         self.prefix_list_id, self.region = self._auto_get_region_by_prefix_name_from_all_regions()
         logging.info("[config] prefix_list is %s from region %s", self.prefix_list_id, self.region)
-        self.client = ClientFactory.create_client(self.region, self.proxy)
+        self.client = ClientFactory.create_client(self.region, self.proxy) if self.region else None
 
     def init_prefix(self, region_id: str) -> int:
-        """Find or create the prefix list and populate it with current IPs.
-           Returns 0 on success, non-zero error code on failure.
+        """在指定 region 中查找或创建前缀列表，并用当前客户端 IP 填充。
+
+        Args:
+            region_id: 目标阿里云 region，例如 'cn-hangzhou'。
+
+        Returns:
+            0 表示成功，非 0 表示失败。
         """
         self.prefix_list_id = self._get_or_create_prefix_list(region_id)
         if not self.prefix_list_id or not self.region:
@@ -39,7 +44,15 @@ class Prefix:
         return self._update_prefix_list_by_id()
 
     def _get_or_create_prefix_list(self, region_id: str) -> Optional[str]:
+        """在指定 region 中查找已有前缀列表（名称以 TEMPLATE_NAME_PREFIX 开头），
+        若不存在则新建。
 
+        Args:
+            region_id: 目标阿里云 region。
+
+        Returns:
+            前缀列表 ID 字符串；若查找和创建均失败则返回 None。
+        """
         # 1. 查找前缀列表，如果存在则复用，否则新建
         if self.prefix_list_id and self.region:
             print(f"\033[1;95m[aliyun] Prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" already exists in region \"{region_id}\", id=\"{self.prefix_list_id}\"\033[0m")
@@ -58,8 +71,18 @@ class Prefix:
         return self.prefix_list_id
 
     def _create_prefix_list(self, region_id: str, prefix_list_name: str = f'{TEMPLATE_NAME_PREFIX}0', description: str = f'{TEMPLATE_NAME_PREFIX}0_desc') -> str:
-        """Create a prefix list in the configured region.
-           Returns the prefix list ID string on success, or empty string on failure.
+        """在指定 region 中调用 ECS CreatePrefixList 接口创建前缀列表。
+
+        Args:
+            region_id: 要创建前缀列表的阿里云 region。
+            prefix_list_name: 前缀列表名称，默认为 TEMPLATE_NAME_PREFIX + '0'。
+            description: 前缀列表描述，默认为 TEMPLATE_NAME_PREFIX + '0_desc'。
+
+        Returns:
+            成功时返回前缀列表 ID 字符串；失败时返回空字符串。
+
+        Side effects:
+            成功时会更新 self.client 和 self.region。
         """
         # 构造请求对象
 
@@ -92,7 +115,13 @@ class Prefix:
             return ''
 
     def _update_prefix_list_by_id(self) -> int:
+        """获取当前客户端 IP，经过校验/去重后追加写入前缀列表。
 
+        依赖 self.prefix_list_id、self.region、self.client 已正确初始化。
+
+        Returns:
+            0 表示成功，1 表示前置状态缺失或 API 调用失败。
+        """
         if not self.prefix_list_id or not self.region or not self.client:
             logging.error("Prefix list ID, region or client not properly initialized")
             return 1
@@ -130,11 +159,19 @@ class Prefix:
             return 1
 
     @staticmethod
-    def get_prefix_list(client: Ecs20140526Client) -> Optional[dict]:
-        """List prefix lists in the configured region. Returns response dict or None."""
+    def get_prefix_list(client: Ecs20140526Client, region_id: str) -> Optional[dict]:
+        """调用 ECS DescribePrefixLists 接口，列举指定 region 中的所有前缀列表。
+
+        Args:
+            client: 已初始化的 ECS 客户端。
+            region_id: 要查询的阿里云 region。
+
+        Returns:
+            API 响应体 dict（含 PrefixLists 键）；网络或 API 错误时返回 None。
+        """
         # 构造请求对象
-        print(f"\033[1;95m[aliyun] Retrieving prefix lists in region \"{client._endpoint.split('.')[1]}\"...\033[0m", flush=True)
-        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=client._endpoint.split('.')[1])
+        print(f"\033[1;95m[aliyun] Retrieving prefix lists in region \"{region_id}\"...\033[0m", flush=True)
+        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=region_id)
 
         # 设置运行时参数
         runtime = util_models.RuntimeOptions()
@@ -154,13 +191,20 @@ class Prefix:
             logging.exception("Unexpected error when describing prefix lists")
             return None
 
-    def _auto_get_region_by_prefix_name_from_all_regions(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> (Optional[str], Optional[str]):
-        '''Search for a prefix list by name prefix across all regions. Returns the prefix list ID if found, or None if not found.'''
+    def _auto_get_region_by_prefix_name_from_all_regions(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> tuple[Optional[str], Optional[str]]:
+        """遍历 self.regions 中的所有 region，查找名称以 prefix_name 开头的前缀列表。
+
+        Args:
+            prefix_name: 前缀列表名称前缀，默认为 TEMPLATE_NAME_PREFIX。
+
+        Returns:
+            (prefix_list_id, region_id) 元组；未找到时返回 (None, None)。
+        """
         logging.info("[prefix] search prefix list across all regions, prefix_name=%s ", prefix_name)
         for region in self.regions.region_ids:
             logging.info("[prefix] searching in region %s", region)
             client = ClientFactory.create_client(region, self.proxy)
-            prefix_lists = self.get_prefix_list(client)
+            prefix_lists = self.get_prefix_list(client, region)
             logging.debug(prefix_lists)
             if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
                 for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
@@ -171,11 +215,15 @@ class Prefix:
         return None, None
 
     def print_prefix_list(self) -> int:
-        """Print prefix list information in a human-readable format."""
+        """以表格形式打印当前 region 中所有前缀列表的摘要信息。
+
+        Returns:
+            0 表示成功；1 表示客户端或 region 未初始化；2 表示无前缀列表数据。
+        """
 
         if not self.client or not self.region:
             return 1
-        prefix_lists = self.get_prefix_list(self.client)
+        prefix_lists = self.get_prefix_list(self.client, self.region)
         if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
             logging.error("No prefix list information to display.")
             return 2
@@ -203,7 +251,8 @@ class Prefix:
 
         return 0
 
-    def _normalize_ip_list(self, ip_list: List[str]) -> List[str]:
+    @staticmethod
+    def _normalize_ip_list(ip_list: List[str]) -> List[str]:
         """Validate, normalize to CIDR strings, deduplicate and limit to DEFAULT_MAX_ENTRIES.
 
         - Accepts single IP or CIDR strings.
@@ -238,11 +287,13 @@ class Prefix:
         return normalized
 
     def set_prefix(self) -> int:
-        """Update the existing prefix list with current client IPs.
+        """用当前客户端 IP 更新已存在的前缀列表。
 
-        Returns 0 on success, 1 on failure (prefix list not found or update error).
+        前缀列表必须已通过 init_prefix 创建；若未找到则提示用户先执行 init。
+
+        Returns:
+            0 表示成功；1 表示前缀列表不存在或更新失败。
         """
-        # prefix_id = self._auto_search_prefix_by_name()
         if not self.prefix_list_id:
             print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in all regions. "
                   f"Please run the init action first to create it.\033[0m")
