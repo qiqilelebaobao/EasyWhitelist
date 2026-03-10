@@ -12,7 +12,7 @@ from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
 
 
 class SecurityGroup:
-    def __init__(self, sg_id: str, regions: Regions, proxy, sg_name: str = ''):
+    def __init__(self, sg_id: str, regions: Regions, proxy: Optional[int] = None, sg_name: str = ''):
         self.regions = regions
         self.sg_id = sg_id
         self.proxy_port = proxy
@@ -77,14 +77,14 @@ class SecurityGroup:
     def create_security_group(self, description: str = 'test_sg_desc', region_id: str = DEFAULT_REGION, vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
         """Create a security group in the specified VPC and region.
 
-    Args:
-        description: 用于安全组名称与描述的字符串。
-        region_id: 区域 ID。
-        vpc_id: VPC ID。
+        Args:
+            description: 用于安全组名称与描述的字符串。
+            region_id: 区域 ID。
+            vpc_id: VPC ID。
 
-    Returns:
-        成功返回响应字典；失败返回 None 并记录日志。
-    """
+        Returns:
+            成功返回响应字典；失败返回 None 并记录日志。
+        """
         # 构造请求对象
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
             region_id=region_id, security_group_name=description, description=description, vpc_id=vpc_id
@@ -109,13 +109,13 @@ class SecurityGroup:
     def _describe_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
         """Describe security groups in the given region.
 
-    Args:
-        region_id: 区域 ID，默认使用 DEFAULT_REGION。
+        Args:
+            region_id: 区域 ID，默认使用 DEFAULT_REGION。
 
-    Returns:
-        成功返回响应字典；失败返回 None 并记录日志。
-    """
-        # 构造请求对象
+        Returns:
+            成功返回响应字典；失败返回 None 并记录日志。
+        """
+        # 构造请求对象，使用 security_group_id 精确过滤，避免全量拉取
         describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
             region_id=region_id
         )
@@ -124,7 +124,7 @@ class SecurityGroup:
         try:
             # 调用 DescribeSecurityGroups 接口
             describe_sg_response = self.client.describe_security_groups_with_options(describe_sg_request, runtime)
-            logging.info(json.dumps(describe_sg_response.body.to_map()))
+            logging.debug(json.dumps(describe_sg_response.body.to_map()))
             return describe_sg_response.body.to_map()
         except UnretryableException:
             logging.exception("Network error when describing security groups")
