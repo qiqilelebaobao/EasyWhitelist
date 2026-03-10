@@ -35,11 +35,11 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy: Optional[int], sg_id
     except Exception:
         logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
         print(f"\033[1;91m[aliyun] failed to search security group, sg_id={sg_id}\033[0m")
-        return 3
+        return 2
 
     if not sg_obj or not region_id:
         print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
-        return 2
+        return 3
 
     # 2. 获取或创建前缀列表并更新 IP
     if prefix.init_prefix(region_id) or prefix.prefix_list_id is None:
