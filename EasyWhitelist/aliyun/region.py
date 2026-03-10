@@ -15,7 +15,7 @@ class Regions:
         try:
             response = client.describe_regions_with_options(describe_regions_request, runtime)
             regions = response.body.to_map()['Regions']['Region']
-            logging.info("[aliyun] DescribeRegions response: %s", regions)
+            logging.debug("[aliyun] DescribeRegions response: %s", regions)
             self.region_ids = [region['RegionId'] for region in regions]
             self.region_endpoints = [region['RegionEndpoint'] for region in regions]
         except (UnretryableException, TeaException) as e:

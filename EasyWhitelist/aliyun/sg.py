@@ -39,9 +39,9 @@ class SecurityGroup:
             sg = self._search_sg_by_region_and_id(region_id, self.sg_id)
             if sg:
                 self.id_checked = True
-                return sg
+                return sg, region_id
 
-        return None
+        return None, None
 
     '''阿里云如果安全组已经有了前缀列表，不会有异常返回，会不做修改。如果没有前缀列表，直接尝试创建安全组规则。'''
 

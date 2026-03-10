@@ -8,7 +8,7 @@ from .defaults import DEFAULT_REGION
 from .region import Regions
 
 
-def init_whitelist(prefix: Prefix, regions: Regions, proxy: int, sg_id: Optional[str]) -> int:
+def init_whitelist(prefix: Prefix, regions: Regions, proxy: Optional[int], sg_id: Optional[str]) -> int:
     """Initialize whitelist by associating a prefix list with a security group.
 
     Args:
@@ -31,18 +31,18 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy: int, sg_id: Optional
     # 1. 查找安全组，如果失败返回
     try:
         sg = SecurityGroup(sg_id, regions, proxy=proxy)
-        sg_obj = sg.search_sg()
+        sg_obj, region_id = sg.search_sg()
     except Exception:
         logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
         print(f"\033[1;91m[aliyun] failed to search security group, sg_id={sg_id}\033[0m")
         return 3
 
-    if not sg_obj:
+    if not sg_obj or not region_id:
         print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
         return 2
 
     # 2. 获取或创建前缀列表并更新 IP
-    if prefix.init_prefix() or prefix.prefix_list_id is None:
+    if prefix.init_prefix(region_id) or prefix.prefix_list_id is None:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
 
@@ -63,7 +63,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy: Optio
         region: 阿里云区域（可选，默认使用 Prefix 的默认 region）。
         proxy: 可选代理配置。
     """
-    logging.info("[core] enter aliyun (action: %s) (target: %s) (target_id: %s) (region: %s) (proxy: %s)",
+    logging.info("[aliyun] enter aliyun (action: %s) (target: %s) (target_id: %s) (proxy: %s)",
                  action, target, target_id, proxy)
 
     regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy))
@@ -72,7 +72,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy: Optio
         prefix = Prefix(regions)
 
         action_map = {
-            "init": lambda: init_whitelist(prefix, regions, target_id),
+            "init": lambda: init_whitelist(prefix, regions, proxy, target_id),
             "list": lambda: prefix.print_prefix_list(),
             "set": lambda: prefix.set_prefix(),
         }
