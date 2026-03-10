@@ -24,10 +24,10 @@ class Prefix:
             regions: 包含所有目标 region 信息的 Regions 对象。
         """
         self.regions = regions
-        self.proxy = regions.proxy
+        self.proxy_port = regions.proxy
         self.prefix_list_id, self.region = self._auto_get_region_by_prefix_name_from_all_regions()
         logging.info("[config] prefix_list is %s from region %s", self.prefix_list_id, self.region)
-        self.client = ClientFactory.create_client(self.region, self.proxy) if self.region else None
+        self.client = ClientFactory.create_client(self.region, self.proxy_port) if self.region else None
 
     def init_prefix(self, region_id: str) -> int:
         """在指定 region 中查找或创建前缀列表，并用当前客户端 IP 填充。
@@ -86,7 +86,7 @@ class Prefix:
         """
         # 构造请求对象
 
-        self.client = ClientFactory.create_client(region_id, self.proxy)
+        self.client = ClientFactory.create_client(region_id, self.proxy_port)
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
             region_id=region_id,
             prefix_list_name=prefix_list_name,
@@ -126,7 +126,7 @@ class Prefix:
             logging.error("Prefix list ID, region or client not properly initialized")
             return 1
 
-        client_ip_list = get_iplist(self.proxy)
+        client_ip_list = get_iplist(self.proxy_port)
         # 校验、去重并限制数量
         client_ip_list = self._normalize_ip_list(client_ip_list)
         print(f"\033[1;95m[aliyun] Updating prefix list {self.prefix_list_id} in region \"{self.region}\" with client IPs: {client_ip_list}\033[0m")
@@ -203,7 +203,7 @@ class Prefix:
         logging.info("[prefix] search prefix list across all regions, prefix_name=%s ", prefix_name)
         for region in self.regions.region_ids:
             logging.info("[prefix] searching in region %s", region)
-            client = ClientFactory.create_client(region, self.proxy)
+            client = ClientFactory.create_client(region, self.proxy_port)
             prefix_lists = self.get_prefix_list(client, region)
             logging.debug(prefix_lists)
             if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:

@@ -53,7 +53,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy: Optional[int], sg_id
     return 0
 
 
-def aliyun_main(action: str, target: str, target_id: Optional[str], proxy: Optional[int] = None) -> int:
+def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: Optional[int] = None) -> int:
     """Entry point for aliyun operations used by the CLI.
 
     Args:
@@ -64,15 +64,15 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy: Optio
         proxy: 可选代理配置。
     """
     logging.info("[aliyun] enter aliyun (action: %s) (target: %s) (target_id: %s) (proxy: %s)",
-                 action, target, target_id, proxy)
+                 action, target, target_id, proxy_port)
 
-    regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy))
+    regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy_port))
 
     if target == "template":
         prefix = Prefix(regions)
 
         action_map = {
-            "init": lambda: init_whitelist(prefix, regions, proxy, target_id),
+            "init": lambda: init_whitelist(prefix, regions, proxy_port, target_id),
             "list": lambda: prefix.print_prefix_list(),
             "set": lambda: prefix.set_prefix(),
         }

@@ -9,10 +9,22 @@ class ClientFactory:
     # Endpoint 根据 region 动态派生，格式为 'ecs.<region>.aliyuncs.com'。
     # 可通过环境变量 ALIBABA_CLOUD_ENDPOINT 覆盖（用于私有化部署或测试）。
     @staticmethod
-    def create_client(region: str, proxy_port: Optional[int] = None) -> Ecs20140526Client:
+    def create_client(
+        region: str,
+        proxy_port: Optional[int] = None,
+        proxy_host: str = "localhost",
+    ) -> Ecs20140526Client:
         """
-        :param proxy_port: 代理端口，例如 8080，如果不使用代理则为 None
+        :param region: 阿里云 region，例如 'cn-hangzhou'
+        :param proxy_port: 代理端口（1–65535），不使用代理则为 None
+        :param proxy_host: 代理主机名或 IP，默认为 'localhost'
         """
+        if not region:
+            raise ValueError("region must not be empty")
+
+        if proxy_port is not None and not (1 <= proxy_port <= 65535):
+            raise ValueError(f"Invalid proxy_port: {proxy_port}. Must be between 1 and 65535.")
+
         endpoint = os.getenv('ALIBABA_CLOUD_ENDPOINT') or f"ecs.{region}.aliyuncs.com"
 
         access_key_id = os.getenv('ALIBABA_CLOUD_ACCESS_KEY_ID')
@@ -37,7 +49,8 @@ class ClientFactory:
         if proxy_port:
             # https_proxy 同样使用 http:// 协议是正确的：
             # 代理客户端通过 HTTP CONNECT 隧道建立 HTTPS 连接，而非直连代理服务器用 HTTPS。
-            config_kwargs["http_proxy"] = f"http://localhost:{proxy_port}"
-            config_kwargs["https_proxy"] = f"http://localhost:{proxy_port}"
+            proxy_url = f"http://{proxy_host}:{proxy_port}"
+            config_kwargs["http_proxy"] = proxy_url
+            config_kwargs["https_proxy"] = proxy_url
 
         return Ecs20140526Client(Config(**config_kwargs))

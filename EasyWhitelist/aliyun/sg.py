@@ -15,10 +15,10 @@ class SecurityGroup:
     def __init__(self, sg_id: str, regions: Regions, proxy, sg_name: str = ''):
         self.regions = regions
         self.sg_id = sg_id
-        self.proxy = proxy
+        self.proxy_port = proxy
 
         self.region_id: Optional[str] = DEFAULT_REGION
-        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy)  # type: ignore
+        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
         self.id_checked = False
         self.sg_name = sg_name
 
