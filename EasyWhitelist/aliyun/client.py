@@ -6,8 +6,8 @@ from alibabacloud_tea_openapi.models import Config
 
 
 class ClientFactory:
-    # Endpoint 根据 region 动态派生，格式为 'ecs.<region>.aliyuncs.com'。
-    # 可通过环境变量 ALIBABA_CLOUD_ENDPOINT 覆盖（用于私有化部署或测试）。
+    # The endpoint is derived dynamically from the region: 'ecs.<region>.aliyuncs.com'.
+    # Override via the ALIBABA_CLOUD_ENDPOINT environment variable (for private deployments or testing).
     @staticmethod
     def create_client(
         region: str,
@@ -15,9 +15,9 @@ class ClientFactory:
         proxy_host: str = "localhost",
     ) -> Ecs20140526Client:
         """
-        :param region: 阿里云 region，例如 'cn-hangzhou'
-        :param proxy_port: 代理端口（1–65535），不使用代理则为 None
-        :param proxy_host: 代理主机名或 IP，默认为 'localhost'
+        :param region: Alibaba Cloud region, e.g. 'cn-hangzhou'
+        :param proxy_port: Proxy port (1–65535); None if no proxy is used
+        :param proxy_host: Proxy hostname or IP address; defaults to 'localhost'
         """
         if not region:
             raise ValueError("region must not be empty")
@@ -47,8 +47,8 @@ class ClientFactory:
         )
 
         if proxy_port:
-            # https_proxy 同样使用 http:// 协议是正确的：
-            # 代理客户端通过 HTTP CONNECT 隧道建立 HTTPS 连接，而非直连代理服务器用 HTTPS。
+            # Using http:// for the https_proxy value is intentional:
+            # the client tunnels HTTPS through HTTP CONNECT rather than connecting to the proxy itself over HTTPS.
             proxy_url = f"http://{proxy_host}:{proxy_port}"
             config_kwargs["http_proxy"] = proxy_url
             config_kwargs["https_proxy"] = proxy_url

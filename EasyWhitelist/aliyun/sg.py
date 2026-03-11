@@ -23,7 +23,7 @@ class SecurityGroup:
         self.sg_name = sg_name
 
     def _search_sg_by_region_and_id(self, region_id, sg_id):
-        # 构造请求对象
+        # Retrieve all security groups in the region to find the target one
         security_groups = self._describe_security_groups(region_id)
         if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
             for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
@@ -43,22 +43,22 @@ class SecurityGroup:
 
         return None, None
 
-    # 阿里云如果安全组已经有了前缀列表，不会有异常返回，会不做修改。如果没有前缀列表，直接尝试创建安全组规则
+    # Alibaba Cloud silently no-ops if the prefix list rule already exists; otherwise it creates the rule directly.
     def create_sg_rule_with_prefix(self, prefix_list_id: str):
         if not self.region_id:
             logging.error("[aliyun] region_id not set; call search_sg() before create_sg_rule_with_prefix()")
             return False
-        # 构造请求对象
+        # Build the AuthorizeSecurityGroup request object
         create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(
             region_id=self.region_id,
             security_group_id=self.sg_id,
             ip_protocol='all',
             port_range='-1/-1',
             source_prefix_list_id=prefix_list_id)
-        # 设置运行时参数
+        # Set runtime options
         runtime = util_models.RuntimeOptions()
         try:
-            # 调用 AuthorizeSecurityGroup 接口
+            # Call the AuthorizeSecurityGroup API
             security_group_authorization_response = self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime)
             logging.info(json.dumps(security_group_authorization_response.body.to_map()))
             print(f"\033[1;95m[aliyun] Successfully created/reused security group rule with prefix list {prefix_list_id} for security group {self.sg_id}\033[0m")
@@ -77,21 +77,21 @@ class SecurityGroup:
         """Create a security group in the specified VPC and region.
 
         Args:
-            description: 用于安全组名称与描述的字符串。
-            region_id: 区域 ID。
-            vpc_id: VPC ID。
+            description: String used for both the security group name and description.
+            region_id: Region ID.
+            vpc_id: VPC ID.
 
         Returns:
-            成功返回响应字典；失败返回 None 并记录日志。
+            Response dict on success; None on failure (logged).
         """
-        # 构造请求对象
+        # Build the CreateSecurityGroup request object
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
             region_id=region_id, security_group_name=description, description=description, vpc_id=vpc_id
         )
-        # 设置运行时参数
+        # Set runtime options
         runtime = util_models.RuntimeOptions()
         try:
-            # 调用 CreateSecurityGroup 接口
+            # Call the CreateSecurityGroup API
             create_sg_response = self.client.create_security_group_with_options(create_sg_request, runtime)
             logging.info(json.dumps(create_sg_response.body.to_map()))
             return create_sg_response.body.to_map()
@@ -109,18 +109,18 @@ class SecurityGroup:
         """Describe security groups in the given region.
 
         Args:
-            region_id: 区域 ID，默认使用 DEFAULT_REGION。
+            region_id: Region ID; defaults to DEFAULT_REGION.
 
         Returns:
-            成功返回响应字典；失败返回 None 并记录日志。
+            Response dict on success; None on failure (logged).
         """
         describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
             region_id=region_id
         )
-        # 设置运行时参数
+        # Set runtime options
         runtime = util_models.RuntimeOptions()
         try:
-            # 调用 DescribeSecurityGroups 接口
+            # Call the DescribeSecurityGroups API
             describe_sg_response = self.client.describe_security_groups_with_options(describe_sg_request, runtime)
             logging.debug(json.dumps(describe_sg_response.body.to_map()))
             return describe_sg_response.body.to_map()

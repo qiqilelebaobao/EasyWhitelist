@@ -29,7 +29,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         print("\033[1;91m[aliyun] Security group ID is required for initialization\033[0m")
         return 1
 
-    # 1. 查找安全组，如果失败返回
+    # 1. Search for the security group; return on failure
     try:
         sg = SecurityGroup(sg_id, regions, proxy=proxy_port)
         sg_obj, region_id = sg.search_sg()
@@ -42,8 +42,8 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
         return 3
 
-    # 2. 获取或创建前缀列表并更新 IP
-    # init_prefix 返回非零值表示失败；后半段作为双重保险防止返回 0 但 prefix_list_id 仍为空
+    # 2. Get or create the prefix list and update it with the current client IP
+    # init_prefix returns non-zero on failure; the second condition guards against a zero return with a still-missing prefix_list_id
     if prefix.init_prefix(region_id) or prefix.prefix_list_id is None:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
@@ -59,10 +59,10 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
     """Entry point for aliyun operations used by the CLI.
 
     Args:
-        action: 操作，例如 'list'/'create'/'set'.
-        target: 目标对象，例如 'template'.
-        target_id: 目标对象的 ID（可选）。
-        proxy_port: 代理端口（1–65535），不使用代理则为 None。
+        action: Operation to perform, e.g. 'list', 'create', or 'set'.
+        target: Target resource type, e.g. 'template'.
+        target_id: ID of the target resource (optional).
+        proxy_port: Proxy port (1–65535); None if no proxy is used.
     """
     logging.info("[aliyun] enter aliyun (action: %s) (target: %s) (target_id: %s) (proxy: %s)",
                  action, target, target_id, proxy_port)
