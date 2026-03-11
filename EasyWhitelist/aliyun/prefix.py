@@ -202,7 +202,7 @@ class Prefix:
         Returns:
             A (prefix_list_id, region_id) tuple; (None, None) if not found.
         """
-        logging.info("[prefix] searching for prefix list across all regions, prefix_name=%s", prefix_name)
+        logging.info("[prefix] searching for a prefix list across all regions, prefix_name=%s", prefix_name)
         for region_id in self.regions.region_ids:
             logging.info("[prefix] searching in region %s", region_id)
             client = ClientFactory.create_client(region_id, self.proxy_port)
@@ -257,7 +257,7 @@ class Prefix:
     def _normalize_ip_list(ip_list: List[str]) -> List[str]:
         """Validate, normalize to CIDR strings, deduplicate, and limit to DEFAULT_MAX_ENTRIES.
 
-        - Accepts a single IP address or CIDR string.
+        - Each element may be a bare IP address or a CIDR string.
         - Normalizes to canonical network form (e.g. '1.2.3.4' -> '1.2.3.4/32').
         - Preserves order, removes duplicates, and truncates to DEFAULT_MAX_ENTRIES.
         """
