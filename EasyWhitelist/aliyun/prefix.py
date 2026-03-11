@@ -26,7 +26,7 @@ class Prefix:
         self.regions = regions
         self.proxy_port = int(regions.proxy.split(':')[-1]) if regions.proxy else None
         self.prefix_list_id, self.region = self._auto_get_region_by_prefix_name_from_all_regions()
-        logging.info("[config] prefix_list is %s from region %s", self.prefix_list_id, self.region)
+        logging.info("[prefix] using prefix list %s in region %s", self.prefix_list_id, self.region)
         self.client = ClientFactory.create_client(self.region, self.proxy_port) if self.region else None
 
     def init_prefix(self, region_id: str) -> int:
@@ -297,7 +297,7 @@ class Prefix:
             0 on success; 1 if the prefix list does not exist or the update fails.
         """
         if not self.prefix_list_id or not self.region or not self.client:
-            print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in any region. "
+            print(f"\033[1;91m[aliyun] No prefix list with name prefix \"{TEMPLATE_NAME_PREFIX}\" was found in any region. "
                   f"Please run the init action first to create it.\033[0m")
             return 1
         return self._update_prefix_list_by_id()
