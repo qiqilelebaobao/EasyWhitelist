@@ -85,8 +85,7 @@ class Prefix:
             Updates self.client and self.region on success.
         """
         # Build the CreatePrefixList request object
-
-        self.client = ClientFactory.create_client(region_id, self.proxy_port)
+        client = ClientFactory.create_client(region_id, self.proxy_port)
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
             region_id=region_id,
             prefix_list_name=prefix_list_name,
@@ -98,8 +97,10 @@ class Prefix:
         runtime = util_models.RuntimeOptions()
         try:
             # Call the CreatePrefixList API
-            create_prefix_list_response = self.client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
+            create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
             ret_data = create_prefix_list_response.body.to_map()
+            # Update self.client and self.region only on success to keep them consistent
+            self.client = client
             self.region = region_id
             logging.info(json.dumps(ret_data))
             return ret_data["PrefixListId"] if "PrefixListId" in ret_data else ''
