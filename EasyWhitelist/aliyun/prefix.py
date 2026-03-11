@@ -39,7 +39,7 @@ class Prefix:
             0 表示成功，非 0 表示失败。
         """
         self.prefix_list_id = self._get_or_create_prefix_list(region_id)
-        if not self.prefix_list_id or not self.region:
+        if not self.prefix_list_id or not self.region or not self.client:
             return 1
         return self._update_prefix_list_by_id()
 
@@ -293,7 +293,7 @@ class Prefix:
         Returns:
             0 表示成功；1 表示前缀列表不存在或更新失败。
         """
-        if not self.prefix_list_id:
+        if not self.prefix_list_id or not self.region or not self.client:
             print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in all regions. "
                   f"Please run the init action first to create it.\033[0m")
             return 1
