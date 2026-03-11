@@ -6,16 +6,31 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 
 
 class Regions:
+    """Fetches and stores all available Alibaba Cloud regions for a given ECS client."""
+
     def __init__(self, client):
+        """Initialize by calling DescribeRegions and populating region IDs and endpoints.
+
+        Args:
+            client: An authenticated Alibaba Cloud ECS client instance.
+
+        Raises:
+            UnretryableException: If the API call cannot be retried.
+            TeaException: If the API returns an error response.
+            KeyError: If the expected fields are missing from the response.
+        """
+        # Preserve any HTTPS proxy configured on the client
         self.proxy = getattr(client, '_https_proxy', None)
         self.region_ids: list[str] = []
         self.region_endpoints: list[str] = []
+
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = util_models.RuntimeOptions()
         try:
             response = client.describe_regions_with_options(describe_regions_request, runtime)
             regions = response.body.to_map()['Regions']['Region']
             logging.debug("[aliyun] DescribeRegions response: %s", regions)
+            # Extract region IDs and their corresponding API endpoints
             self.region_ids = [region['RegionId'] for region in regions]
             self.region_endpoints = [region['RegionEndpoint'] for region in regions]
         except (UnretryableException, TeaException, KeyError) as e:
