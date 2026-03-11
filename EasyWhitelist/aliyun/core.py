@@ -20,7 +20,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
     Returns:
         0 on success, non-zero error code on failure:
         1 - sg_id not provided
-        2 - error searching for security group
+        2 - failed to look up security group
         3 - security group not found
         4 - failed to get/create/update prefix list
         5 - failed to create security group rule
@@ -41,7 +41,8 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         return 3
 
     # 2. Get or create the prefix list and update it with the current client IP
-    # init_prefix returns non-zero on failure; the second condition guards against a zero return with a still-missing prefix_list_id
+    # init_prefix returns non-zero on failure; the second condition is a safety net for
+    # the unlikely case where it returns 0 but prefix_list_id is still unset
     if prefix.init_prefix(sg.region_id) or prefix.prefix_list_id is None:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4

@@ -212,7 +212,7 @@ class Prefix:
                 for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                     logging.debug(prefix)
                     if prefix['PrefixListName'].startswith(prefix_name):
-                        logging.info("[prefix] found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
+                        logging.info("[prefix] found prefix list: name=%s, id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
                         return prefix["PrefixListId"], region_id
         return None, None
 
@@ -297,7 +297,7 @@ class Prefix:
             0 on success; 1 if the prefix list does not exist or the update fails.
         """
         if not self.prefix_list_id or not self.region or not self.client:
-            print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in all regions. "
+            print(f"\033[1;91m[aliyun] Prefix list with template \"{TEMPLATE_NAME_PREFIX}\" not found in any region. "
                   f"Please run the init action first to create it.\033[0m")
             return 1
         return self._update_prefix_list_by_id()
