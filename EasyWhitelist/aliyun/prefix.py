@@ -169,7 +169,7 @@ class Prefix:
             API response body dict (contains the PrefixLists key); None on network or API error.
         """
         # Build the DescribePrefixLists request object
-        print(f"\033[1;95m[aliyun] Retrieving prefix lists in region \"{region_id}\"...\033[0m", flush=True)
+        logging.info(f"[aliyun] Retrieving prefix lists in region \"{region_id}\"...")
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=region_id)
 
         # Set runtime options
