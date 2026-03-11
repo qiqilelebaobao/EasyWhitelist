@@ -12,15 +12,17 @@ from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
 
 
 class SecurityGroup:
-    def __init__(self, sg_id: str, regions: Regions, proxy: Optional[int] = None, sg_name: str = ''):
+    def __init__(self, sg_id: str, regions: Regions, proxy_port: Optional[int] = None, sg_name: str = ''):
         self.regions = regions
         self.sg_id = sg_id
-        self.proxy_port = proxy
-
-        self.region_id: Optional[str] = DEFAULT_REGION
-        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
-        self.id_checked = False
+        self.proxy_port = proxy_port
         self.sg_name = sg_name
+
+        self.region_id = self.search_sg()[1] or DEFAULT_REGION
+        if not self.region_id:
+            print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
+            return
+        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
 
     def _search_sg_by_region_and_id(self, region_id, sg_id):
         # Retrieve all security groups in the region to find the target one
@@ -38,7 +40,6 @@ class SecurityGroup:
         for region_id in self.regions.region_ids:
             sg = self._search_sg_by_region_and_id(region_id, self.sg_id)
             if sg:
-                self.id_checked = True
                 return sg, region_id
 
         return None, None
@@ -117,11 +118,12 @@ class SecurityGroup:
         describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
             region_id=region_id
         )
+        client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
         # Set runtime options
         runtime = util_models.RuntimeOptions()
         try:
             # Call the DescribeSecurityGroups API
-            describe_sg_response = self.client.describe_security_groups_with_options(describe_sg_request, runtime)
+            describe_sg_response = client.describe_security_groups_with_options(describe_sg_request, runtime)
             logging.debug(json.dumps(describe_sg_response.body.to_map()))
             return describe_sg_response.body.to_map()
         except UnretryableException:

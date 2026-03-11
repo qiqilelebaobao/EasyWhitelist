@@ -31,20 +31,18 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
 
     # 1. Search for the security group; return on failure
     try:
-        sg = SecurityGroup(sg_id, regions, proxy=proxy_port)
-        sg_obj, region_id = sg.search_sg()
+        sg = SecurityGroup(sg_id, regions, proxy_port=proxy_port)
     except Exception:
         logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
         print(f"\033[1;91m[aliyun] failed to search security group, sg_id={sg_id}\033[0m")
         return 2
 
-    if not sg_obj or not region_id:
-        print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
+    if not sg.region_id:
         return 3
 
     # 2. Get or create the prefix list and update it with the current client IP
     # init_prefix returns non-zero on failure; the second condition guards against a zero return with a still-missing prefix_list_id
-    if prefix.init_prefix(region_id) or prefix.prefix_list_id is None:
+    if prefix.init_prefix(sg.region_id) or prefix.prefix_list_id is None:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
 
@@ -67,9 +65,8 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
     logging.info("[aliyun] enter aliyun (action: %s) (target: %s) (target_id: %s) (proxy: %s)",
                  action, target, target_id, proxy_port)
 
-    regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy_port))
-
     if target == "template":
+        regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy_port))
         prefix = Prefix(regions)
 
         action_map = {

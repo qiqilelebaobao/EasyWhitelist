@@ -200,17 +200,17 @@ class Prefix:
             A (prefix_list_id, region_id) tuple; (None, None) if not found.
         """
         logging.info("[prefix] search prefix list across all regions, prefix_name=%s ", prefix_name)
-        for region in self.regions.region_ids:
-            logging.info("[prefix] searching in region %s", region)
-            client = ClientFactory.create_client(region, self.proxy_port)
-            prefix_lists = self.get_prefix_list(client, region)
+        for region_id in self.regions.region_ids:
+            logging.info("[prefix] searching in region %s", region_id)
+            client = ClientFactory.create_client(region_id, self.proxy_port)
+            prefix_lists = self.get_prefix_list(client, region_id)
             logging.debug(prefix_lists)
             if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
                 for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                     logging.debug(prefix)
                     if prefix['PrefixListName'].startswith(prefix_name):
                         logging.info("[prefix] found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
-                        return prefix["PrefixListId"], region
+                        return prefix["PrefixListId"], region_id
         return None, None
 
     def print_prefix_list(self) -> int:
