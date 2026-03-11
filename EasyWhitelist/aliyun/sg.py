@@ -31,7 +31,6 @@ class SecurityGroup:
         if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
             for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
                 if sg["SecurityGroupId"] == sg_id:
-                    self.region_id = region_id
                     print(f"\033[1;95m[aliyun] Found security group with ID {sg_id} in region {region_id}\033[0m")
                     return sg
         logging.info("[aliyun] Security group with ID %s not found in region %s", sg_id, region_id)
@@ -86,6 +85,9 @@ class SecurityGroup:
         Returns:
             Response dict on success; None on failure (logged).
         """
+        if not self.client:
+            logging.error("[aliyun] client not initialized; security group was not found during construction")
+            return None
         # Build the CreateSecurityGroup request object
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
             region_id=region_id, security_group_name=description, description=description, vpc_id=vpc_id
