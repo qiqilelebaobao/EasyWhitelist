@@ -125,7 +125,7 @@ class Prefix:
             0 on success, 1 if prerequisites are missing or the API call fails.
         """
         if not self.prefix_list_id or not self.region or not self.client:
-            logging.error("Prefix list ID, region or client not properly initialized")
+            logging.error("Prefix list ID, region, or client is not initialized")
             return 1
 
         client_ip_list = get_iplist(self.proxy_port)
@@ -202,7 +202,7 @@ class Prefix:
         Returns:
             A (prefix_list_id, region_id) tuple; (None, None) if not found.
         """
-        logging.info("[prefix] search prefix list across all regions, prefix_name=%s ", prefix_name)
+        logging.info("[prefix] searching for prefix list across all regions, prefix_name=%s", prefix_name)
         for region_id in self.regions.region_ids:
             logging.info("[prefix] searching in region %s", region_id)
             client = ClientFactory.create_client(region_id, self.proxy_port)
@@ -255,9 +255,9 @@ class Prefix:
 
     @staticmethod
     def _normalize_ip_list(ip_list: List[str]) -> List[str]:
-        """Validate, normalize to CIDR strings, deduplicate and limit to DEFAULT_MAX_ENTRIES.
+        """Validate, normalize to CIDR strings, deduplicate, and limit to DEFAULT_MAX_ENTRIES.
 
-        - Accepts single IP or CIDR strings.
+        - Accepts a single IP address or CIDR string.
         - Normalizes to canonical network form (e.g. '1.2.3.4' -> '1.2.3.4/32').
         - Preserves order, removes duplicates, and truncates to DEFAULT_MAX_ENTRIES.
         """

@@ -65,13 +65,13 @@ class SecurityGroup:
             print(f"\033[1;95m[aliyun] Successfully created/reused security group rule with prefix list {prefix_list_id} for security group {self.sg_id}\033[0m")
             return True
         except UnretryableException:
-            logging.exception("Network error when creating security group")
+            logging.exception("Network error when creating security group rule")
             return False
         except TeaException:
-            logging.exception("Tea API error when creating security group")
+            logging.exception("Tea API error when creating security group rule")
             return False
         except Exception:
-            logging.exception("Unexpected error when creating security group")
+            logging.exception("Unexpected error when creating security group rule")
             return False
 
     def create_security_group(self, description: str = 'test_sg_desc', region_id: str = DEFAULT_REGION, vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:

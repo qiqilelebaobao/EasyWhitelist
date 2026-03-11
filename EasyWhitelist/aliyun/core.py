@@ -33,8 +33,8 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
     try:
         sg = SecurityGroup(sg_id, regions, proxy_port=proxy_port)
     except Exception:
-        logging.exception("[aliyun] failed to search security group, sg_id=%s", sg_id)
-        print(f"\033[1;91m[aliyun] failed to search security group, sg_id={sg_id}\033[0m")
+        logging.exception("[aliyun] failed to look up security group, sg_id=%s", sg_id)
+        print(f"\033[1;91m[aliyun] Failed to look up security group with ID {sg_id}\033[0m")
         return 2
 
     if not sg.region_id:
@@ -62,7 +62,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         target_id: ID of the target resource (optional).
         proxy_port: Proxy port (1–65535); None if no proxy is used.
     """
-    logging.info("[aliyun] enter aliyun (action: %s) (target: %s) (target_id: %s) (proxy: %s)",
+    logging.info("[aliyun] entering aliyun handler (action=%s, target=%s, target_id=%s, proxy=%s)",
                  action, target, target_id, proxy_port)
 
     if target == "template":
