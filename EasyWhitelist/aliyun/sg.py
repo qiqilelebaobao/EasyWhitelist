@@ -19,15 +19,15 @@ class SecurityGroup:
         self.sg_name = sg_name
         self.client = None  # may remain None if the SG is not found
 
-        self.region_id: Optional[str] = self.search_sg()[1]
+        self.region_id: Optional[str] = self._find_security_group()[1]
         if not self.region_id:
             print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
             return
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
 
-    def _search_sg_by_region_and_id(self, region_id, sg_id):
+    def _find_sg_in_region(self, region_id, sg_id):
         # Retrieve all security groups in the region to find the target one
-        security_groups = self._describe_security_groups(region_id)
+        security_groups = self._fetch_security_groups(region_id)
         if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
             for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
                 if sg["SecurityGroupId"] == sg_id:
@@ -36,16 +36,16 @@ class SecurityGroup:
         logging.info("[aliyun] Security group with ID %s not found in region %s", sg_id, region_id)
         return None
 
-    def search_sg(self):
+    def _find_security_group(self):
         for region_id in self.regions.region_ids:
-            sg = self._search_sg_by_region_and_id(region_id, self.sg_id)
+            sg = self._find_sg_in_region(region_id, self.sg_id)
             if sg:
                 return sg, region_id
 
         return None, None
 
     # Alibaba Cloud silently ignores this call if the rule already exists; otherwise it creates the rule immediately.
-    def create_sg_rule_with_prefix(self, prefix_list_id: str):
+    def add_prefix_list_rule(self, prefix_list_id: str):
         if not self.region_id or not self.client:
             logging.error("[aliyun] region_id or client is not set; SecurityGroup was not found during initialization")
             return False
@@ -109,7 +109,7 @@ class SecurityGroup:
             logging.exception("Unexpected error when creating security group")
             return None
 
-    def _describe_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
+    def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
         """Retrieve all security groups in the given region.
 
         Args:

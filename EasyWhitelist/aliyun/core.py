@@ -47,7 +47,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
 
-    if not sg.create_sg_rule_with_prefix(prefix.prefix_list_id):
+    if not sg.add_prefix_list_rule(prefix.prefix_list_id):
         print("\033[1;91m[aliyun] Failed to create security group rule with prefix list, cannot proceed with whitelist initialization\033[0m")
         return 5
 
@@ -73,7 +73,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         action_map = {
             "init": lambda: init_whitelist(prefix, regions, proxy_port, target_id),
             "list": lambda: prefix.print_prefix_list(),
-            "set": lambda: prefix.set_prefix(),
+            "set": lambda: prefix.update_prefix(),
         }
         if action in action_map:
             return action_map[action]()

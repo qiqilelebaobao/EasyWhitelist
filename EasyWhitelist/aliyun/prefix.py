@@ -25,7 +25,7 @@ class Prefix:
         """
         self.regions = regions
         self.proxy_port = int(regions.proxy.split(':')[-1]) if regions.proxy else None
-        self.prefix_list_id, self.region = self._auto_get_region_by_prefix_name_from_all_regions()
+        self.prefix_list_id, self.region = self._discover_prefix_list()
         logging.info("[prefix] using prefix list %s in region %s", self.prefix_list_id, self.region)
         self.client = ClientFactory.create_client(self.region, self.proxy_port) if self.region else None
 
@@ -41,7 +41,7 @@ class Prefix:
         self.prefix_list_id = self._get_or_create_prefix_list(region_id)
         if not self.prefix_list_id or not self.region or not self.client:
             return 1
-        return self._update_prefix_list_by_id()
+        return self._update_prefix_list()
 
     def _get_or_create_prefix_list(self, region_id: str) -> Optional[str]:
         """Find an existing prefix list in the given region (name starts with TEMPLATE_NAME_PREFIX),
@@ -116,7 +116,7 @@ class Prefix:
             logging.exception("Unexpected error when creating prefix list")
             return ''
 
-    def _update_prefix_list_by_id(self) -> int:
+    def _update_prefix_list(self) -> int:
         """Retrieve the current client IP list, validate and deduplicate the entries, then append them to the prefix list.
 
         Requires self.prefix_list_id, self.region, and self.client to be properly initialized.
@@ -161,7 +161,7 @@ class Prefix:
             return 1
 
     @staticmethod
-    def get_prefix_list(client: Ecs20140526Client, region_id: str) -> Optional[dict]:
+    def _fetch_prefix_lists(client: Ecs20140526Client, region_id: str) -> Optional[dict]:
         """Call the ECS DescribePrefixLists API to list all prefix lists in the given region.
 
         Args:
@@ -193,7 +193,7 @@ class Prefix:
             logging.exception("Unexpected error when describing prefix lists")
             return None
 
-    def _auto_get_region_by_prefix_name_from_all_regions(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> tuple[Optional[str], Optional[str]]:
+    def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> tuple[Optional[str], Optional[str]]:
         """Iterate over all regions in self.regions to find a prefix list whose name starts with prefix_name.
 
         Args:
@@ -206,7 +206,7 @@ class Prefix:
         for region_id in self.regions.region_ids:
             logging.info("[prefix] searching in region %s", region_id)
             client = ClientFactory.create_client(region_id, self.proxy_port)
-            prefix_lists = self.get_prefix_list(client, region_id)
+            prefix_lists = self._fetch_prefix_lists(client, region_id)
             logging.debug(prefix_lists)
             if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
                 for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
@@ -225,7 +225,7 @@ class Prefix:
 
         if not self.client or not self.region:
             return 1
-        prefix_lists = self.get_prefix_list(self.client, self.region)
+        prefix_lists = self._fetch_prefix_lists(self.client, self.region)
         if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
             logging.error("No prefix list information to display.")
             return 2
@@ -288,7 +288,7 @@ class Prefix:
 
         return normalized
 
-    def set_prefix(self) -> int:
+    def update_prefix(self) -> int:
         """Update the existing prefix list with the current client IP.
 
         The prefix list must already have been created via init_prefix; if not found, the user is prompted to run init first.
@@ -300,7 +300,7 @@ class Prefix:
             print(f"\033[1;91m[aliyun] No prefix list with name prefix \"{TEMPLATE_NAME_PREFIX}\" was found in any region. "
                   f"Please run the init action first to create it.\033[0m")
             return 1
-        return self._update_prefix_list_by_id()
+        return self._update_prefix_list()
 
     # def _get_prefix_detail_by_id(self, prefix_list_id: str):
     #     runtime = util_models.RuntimeOptions()
