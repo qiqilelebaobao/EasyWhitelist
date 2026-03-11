@@ -60,7 +60,8 @@ class Prefix:
         # 2. Create a new prefix list in the target region
         else:
             self.prefix_list_id = self._create_prefix_list(region_id)
-            print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.prefix_list_id}\"\033[0m")
+            if self.prefix_list_id:
+                print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.prefix_list_id}\"\033[0m")
 
         if not self.prefix_list_id:
             print(f"\033[1;91m[aliyun] Failed to find or create prefix list with template "
