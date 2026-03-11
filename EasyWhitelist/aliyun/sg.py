@@ -44,7 +44,7 @@ class SecurityGroup:
 
         return None, None
 
-    # Alibaba Cloud silently no-ops if the prefix list rule already exists; otherwise it creates the rule directly.
+    # Alibaba Cloud silently ignores this call if the rule already exists; otherwise it creates the rule immediately.
     def create_sg_rule_with_prefix(self, prefix_list_id: str):
         if not self.region_id or not self.client:
             logging.error("[aliyun] region_id or client not set; call search_sg() before create_sg_rule_with_prefix()")

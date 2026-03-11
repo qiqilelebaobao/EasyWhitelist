@@ -64,7 +64,7 @@ class Prefix:
                 print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.prefix_list_id}\"\033[0m")
 
         if not self.prefix_list_id:
-            print(f"\033[1;91m[aliyun] Failed to find or create prefix list with template "
+            print(f"\033[1;91m[aliyun] Failed to find or create a prefix list with name prefix "
                   f"\"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\". "
                   f"Please check the logs for details.\033[0m")
             return None
@@ -117,7 +117,7 @@ class Prefix:
             return ''
 
     def _update_prefix_list_by_id(self) -> int:
-        """Retrieve the current client IP, validate and deduplicate it, then append it to the prefix list.
+        """Retrieve the current client IP list, validate and deduplicate the entries, then append them to the prefix list.
 
         Requires self.prefix_list_id, self.region, and self.client to be properly initialized.
 
@@ -248,7 +248,7 @@ class Prefix:
                   f"{t_name:{COLS['name']}}"
                   )
 
-        logging.info("[aliyun] template is %s", ":".join(template_ids))
+        logging.info("[aliyun] prefix list IDs: %s", ":".join(template_ids))
         print_tail()
 
         return 0

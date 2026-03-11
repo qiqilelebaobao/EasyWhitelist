@@ -29,7 +29,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         print("\033[1;91m[aliyun] Security group ID is required for initialization\033[0m")
         return 1
 
-    # 1. Search for the security group; return on failure
+    # 1. Look up the security group; return on failure
     try:
         sg = SecurityGroup(sg_id, regions, proxy_port=proxy_port)
     except Exception:
