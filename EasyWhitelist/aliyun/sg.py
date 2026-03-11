@@ -17,8 +17,9 @@ class SecurityGroup:
         self.sg_id = sg_id
         self.proxy_port = proxy_port
         self.sg_name = sg_name
+        self.client = None  # may remain None if the SG is not found
 
-        self.region_id = self.search_sg()[1] or DEFAULT_REGION
+        self.region_id: Optional[str] = self.search_sg()[1]
         if not self.region_id:
             print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
             return
@@ -46,8 +47,8 @@ class SecurityGroup:
 
     # Alibaba Cloud silently no-ops if the prefix list rule already exists; otherwise it creates the rule directly.
     def create_sg_rule_with_prefix(self, prefix_list_id: str):
-        if not self.region_id:
-            logging.error("[aliyun] region_id not set; call search_sg() before create_sg_rule_with_prefix()")
+        if not self.region_id or not self.client:
+            logging.error("[aliyun] region_id or client not set; call search_sg() before create_sg_rule_with_prefix()")
             return False
         # Build the AuthorizeSecurityGroup request object
         create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(
