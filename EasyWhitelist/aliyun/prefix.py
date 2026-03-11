@@ -38,12 +38,12 @@ class Prefix:
         Returns:
             0 on success, non-zero on failure.
         """
-        self.prefix_list_id = self._get_or_create_prefix_list(region_id)
+        self.prefix_list_id = self._ensure_prefix_list(region_id)
         if not self.prefix_list_id or not self.region or not self.client:
             return 1
         return self._update_prefix_list()
 
-    def _get_or_create_prefix_list(self, region_id: str) -> Optional[str]:
+    def _ensure_prefix_list(self, region_id: str) -> Optional[str]:
         """Find an existing prefix list in the given region (name starts with TEMPLATE_NAME_PREFIX),
         or create one if none exists.
 

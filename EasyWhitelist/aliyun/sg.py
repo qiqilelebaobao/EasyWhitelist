@@ -25,20 +25,20 @@ class SecurityGroup:
             return
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
 
-    def _find_sg_in_region(self, region_id, sg_id):
+    def _find_in_region(self, region_id):
         # Retrieve all security groups in the region to find the target one
         security_groups = self._fetch_security_groups(region_id)
         if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
             for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
-                if sg["SecurityGroupId"] == sg_id:
-                    print(f"\033[1;95m[aliyun] Found security group with ID {sg_id} in region {region_id}\033[0m")
+                if sg["SecurityGroupId"] == self.sg_id:
+                    print(f"\033[1;95m[aliyun] Found security group with ID {self.sg_id} in region {region_id}\033[0m")
                     return sg
-        logging.info("[aliyun] Security group with ID %s not found in region %s", sg_id, region_id)
+        logging.info("[aliyun] Security group with ID %s not found in region %s", self.sg_id, region_id)
         return None
 
     def _find_security_group(self):
         for region_id in self.regions.region_ids:
-            sg = self._find_sg_in_region(region_id, self.sg_id)
+            sg = self._find_in_region(region_id)
             if sg:
                 return sg, region_id
 
