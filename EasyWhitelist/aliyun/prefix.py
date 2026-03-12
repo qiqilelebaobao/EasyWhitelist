@@ -115,7 +115,8 @@ class Prefix:
         # 1. Reuse the existing prefix list only if it was found in the same region as the security group.
         #    Prefix lists are region-scoped; reusing one from a different region would have no effect.
         if self.prefix_list and self.prefix_list.region_id == region_id:
-            print(f"\033[1;95m[aliyun] Prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" already exists in region \"{region_id}\", id=\"{self.prefix_list.prefix_list_id}\"\033[0m")
+            print(f"\033[1;95m[aliyun] Prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\""
+                  f" already exists in region \"{region_id}\", id=\"{self.prefix_list.prefix_list_id}\"\033[0m")
         # 2. Create a new prefix list in the target region
         else:
             self.prefix_list = self._create_prefix_list(region_id)
