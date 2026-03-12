@@ -72,31 +72,33 @@ class Prefix:
             0 on success; 1 if the client or region is not initialized; 2 if no prefix list data is available.
         """
 
-        if not self.current_prefix_list:
+        if not self.prefix_list:
             return 1
-
-        prefix_lists = self._fetch_prefix_lists(self.current_prefix_list.region_id)
-        if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
-            logging.error("No prefix list information to display.")
-            return 2
-
-        template_ids = []
 
         print_header('Alibaba Cloud Prefix List')
 
-        for i, prefix in enumerate(prefix_lists["PrefixLists"]["PrefixList"], 1):
-            template_ids.append(prefix["PrefixListId"])
-            # addr_set = prefix["AddressSet"]
-            addreset = "placeholder for addresses"  # keep
-            t_id = prefix["PrefixListId"]
-            t_time = prefix["CreationTime"]
-            t_name = prefix["PrefixListName"]
-            print(f"{str(i):{COLS['idx']}}"
-                  f"{t_id:{COLS['id']}}"
-                  f"{t_time:{COLS['ctime']}}"
-                  f"{addreset:<{COLS['addrs']}}"
-                  f"{t_name:{COLS['name']}}"
-                  )
+        template_ids = []
+
+        for prefix in self.prefix_list:
+            fetched_prefix_lists = self._fetch_prefix_lists(prefix.region_id)
+            if not fetched_prefix_lists or 'PrefixLists' not in fetched_prefix_lists or 'PrefixList' not in fetched_prefix_lists['PrefixLists']:
+                logging.error("No prefix list information to display.")
+                return 2
+
+            for i, prefix_entry in enumerate(fetched_prefix_lists["PrefixLists"]["PrefixList"], 1):
+                template_ids.append(prefix_entry["PrefixListId"])
+                # addr_set = prefix["AddressSet"]
+                addreset = "placeholder for addresses"  # keep
+                t_id = prefix_entry["PrefixListId"]
+                t_time = prefix_entry["CreationTime"]
+                t_name = prefix_entry["PrefixListName"]
+                print(f"{str(i):<{COLS['idx']}}"
+                      f"{prefix.region_id:<{COLS['region']}}"
+                      f"{t_id:<{COLS['id']}}"
+                      f"{t_time:<{COLS['ctime']}}"
+                      f"{addreset:<{COLS['addrs']}}"
+                      f"{t_name:{COLS['name']}}"
+                      )
 
         logging.info("[aliyun] prefix list IDs: %s", ":".join(template_ids))
         print_tail()
@@ -195,7 +197,7 @@ class Prefix:
         # Validate, deduplicate, and cap the IP list
         client_ip_list = self._normalize_ip_list(client_ip_list)
         print(f"\033[1;95m[aliyun] Updating prefix list {self.current_prefix_list.prefix_list_id} in region \"{self.current_prefix_list.region_id}\" with client IPs: {client_ip_list}\033[0m")
- 
+
         # Build the ModifyPrefixList request object
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
             region_id=self.current_prefix_list.region_id,
