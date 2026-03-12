@@ -46,7 +46,7 @@ class ClientFactory:
             endpoint=endpoint,
         )
 
-        if proxy_port:
+        if proxy_port is not None:
             # Using http:// for the https_proxy value is intentional:
             # the client tunnels HTTPS through HTTP CONNECT rather than connecting to the proxy itself over HTTPS.
             proxy_url = f"http://{proxy_host}:{proxy_port}"

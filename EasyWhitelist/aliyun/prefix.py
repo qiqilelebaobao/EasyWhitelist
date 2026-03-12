@@ -3,6 +3,7 @@ import logging
 import ipaddress
 from datetime import datetime
 from typing import List, Optional
+from urllib.parse import urlparse
 
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
@@ -24,7 +25,8 @@ class Prefix:
             regions: A Regions object containing information for all target regions.
         """
         self.regions = regions
-        self.proxy_port = int(regions.proxy.split(':')[-1]) if regions.proxy else None
+        parsed = urlparse(regions.proxy) if regions.proxy else None
+        self.proxy_port = parsed.port if parsed else None
         self.prefix_list_id, self.region_id = self._discover_prefix_list()
         logging.info("[prefix] using prefix list %s in region %s", self.prefix_list_id, self.region_id)
 
@@ -162,16 +164,15 @@ class Prefix:
 
     def _fetch_prefix_lists(self, region_id: str) -> Optional[dict]:
         """Call the ECS DescribePrefixLists API to list all prefix lists in the given region.
+        Handles token-based pagination (NextToken / MaxResults) transparently.
 
         Args:
-            client: An initialized ECS client.
             region_id: The Alibaba Cloud region to query.
 
         Returns:
-            API response body dict (contains the PrefixLists key); None on network or API error.
+            A dict with key 'PrefixLists' -> {'PrefixList': [...]} containing all pages;
+            None on network or API error.
         """
-        # Build the DescribePrefixLists request object
-
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[aliyun] Retrieving prefix lists in region %s...", region_id)
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=region_id)

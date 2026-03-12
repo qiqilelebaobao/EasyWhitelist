@@ -74,11 +74,12 @@ class SecurityGroup:
             logging.exception("Unexpected error when creating security group rule")
             return False
 
-    def create_security_group(self, description: str = 'test_sg_desc', region_id: str = DEFAULT_REGION, vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
+    def create_security_group(self, name: str = 'test_sg', description: str = 'test_sg_desc', region_id: str = DEFAULT_REGION, vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
         """Create a security group in the specified VPC and region.
 
         Args:
-            description: String used for both the security group name and description.
+            name: Security group name.
+            description: Security group description.
             region_id: Region ID.
             vpc_id: VPC ID.
 
@@ -90,7 +91,7 @@ class SecurityGroup:
             return None
         # Build the CreateSecurityGroup request object
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
-            region_id=region_id, security_group_name=description, description=description, vpc_id=vpc_id
+            region_id=region_id, security_group_name=name, description=description, vpc_id=vpc_id
         )
         # Set runtime options
         runtime = util_models.RuntimeOptions()
@@ -110,7 +111,7 @@ class SecurityGroup:
             return None
 
     def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
-        """Retrieve all security groups in the given region.
+        """Retrieve all security groups in the given region, handling page-based pagination.
 
         Args:
             region_id: Region ID; defaults to DEFAULT_REGION.

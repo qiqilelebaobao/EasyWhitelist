@@ -67,7 +67,8 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
                  action, target, target_id, proxy_port)
 
     if target == "template":
-        regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy_port))
+        proxy_url = f"http://localhost:{proxy_port}" if proxy_port is not None else None
+        regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy_port), proxy_url=proxy_url)
         prefix = Prefix(regions)
 
         action_map = {
