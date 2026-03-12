@@ -69,6 +69,7 @@ class Prefix:
         client_ip_list = self._normalize_ip_list(client_ip_list)
         print(f"\033[1;95m[aliyun] Updating prefix list(s) in regions {[pl.region_id for pl in self.prefix_list]} with client IPs: {client_ip_list}\033[0m")
 
+        failed = 0
         for prefix in self.prefix_list:
             client: Ecs20140526Client = ClientFactory.create_client(prefix.region_id, self.proxy_port)
 
@@ -89,15 +90,15 @@ class Prefix:
                 logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
             except UnretryableException:
                 logging.exception("Network error when modifying prefix list")
-                continue  # try the next prefix list if there's a network error
+                failed += 1
             except TeaException:
                 logging.exception("Tea API error when modifying prefix list")
-                continue  # try the next prefix list if there's an API error
+                failed += 1
             except Exception:
                 logging.exception("Unexpected error when modifying prefix list")
-                continue  # try the next prefix list if there's an unexpected error
+                failed += 1
 
-        return 0
+        return 0 if failed == 0 else 1
 
     def print_prefix_list(self) -> int:
         """Print a tabular summary of all prefix lists in the current region.
@@ -199,8 +200,6 @@ class Prefix:
             # Call the CreatePrefixList API
             create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
             ret_data = create_prefix_list_response.body.to_map()
-            # Update self.region_id only on success to keep it consistent
-            self.region_id = region_id
             logging.info(json.dumps(ret_data))
             return PrefixList(ret_data["PrefixListId"], region_id) if "PrefixListId" in ret_data else None
 
