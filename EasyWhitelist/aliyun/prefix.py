@@ -87,8 +87,6 @@ class Prefix:
                 # Call the ModifyPrefixList API
                 modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
                 logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
-                return 0
-
             except UnretryableException:
                 logging.exception("Network error when modifying prefix list")
                 continue  # try the next prefix list if there's a network error
