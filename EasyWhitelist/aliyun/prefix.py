@@ -63,7 +63,41 @@ class Prefix:
             print(f"\033[1;91m[aliyun] No prefix list with name prefix \"{TEMPLATE_NAME_PREFIX}\" was found in any region. "
                   f"Please run the init action first to create it.\033[0m")
             return 1
-        return self._update_prefix_list()
+
+        client_ip_list = get_iplist(self.proxy_port)
+        # Validate, deduplicate, and cap the IP list
+        client_ip_list = self._normalize_ip_list(client_ip_list)
+        print(f"\033[1;95m[aliyun] Updating prefix list(s) in regions {[pl.region_id for pl in self.prefix_list]} with client IPs: {client_ip_list}\033[0m")
+
+        for prefix in self.prefix_list:
+            client: Ecs20140526Client = ClientFactory.create_client(prefix.region_id, self.proxy_port)
+
+            # Build the ModifyPrefixList request object
+            modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
+                region_id=prefix.region_id,
+                prefix_list_id=prefix.prefix_list_id,
+                add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
+                    cidr=ip,
+                    description=f"EasyWhitelist@{datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                ) for ip in client_ip_list]
+            )
+            # Set runtime options
+            runtime = util_models.RuntimeOptions()
+            try:
+                # Call the ModifyPrefixList API
+                modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
+                logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
+                return 0
+
+            except UnretryableException:
+                logging.exception("Network error when modifying prefix list")
+                continue  # try the next prefix list if there's a network error
+            except TeaException:
+                logging.exception("Tea API error when modifying prefix list")
+                continue  # try the next prefix list if there's an API error
+            except Exception:
+                logging.exception("Unexpected error when modifying prefix list")
+                continue  # try the next prefix list if there's an unexpected error
 
     def print_prefix_list(self) -> int:
         """Print a tabular summary of all prefix lists in the current region.
