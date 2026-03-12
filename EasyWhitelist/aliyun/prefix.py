@@ -113,21 +113,25 @@ class Prefix:
         print_header('Alibaba Cloud Prefix List')
 
         template_ids = []
+        row = 0
+        any_error = False
 
         for prefix in self.prefix_list:
             fetched_prefix_lists = self._fetch_prefix_lists(prefix.region_id)
             if not fetched_prefix_lists or 'PrefixLists' not in fetched_prefix_lists or 'PrefixList' not in fetched_prefix_lists['PrefixLists']:
-                logging.error("No prefix list information to display.")
-                return 2
+                logging.error("No prefix list information to display for region %s.", prefix.region_id)
+                any_error = True
+                continue
 
-            for i, prefix_entry in enumerate(fetched_prefix_lists["PrefixLists"]["PrefixList"], 1):
+            for prefix_entry in fetched_prefix_lists["PrefixLists"]["PrefixList"]:
+                row += 1
                 template_ids.append(prefix_entry["PrefixListId"])
                 # addr_set = prefix["AddressSet"]
                 addreset = "placeholder for addresses"  # keep
                 t_id = prefix_entry["PrefixListId"]
                 t_time = prefix_entry["CreationTime"]
                 t_name = prefix_entry["PrefixListName"]
-                print(f"{str(i):<{COLS['idx']}}"
+                print(f"{str(row):<{COLS['idx']}}"
                       f"{prefix.region_id:<{COLS['region']}}"
                       f"{t_id:<{COLS['id']}}"
                       f"{t_time:<{COLS['ctime']}}"
@@ -138,7 +142,7 @@ class Prefix:
         logging.info("[aliyun] prefix list IDs: %s", ":".join(template_ids))
         print_tail()
 
-        return 0
+        return 2 if any_error else 0
 
     def _ensure_prefix_list(self, region_id: str) -> Optional[PrefixList]:
         """Find an existing prefix list in the given region (name starts with TEMPLATE_NAME_PREFIX),
@@ -180,10 +184,7 @@ class Prefix:
             description: Description of the prefix list; defaults to TEMPLATE_NAME_PREFIX + '0_desc'.
 
         Returns:
-            Prefix list ID string on success; empty string on failure.
-
-        Side effects:
-            Updates self.region_id on success.
+            A PrefixList object on success; None on failure.
         """
         # Build the CreatePrefixList request object
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
