@@ -99,6 +99,8 @@ class Prefix:
                 logging.exception("Unexpected error when modifying prefix list")
                 continue  # try the next prefix list if there's an unexpected error
 
+        return 0
+
     def print_prefix_list(self) -> int:
         """Print a tabular summary of all prefix lists in the current region.
 
