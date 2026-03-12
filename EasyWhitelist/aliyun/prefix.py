@@ -33,8 +33,9 @@ class Prefix:
         self.regions = regions
         parsed = urlparse(regions.proxy) if regions.proxy else None
         self.proxy_port = parsed.port if parsed else None
-        self.prefix_list = self._discover_prefix_list()
-        logging.info("[prefix] using prefix list %s", self.prefix_list.__dict__ if self.prefix_list else None)
+        self.prefix_list: List[PrefixList] = self._discover_prefix_list()
+        self.current_prefix_list = None
+        logging.info("[prefix] using prefix list %s", [pl.__dict__ for pl in self.prefix_list] if self.prefix_list else None)
 
     def init_prefix(self, region_id: str) -> int:
         """Find or create a prefix list in the given region and populate it with the current client IP.
@@ -45,8 +46,8 @@ class Prefix:
         Returns:
             0 on success, non-zero on failure.
         """
-        self.prefix_list = self._ensure_prefix_list(region_id)
-        if not self.prefix_list:
+        self.current_prefix_list = self._ensure_prefix_list(region_id)
+        if not self.current_prefix_list:
             return 1
         return self._update_prefix_list()
 
@@ -71,10 +72,10 @@ class Prefix:
             0 on success; 1 if the client or region is not initialized; 2 if no prefix list data is available.
         """
 
-        if not self.prefix_list:
+        if not self.current_prefix_list:
             return 1
 
-        prefix_lists = self._fetch_prefix_lists(self.prefix_list.region_id)
+        prefix_lists = self._fetch_prefix_lists(self.current_prefix_list.region_id)
         if not prefix_lists or 'PrefixLists' not in prefix_lists or 'PrefixList' not in prefix_lists['PrefixLists']:
             logging.error("No prefix list information to display.")
             return 2
@@ -114,22 +115,23 @@ class Prefix:
         """
         # 1. Reuse the existing prefix list only if it was found in the same region as the security group.
         #    Prefix lists are region-scoped; reusing one from a different region would have no effect.
-        if self.prefix_list and self.prefix_list.region_id == region_id:
-            print(f"\033[1;95m[aliyun] Prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\""
-                  f" already exists in region \"{region_id}\", id=\"{self.prefix_list.prefix_list_id}\"\033[0m")
+        if self.prefix_list and region_id in [pl.region_id for pl in self.prefix_list]:
+            self.current_prefix_list = next(pl for pl in self.prefix_list if pl.region_id == region_id)
+            print(f"\033[1;95m[aliyun] Reusing existing prefix list with ID {self.current_prefix_list.prefix_list_id} in region \"{region_id}\"\033[0m")
+
         # 2. Create a new prefix list in the target region
         else:
-            self.prefix_list = self._create_prefix_list(region_id)
-            if self.prefix_list:
-                print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.prefix_list.prefix_list_id}\"\033[0m")
+            self.current_prefix_list = self._create_prefix_list(region_id)
+            if self.current_prefix_list:
+                print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.current_prefix_list.prefix_list_id}\"\033[0m")
 
-        if not self.prefix_list:
+        if not self.current_prefix_list:
             print(f"\033[1;91m[aliyun] Failed to find or create a prefix list with name prefix "
                   f"\"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\". "
                   f"Please check the logs for details.\033[0m")
             return None
 
-        return self.prefix_list
+        return self.current_prefix_list
 
     def _create_prefix_list(self, region_id: str, prefix_list_name: str = f'{TEMPLATE_NAME_PREFIX}0', description: str = f'{TEMPLATE_NAME_PREFIX}0_desc') -> Optional[PrefixList]:
         """Create a prefix list in the given region by calling the ECS CreatePrefixList API.
@@ -183,21 +185,21 @@ class Prefix:
         Returns:
             0 on success, 1 if prerequisites are missing or the API call fails.
         """
-        if not self.prefix_list:
+        if not self.current_prefix_list:
             logging.error("Prefix list ID or region ID is not initialized")
             return 1
 
-        client: Ecs20140526Client = ClientFactory.create_client(self.prefix_list.region_id, self.proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(self.current_prefix_list.region_id, self.proxy_port)
 
         client_ip_list = get_iplist(self.proxy_port)
         # Validate, deduplicate, and cap the IP list
         client_ip_list = self._normalize_ip_list(client_ip_list)
-        print(f"\033[1;95m[aliyun] Updating prefix list {self.prefix_list.prefix_list_id} in region \"{self.prefix_list.region_id}\" with client IPs: {client_ip_list}\033[0m")
-
+        print(f"\033[1;95m[aliyun] Updating prefix list {self.current_prefix_list.prefix_list_id} in region \"{self.current_prefix_list.region_id}\" with client IPs: {client_ip_list}\033[0m")
+ 
         # Build the ModifyPrefixList request object
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
-            region_id=self.prefix_list.region_id,
-            prefix_list_id=self.prefix_list.prefix_list_id,
+            region_id=self.current_prefix_list.region_id,
+            prefix_list_id=self.current_prefix_list.prefix_list_id,
             add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
                 cidr=ip,
                 description=f"EasyWhitelist@{datetime.now().strftime('%Y-%m-%d %H:%M')}"
@@ -254,16 +256,17 @@ class Prefix:
             logging.exception("Unexpected error when describing prefix lists")
             return None
 
-    def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[PrefixList]:
+    def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> List[PrefixList]:
         """Iterate over all regions in self.regions to find a prefix list whose name starts with prefix_name.
 
         Args:
             prefix_name: Name prefix to match against prefix list names; defaults to TEMPLATE_NAME_PREFIX.
 
         Returns:
-            A PrefixListId object if found; None if not found.
+            A list of PrefixList objects if found; empty list if not found.
         """
         logging.info("[prefix] searching for a prefix list across all regions, prefix_name=%s", prefix_name)
+        prefix_list = []
         for region_id in self.regions.region_ids:
             logging.info("[prefix] searching in region %s", region_id)
             prefix_lists = self._fetch_prefix_lists(region_id)
@@ -273,8 +276,8 @@ class Prefix:
                     logging.debug(prefix)
                     if prefix['PrefixListName'].startswith(prefix_name):
                         logging.info("[prefix] found prefix list: name=%s, id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
-                        return PrefixList(prefix['PrefixListId'], region_id)
-        return None
+                        prefix_list.append(PrefixList(prefix['PrefixListId'], region_id))
+        return prefix_list
 
     @staticmethod
     def _normalize_ip_list(ip_list: List[str]) -> List[str]:

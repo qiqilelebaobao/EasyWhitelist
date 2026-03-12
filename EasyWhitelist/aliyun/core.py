@@ -43,11 +43,11 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
     # 2. Get or create the prefix list and update it with the current client IP
     # init_prefix returns non-zero on failure; the second condition is a safety net for
     # the unlikely case where it returns 0 but prefix_list_id is still unset
-    if prefix.init_prefix(sg.region_id) or not prefix.prefix_list:
+    if prefix.init_prefix(sg.region_id) or not prefix.current_prefix_list:
         print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
         return 4
 
-    if not sg.add_prefix_list_rule(prefix.prefix_list.prefix_list_id):
+    if not sg.add_prefix_list_rule(prefix.current_prefix_list.prefix_list_id):
         print("\033[1;91m[aliyun] Failed to create security group rule with prefix list, cannot proceed with whitelist initialization\033[0m")
         return 5
 
