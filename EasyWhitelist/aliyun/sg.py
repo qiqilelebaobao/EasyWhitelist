@@ -74,7 +74,10 @@ class SecurityGroup:
             logging.exception("Unexpected error when creating security group rule")
             return False
 
-    def create_security_group(self, name: str = 'test_sg', description: str = 'test_sg_desc', region_id: str = DEFAULT_REGION, vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
+    def create_security_group(self, name: str = 'test_sg',
+                              description: str = 'test_sg_desc',
+                              region_id: str = DEFAULT_REGION,
+                              vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
         """Create a security group in the specified VPC and region.
 
         Args:

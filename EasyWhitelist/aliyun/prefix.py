@@ -125,7 +125,8 @@ class Prefix:
         else:
             self.current_prefix_list = self._create_prefix_list(region_id)
             if self.current_prefix_list:
-                print(f"\033[1;95m[aliyun] Created prefix list with prefix \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.current_prefix_list.prefix_list_id}\"\033[0m")
+                print(f"\033[1;95m[aliyun] Created prefix list with prefix"
+                      f" \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.current_prefix_list.prefix_list_id}\"\033[0m")
 
         if not self.current_prefix_list:
             print(f"\033[1;91m[aliyun] Failed to find or create a prefix list with name prefix "
@@ -196,7 +197,8 @@ class Prefix:
         client_ip_list = get_iplist(self.proxy_port)
         # Validate, deduplicate, and cap the IP list
         client_ip_list = self._normalize_ip_list(client_ip_list)
-        print(f"\033[1;95m[aliyun] Updating prefix list {self.current_prefix_list.prefix_list_id} in region \"{self.current_prefix_list.region_id}\" with client IPs: {client_ip_list}\033[0m")
+        print(f"\033[1;95m[aliyun] Updating prefix list {self.current_prefix_list.prefix_list_id}"
+              f" in region \"{self.current_prefix_list.region_id}\" with client IPs: {client_ip_list}\033[0m")
 
         # Build the ModifyPrefixList request object
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
