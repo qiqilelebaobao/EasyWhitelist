@@ -130,7 +130,7 @@ class Prefix:
                 row += 1
                 template_ids.append(prefix_entry["PrefixListId"])
                 # addr_set = prefix["AddressSet"]
-                addreset = "placeholder for addresses"  # keep
+                addreset = ",".join([element['Cidr'] for element in self._get_prefix_detail_by_id(prefix.region_id, prefix_entry["PrefixListId"])])
                 t_id = prefix_entry["PrefixListId"]
                 t_time = prefix_entry["CreationTime"]
                 t_name = prefix_entry["PrefixListName"]
@@ -357,20 +357,22 @@ class Prefix:
 
         return normalized
 
-    # def _get_prefix_detail_by_id(self, prefix_list_id: str):
-    #     runtime = util_models.RuntimeOptions()
-    #     try:
-    #         describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
-    #             region_id=self.region,
-    #             prefix_list_id=prefix_list_id,
-    #         )
-    #         describe_resp = self.client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
-    #         current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
-    #         logging.info(current_entries)
-    #     except Exception:
-    #         logging.exception("[prefix] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
-    #         current_entries = []
-    #     return current_entries
+    def _get_prefix_detail_by_id(self, region_id, prefix_list_id: str):
+        client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
+        logging.info("[prefix] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
+        runtime = util_models.RuntimeOptions()
+        try:
+            describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
+                region_id=region_id,
+                prefix_list_id=prefix_list_id,
+            )
+            describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
+            current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
+            logging.info(current_entries)
+        except Exception:
+            logging.exception("[prefix] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
+            current_entries = []
+        return current_entries
 
     # def _auto_search_prefix_by_name(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[str]:
     #     '''Search for a prefix list by name prefix. Returns the prefix list ID if found, or None if not found.'''
