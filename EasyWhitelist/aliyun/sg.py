@@ -5,10 +5,11 @@ from typing import Dict, Any, Optional
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
+from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-from .client import ClientFactory
-from .region import Regions
 from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
+from .region import Regions
+from .client import ClientFactory
 
 
 class SecurityGroup:
@@ -17,13 +18,13 @@ class SecurityGroup:
         self.sg_id = sg_id
         self.proxy_port = proxy_port
         self.sg_name = sg_name
-        self.client = None  # may remain None if the SG is not found
+        self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
 
         self.region_id: Optional[str] = self._find_security_group()[1]
         if not self.region_id:
             print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
             return
-        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
+        self.client: Optional[Ecs20140526Client] = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
 
     def _find_in_region(self, region_id):
         # Retrieve all security groups in the region to find the target one
@@ -125,7 +126,7 @@ class SecurityGroup:
         describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
             region_id=region_id
         )
-        client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
+        client: Optional[Ecs20140526Client] = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
         # Set runtime options
         runtime = util_models.RuntimeOptions()
         try:

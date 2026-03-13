@@ -1,11 +1,11 @@
 import logging
 from typing import Optional
 
+from .defaults import DEFAULT_REGION
+from .region import Regions
 from .client import ClientFactory
 from .prefix import Prefix
 from .sg import SecurityGroup
-from .defaults import DEFAULT_REGION
-from .region import Regions
 
 
 def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], sg_id: Optional[str]) -> int:
