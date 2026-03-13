@@ -1,7 +1,7 @@
 
-HEADER_WIDTH = 180
+HEADER_WIDTH = 175
 COLS = {
-    "idx": 10,
+    "idx": 5,
     "region": 20,
     "id": 30,
     "ctime": 30,
