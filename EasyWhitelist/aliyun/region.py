@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 from Tea.exceptions import UnretryableException, TeaException
-from alibabacloud_tea_util import models as util_models
+from darabonba.runtime import RuntimeOptions
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
@@ -27,7 +27,7 @@ class Regions:
         self.region_endpoints: list[str] = []
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
-        runtime = util_models.RuntimeOptions()
+        runtime = RuntimeOptions()
         try:
             response = client.describe_regions_with_options(describe_regions_request, runtime)
             regions = response.body.to_map()['Regions']['Region']

@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Any, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
-from alibabacloud_tea_util import models as util_models
+from darabonba.runtime import RuntimeOptions
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
@@ -58,7 +58,7 @@ class SecurityGroup:
             port_range='-1/-1',
             source_prefix_list_id=prefix_list_id)
         # Set runtime options
-        runtime = util_models.RuntimeOptions()
+        runtime = RuntimeOptions()
         try:
             # Call the AuthorizeSecurityGroup API
             security_group_authorization_response = self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime)
@@ -98,7 +98,7 @@ class SecurityGroup:
             region_id=region_id, security_group_name=name, description=description, vpc_id=vpc_id
         )
         # Set runtime options
-        runtime = util_models.RuntimeOptions()
+        runtime = RuntimeOptions()
         try:
             # Call the CreateSecurityGroup API
             create_sg_response = self.client.create_security_group_with_options(create_sg_request, runtime)
@@ -128,7 +128,7 @@ class SecurityGroup:
         )
         client: Optional[Ecs20140526Client] = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
         # Set runtime options
-        runtime = util_models.RuntimeOptions()
+        runtime = RuntimeOptions()
         try:
             # Call the DescribeSecurityGroups API
             describe_sg_response = client.describe_security_groups_with_options(describe_sg_request, runtime)
