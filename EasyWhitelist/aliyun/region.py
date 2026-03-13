@@ -4,12 +4,13 @@ from typing import Optional
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
+from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 
 class Regions:
     """Fetches and stores all available Alibaba Cloud regions for a given ECS client."""
 
-    def __init__(self, client, proxy_url: Optional[str] = None):
+    def __init__(self, client: Ecs20140526Client, proxy_url: Optional[str] = None):
         """Initialize by calling DescribeRegions and populating region IDs and endpoints.
 
         Args:
