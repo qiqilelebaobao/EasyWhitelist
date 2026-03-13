@@ -178,19 +178,18 @@ class Prefix:
 
         return self.current_prefix_list
 
-    def _create_prefix_list(self, region_id: str, preifx_name: str = TEMPLATE_NAME_PREFIX) -> Optional[PrefixList]:
+    def _create_prefix_list(self, region_id: str, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[PrefixList]:
         """Create a prefix list in the given region by calling the ECS CreatePrefixList API.
 
         Args:
             region_id: The Alibaba Cloud region where the prefix list should be created.
-            prefix_list_name: Name of the prefix list; defaults to TEMPLATE_NAME_PREFIX + '0'.
-            description: Description of the prefix list; defaults to TEMPLATE_NAME_PREFIX + '0_desc'.
+            prefix_name: Name prefix for the prefix list; a timestamp suffix is appended automatically.
 
         Returns:
             A PrefixList object on success; None on failure.
         """
         # Build the CreatePrefixList request object
-        prefix_list_name = f"{preifx_name}{int(datetime.now().timestamp())}"
+        prefix_list_name = f"{prefix_name}{int(datetime.now().timestamp())}"
         description = f"{prefix_list_name}_desc"
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(

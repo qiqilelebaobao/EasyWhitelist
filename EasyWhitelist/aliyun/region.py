@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
 from darabonba.runtime import RuntimeOptions
@@ -23,8 +23,8 @@ class Regions:
             KeyError: If the expected fields are missing from the response.
         """
         self.proxy = proxy_url
-        self.region_ids: list[str] = []
-        self.region_endpoints: list[str] = []
+        self.region_ids: List[str] = []
+        self.region_endpoints: List[str] = []
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = RuntimeOptions()

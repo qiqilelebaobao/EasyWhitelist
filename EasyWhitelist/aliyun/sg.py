@@ -24,7 +24,7 @@ class SecurityGroup:
         if not self.region_id:
             print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
             return
-        self.client: Optional[Ecs20140526Client] = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)  # type: ignore
+        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
 
     def _find_in_region(self, region_id):
         # Retrieve all security groups in the region to find the target one
