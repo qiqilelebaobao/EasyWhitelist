@@ -272,7 +272,7 @@ class Prefix:
 
     def _fetch_prefix_lists(self, region_id: str) -> Optional[dict]:
         """Call the ECS DescribePrefixLists API to list all prefix lists in the given region.
-        Handles token-based pagination (NextToken / MaxResults) transparently.
+        Iterates all pages via NextToken / MaxResults and returns a merged result.
 
         Args:
             region_id: The Alibaba Cloud region to query.
@@ -283,16 +283,25 @@ class Prefix:
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[prefix] Retrieving prefix lists in region %s...", region_id)
-        describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=region_id)
-
-        # Set runtime options
         runtime = _runtime()
+        all_entries: list = []
+        next_token: Optional[str] = None
+        max_results = 100  # maximum allowed by the ECS API
         try:
-            # Call the DescribePrefixLists API
-            describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
-            body_map = describe_prefix_lists_response.body.to_map()
-            logging.debug("[prefix] API response, detail=%s", json.dumps(body_map))
-            return body_map
+            while True:
+                req_kwargs: dict = dict(region_id=region_id, max_results=max_results)
+                if next_token:
+                    req_kwargs["next_token"] = next_token
+                describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(**req_kwargs)
+                describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
+                body_map = describe_prefix_lists_response.body.to_map()
+                logging.debug("[prefix] API response, detail=%s", json.dumps(body_map))
+                page_entries = (body_map.get("PrefixLists") or {}).get("PrefixList") or []
+                all_entries.extend(page_entries)
+                next_token = body_map.get("NextToken") or None
+                if not next_token:
+                    break
+            return {"PrefixLists": {"PrefixList": all_entries}}
         except UnretryableException:
             logging.exception("Network error when describing prefix lists")
             return None

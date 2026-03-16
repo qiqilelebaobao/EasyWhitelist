@@ -7,6 +7,10 @@ import urllib3
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
+# Tracks proxy hosts for which InsecureRequestWarning has already been suppressed,
+# preventing duplicate filter entries when create_client() is called repeatedly.
+_suppressed_warning_hosts: set = set()
+
 
 class ClientFactory:
     # The endpoint is derived dynamically from the region: 'ecs.<region>.aliyuncs.com'.
@@ -60,11 +64,12 @@ class ClientFactory:
             # Suppress InsecureRequestWarning for localhost proxy connections:
             # certifi's CA bundle has no cert for localhost, so TLS verification
             # will always warn — this is expected and acceptable for local proxies.
-            if proxy_host in ("localhost", "127.0.0.1", "::1"):
+            if proxy_host in ("localhost", "127.0.0.1", "::1") and proxy_host not in _suppressed_warning_hosts:
                 warnings.filterwarnings(
                     "ignore",
                     category=urllib3.exceptions.InsecureRequestWarning,
                     message=rf".*{proxy_host}.*",
                 )
+                _suppressed_warning_hosts.add(proxy_host)
 
         return Ecs20140526Client(Config(**config_kwargs))

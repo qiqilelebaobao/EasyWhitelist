@@ -1,6 +1,7 @@
 import requests
 import re
 import logging
+import os
 
 from . import utils
 
@@ -16,7 +17,9 @@ def get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy=None):
         logging.info("[ip.detect] fetching local IP, url=%s proxy=%s", u, proxy)
 
         if proxy:
-            response = requests.get(u, headers=headers, timeout=(3, 5), proxies={"http": f"http://127.0.0.1:{proxy}", "https": f"http://127.0.0.1:{proxy}"})
+            response = requests.get(u, headers=headers, timeout=(3, 5),
+                                    proxies={"http": f"http://127.0.0.1:{proxy}", "https": f"http://127.0.0.1:{proxy}"},
+                                    verify=False if os.getenv('DISABLE_SSL_VERIFY') == '1' else True)
         else:
             response = requests.get(u, headers=headers, timeout=(3, 5))
 

@@ -96,9 +96,9 @@ class SecurityGroup:
         Returns:
             Response dict on success; None on failure (logged).
         """
-        if not self.client:
-            logging.error("[aliyun] client not initialized; security group was not found during construction")
-            return None
+        # Create a client scoped to the target region; the instance-level self.client is bound
+        # to self.region_id and must not be reused here when region_id differs.
+        client: Ecs20140526Client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
         # Build the CreateSecurityGroup request object
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
             region_id=region_id, security_group_name=name, description=description, vpc_id=vpc_id
@@ -107,7 +107,7 @@ class SecurityGroup:
         runtime = _runtime()
         try:
             # Call the CreateSecurityGroup API
-            create_sg_response = self.client.create_security_group_with_options(create_sg_request, runtime)
+            create_sg_response = client.create_security_group_with_options(create_sg_request, runtime)
             logging.info(json.dumps(create_sg_response.body.to_map()))
             return create_sg_response.body.to_map()
         except UnretryableException:
@@ -121,25 +121,39 @@ class SecurityGroup:
             return None
 
     def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
-        """Retrieve all security groups in the given region, handling page-based pagination.
+        """Retrieve ALL security groups in the given region using page-based pagination.
+
+        DescribeSecurityGroups returns at most 100 entries per page; this method iterates
+        all pages and returns a merged result in the same shape as a single-page response.
 
         Args:
             region_id: Region ID; defaults to DEFAULT_REGION.
 
         Returns:
-            Response dict on success; None on failure (logged).
+            Merged response dict on success (all pages combined); None on failure (logged).
         """
-        describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
-            region_id=region_id
-        )
-        client: Optional[Ecs20140526Client] = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
-        # Set runtime options
+        client: Ecs20140526Client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
         runtime = _runtime()
+        all_sgs: list = []
+        page_number = 1
+        page_size = 100  # maximum allowed by the ECS API
         try:
-            # Call the DescribeSecurityGroups API
-            describe_sg_response = client.describe_security_groups_with_options(describe_sg_request, runtime)
-            logging.debug(json.dumps(describe_sg_response.body.to_map()))
-            return describe_sg_response.body.to_map()
+            while True:
+                describe_sg_request = ecs_20140526_models.DescribeSecurityGroupsRequest(
+                    region_id=region_id,
+                    page_number=page_number,
+                    page_size=page_size,
+                )
+                describe_sg_response = client.describe_security_groups_with_options(describe_sg_request, runtime)
+                body = describe_sg_response.body.to_map()
+                logging.debug(json.dumps(body))
+                page_sgs = (body.get("SecurityGroups") or {}).get("SecurityGroup") or []
+                all_sgs.extend(page_sgs)
+                # Stop when we have received all entries or the page was empty
+                if not page_sgs or len(all_sgs) >= (body.get("TotalCount") or 0):
+                    break
+                page_number += 1
+            return {"SecurityGroups": {"SecurityGroup": all_sgs}}
         except UnretryableException:
             logging.exception("Network error when describing security groups")
             return None
