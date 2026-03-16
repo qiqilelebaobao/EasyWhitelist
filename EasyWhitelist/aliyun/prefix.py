@@ -13,7 +13,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..util.cli import print_header, print_tail, COLS
-from ..ip_detector.detectors import get_iplist
+from ..detector.detectors import get_iplist
 
 from .defaults import DEFAULT_MAX_ENTRIES
 from .region import Regions

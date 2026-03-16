@@ -3,7 +3,6 @@ import warnings
 from typing import Optional
 
 import certifi
-import urllib3
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
@@ -62,14 +61,15 @@ class ClientFactory:
             config_kwargs["https_proxy"] = proxy_url
 
             # Suppress InsecureRequestWarning for localhost proxy connections.
-            # When routing through a local proxy the TLS peer is the remote aliyun endpoint,
-            # not localhost itself, so warning messages do NOT contain "localhost" — filtering
-            # by message would miss them.  Since proxy_host is already restricted to loopback
-            # addresses it is safe to suppress all InsecureRequestWarning for this case.
+            # The SDK uses `requests` internally, which bundles its own urllib3 at
+            # requests.packages.urllib3 — a separate instance from the standalone urllib3
+            # package.  urllib3.disable_warnings() only silences the standalone instance;
+            # matching on the warning message text via warnings.filterwarnings works for
+            # both instances regardless of how the warning was emitted.
             if proxy_host in ("localhost", "127.0.0.1", "::1") and proxy_host not in _suppressed_warning_hosts:
                 warnings.filterwarnings(
                     "ignore",
-                    category=urllib3.exceptions.InsecureRequestWarning,
+                    message="Unverified HTTPS request",
                 )
                 _suppressed_warning_hosts.add(proxy_host)
 
