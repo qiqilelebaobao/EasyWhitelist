@@ -61,14 +61,15 @@ class ClientFactory:
             config_kwargs["http_proxy"] = proxy_url
             config_kwargs["https_proxy"] = proxy_url
 
-            # Suppress InsecureRequestWarning for localhost proxy connections:
-            # certifi's CA bundle has no cert for localhost, so TLS verification
-            # will always warn — this is expected and acceptable for local proxies.
+            # Suppress InsecureRequestWarning for localhost proxy connections.
+            # When routing through a local proxy the TLS peer is the remote aliyun endpoint,
+            # not localhost itself, so warning messages do NOT contain "localhost" — filtering
+            # by message would miss them.  Since proxy_host is already restricted to loopback
+            # addresses it is safe to suppress all InsecureRequestWarning for this case.
             if proxy_host in ("localhost", "127.0.0.1", "::1") and proxy_host not in _suppressed_warning_hosts:
                 warnings.filterwarnings(
                     "ignore",
                     category=urllib3.exceptions.InsecureRequestWarning,
-                    message=rf".*{proxy_host}.*",
                 )
                 _suppressed_warning_hosts.add(proxy_host)
 
