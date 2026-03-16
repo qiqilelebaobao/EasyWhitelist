@@ -16,6 +16,7 @@ from ..detector.detectors import get_iplist
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime
 from .region import Regions
 from .client import ClientFactory
+from ..util.cli import echo_ok, echo_err, echo_info
 
 
 class PrefixList:
@@ -61,14 +62,13 @@ class Prefix:
             0 on success; 1 if the prefix list does not exist or the update fails.
         """
         if not self.prefix_list:
-            print(f"\033[1;91m[prefix] No prefix list with name prefix \"{TEMPLATE_NAME_PREFIX}\" was found in any region. "
-                  f"Please run the init action first to create it.\033[0m")
+            echo_err(f'No prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" found in any region — run init first')
             return 1
 
         client_ip_list = get_iplist(self.proxy_port)
         # Validate, deduplicate, and cap the IP list
         client_ip_list = self._normalize_ip_list(client_ip_list)
-        print(f"\033[1;95m[prefix] Updating prefix list(s) in regions {[pl.region_id for pl in self.prefix_list]} with client IPs: {client_ip_list}\033[0m")
+        echo_info(f"Updating {len(self.prefix_list)} prefix list(s) across regions {[pl.region_id for pl in self.prefix_list]} → {client_ip_list}")
 
         failed = 0
         for prefix in self.prefix_list:
@@ -159,19 +159,16 @@ class Prefix:
         #    Prefix lists are region-scoped; reusing one from a different region would have no effect.
         if self.prefix_list and region_id in [pl.region_id for pl in self.prefix_list]:
             self.current_prefix_list = next(pl for pl in self.prefix_list if pl.region_id == region_id)
-            print(f"\033[1;95m[prefix] Reusing existing prefix list with ID {self.current_prefix_list.prefix_list_id} in region \"{region_id}\"\033[0m")
+            echo_ok(f"Reusing prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
 
         # 2. Create a new prefix list in the target region
         else:
             self.current_prefix_list = self._create_prefix_list(region_id)
             if self.current_prefix_list:
-                print(f"\033[1;95m[prefix] Created prefix list with prefix"
-                      f" \"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\", id=\"{self.current_prefix_list.prefix_list_id}\"\033[0m")
+                echo_ok(f"Created prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
 
         if not self.current_prefix_list:
-            print(f"\033[1;91m[prefix] Failed to find or create a prefix list with name prefix "
-                  f"\"{TEMPLATE_NAME_PREFIX}\" in region \"{region_id}\". "
-                  f"Please check the logs for details.\033[0m")
+            echo_err(f'Failed to find or create a prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" in {region_id}')
             return None
 
         return self.current_prefix_list
@@ -233,8 +230,7 @@ class Prefix:
         client_ip_list = get_iplist(self.proxy_port)
         # Validate, deduplicate, and cap the IP list
         client_ip_list = self._normalize_ip_list(client_ip_list)
-        print(f"\033[1;95m[prefix] Updating prefix list {self.current_prefix_list.prefix_list_id}"
-              f" in region \"{self.current_prefix_list.region_id}\" with client IPs: {client_ip_list}\033[0m")
+        echo_info(f"Updating {self.current_prefix_list.prefix_list_id} in {self.current_prefix_list.region_id} → {client_ip_list}")
 
         # Build the ModifyPrefixList request object
         modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(

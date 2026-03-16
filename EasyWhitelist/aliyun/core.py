@@ -6,6 +6,7 @@ from .region import Regions
 from .client import ClientFactory
 from .prefix import Prefix
 from .sg import SecurityGroup
+from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401 (echo_ok/info available for future use)
 
 
 def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], sg_id: Optional[str]) -> int:
@@ -26,7 +27,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         5 - failed to create security group rule
     """
     if not sg_id:
-        print("\033[1;91m[aliyun] Security group ID is required for initialization\033[0m")
+        echo_err("Security group ID is required for initialization")
         return 1
 
     # 1. Look up the security group; return on failure
@@ -34,7 +35,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         sg = SecurityGroup(sg_id, regions, proxy_port=proxy_port)
     except Exception:
         logging.exception("[aliyun] failed to look up security group, sg_id=%s", sg_id)
-        print(f"\033[1;91m[aliyun] Failed to look up security group with ID {sg_id}\033[0m")
+        echo_err(f"Failed to look up security group {sg_id}")
         return 2
 
     if not sg.region_id:
@@ -44,11 +45,11 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
     # init_prefix returns non-zero on failure; the second condition is a safety net for
     # the unlikely case where it returns 0 but prefix_list_id is still unset
     if prefix.init_prefix(sg.region_id) or not prefix.current_prefix_list:
-        print("\033[1;91m[aliyun] Failed to create prefix list, cannot proceed with whitelist initialization\033[0m")
+        echo_err("Failed to create prefix list, cannot proceed with whitelist initialization")
         return 4
 
     if not sg.add_prefix_list_rule(prefix.current_prefix_list.prefix_list_id):
-        print("\033[1;91m[aliyun] Failed to create security group rule with prefix list, cannot proceed with whitelist initialization\033[0m")
+        echo_err("Failed to create security group rule with prefix list")
         return 5
 
     return 0
@@ -80,9 +81,9 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
             return action_map[action]()
 
         logging.error("[aliyun] unsupported operation, reason=unknown action, detail=%s", action)
-        print(f"\033[1;91m[aliyun] Unsupported action: '{action}'. Valid actions are: {list(action_map.keys())}\033[0m")
+        echo_err(f"Unsupported action: '{action}'. Valid actions: {list(action_map.keys())}")
         return 1
 
     logging.error("[aliyun] unsupported target, reason=not implemented, detail=%s", target)
-    print(f"\033[1;91m[aliyun] Unsupported target: '{target}'. Currently supported: 'template'\033[0m")
+    echo_err(f"Unsupported target: '{target}'. Currently supported: 'template'")
     return 1

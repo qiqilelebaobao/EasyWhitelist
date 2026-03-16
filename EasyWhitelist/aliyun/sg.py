@@ -9,6 +9,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID, _runtime
 from .region import Regions
 from .client import ClientFactory
+from ..util.cli import echo_ok, echo_err
 
 
 class SecurityGroup:
@@ -21,7 +22,7 @@ class SecurityGroup:
 
         self.region_id: Optional[str] = self._find_security_group()[1]
         if not self.region_id:
-            print(f"\033[1;91m[aliyun] Security group with ID {sg_id} not found in any region\033[0m")
+            echo_err(f"Security group {sg_id} not found in any region")
             return
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
 
@@ -31,7 +32,7 @@ class SecurityGroup:
         if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
             for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
                 if sg["SecurityGroupId"] == self.sg_id:
-                    print(f"\033[1;95m[aliyun] Found security group with ID {self.sg_id} in region {region_id}\033[0m")
+                    echo_ok(f"Found security group {self.sg_id} in {region_id}")
                     return sg
         logging.info("[aliyun] Security group with ID %s not found in region %s", self.sg_id, region_id)
         return None
@@ -62,7 +63,7 @@ class SecurityGroup:
             # Call the AuthorizeSecurityGroup API
             security_group_authorization_response = self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime)
             logging.info(json.dumps(security_group_authorization_response.body.to_map()))
-            print(f"\033[1;95m[aliyun] Successfully created or reused security group rule with prefix list {prefix_list_id} for security group {self.sg_id}\033[0m")
+            echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
             return True
         except UnretryableException:
             logging.exception("Network error when creating security group rule")

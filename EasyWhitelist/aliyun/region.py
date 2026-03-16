@@ -6,6 +6,7 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from .defaults import _runtime
+from ..util.cli import echo_err
 
 
 class Regions:
@@ -37,6 +38,6 @@ class Regions:
             self.region_ids = [region['RegionId'] for region in regions]
             self.region_endpoints = [region['RegionEndpoint'] for region in regions]
         except (UnretryableException, TeaException, KeyError) as e:
-            print(f"\033[1;91m[aliyun] Failed to describe regions, reason={e}\033[0m")
+            echo_err(f"Failed to describe regions: {e}")
             logging.exception("[aliyun] Failed to describe regions")
             raise
