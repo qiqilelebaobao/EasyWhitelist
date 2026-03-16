@@ -1,21 +1,14 @@
 import json
 import logging
-import os
 from typing import Dict, Any, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
-from darabonba.runtime import RuntimeOptions
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
+from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID, _runtime
 from .region import Regions
 from .client import ClientFactory
-
-
-def _runtime() -> RuntimeOptions:
-    """Return a RuntimeOptions instance; ignore_ssl is enabled when DISABLE_SSL_VERIFY=1 (local debugging only)."""
-    return RuntimeOptions(ignore_ssl=os.getenv('DISABLE_SSL_VERIFY') == '1')
 
 
 class SecurityGroup:

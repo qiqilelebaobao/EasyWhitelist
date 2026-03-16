@@ -1,13 +1,11 @@
 import json
 import logging
 import ipaddress
-import os
 from datetime import datetime
 from typing import List, Optional
 from urllib.parse import urlparse
 
 from Tea.exceptions import UnretryableException, TeaException
-from darabonba.runtime import RuntimeOptions
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
@@ -15,14 +13,9 @@ from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..util.cli import print_header, print_tail, COLS
 from ..detector.detectors import get_iplist
 
-from .defaults import DEFAULT_MAX_ENTRIES
+from .defaults import DEFAULT_MAX_ENTRIES, _runtime
 from .region import Regions
 from .client import ClientFactory
-
-
-def _runtime() -> RuntimeOptions:
-    """Return a RuntimeOptions instance; ignore_ssl is enabled when DISABLE_SSL_VERIFY=1 (local debugging only)."""
-    return RuntimeOptions(ignore_ssl=os.getenv('DISABLE_SSL_VERIFY') == '1')
 
 
 class PrefixList:
