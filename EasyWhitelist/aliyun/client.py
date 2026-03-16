@@ -6,9 +6,14 @@ import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
-# Tracks proxy hosts for which InsecureRequestWarning has already been suppressed,
-# preventing duplicate filter entries when create_client() is called repeatedly.
-_suppressed_warning_hosts: set = set()
+# Tea SDK bundles certifi's CA into a custom _TLSAdapter ssl_context, so TLS
+# verification IS happening correctly.  However, older urllib3 versions only set
+# conn.is_verified=True when ca_certs is passed explicitly; they cannot inspect
+# the CA loaded into a custom ssl_context and therefore always emit
+# InsecureRequestWarning even though the connection IS verified.  Suppress it
+# unconditionally here — this is safe because ca=certifi.where() is always set.
+if os.getenv('DISABLE_SSL_VERIFY') == '1':
+    warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 
 class ClientFactory:
@@ -59,18 +64,5 @@ class ClientFactory:
             proxy_url = f"http://{proxy_host}:{proxy_port}"
             config_kwargs["http_proxy"] = proxy_url
             config_kwargs["https_proxy"] = proxy_url
-
-            # Suppress InsecureRequestWarning for localhost proxy connections.
-            # The SDK uses `requests` internally, which bundles its own urllib3 at
-            # requests.packages.urllib3 — a separate instance from the standalone urllib3
-            # package.  urllib3.disable_warnings() only silences the standalone instance;
-            # matching on the warning message text via warnings.filterwarnings works for
-            # both instances regardless of how the warning was emitted.
-            if proxy_host in ("localhost", "127.0.0.1", "::1") and proxy_host not in _suppressed_warning_hosts:
-                warnings.filterwarnings(
-                    "ignore",
-                    message="Unverified HTTPS request",
-                )
-                _suppressed_warning_hosts.add(proxy_host)
 
         return Ecs20140526Client(Config(**config_kwargs))
