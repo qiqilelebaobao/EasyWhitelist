@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import Dict, Any, Optional
 
 from Tea.exceptions import UnretryableException, TeaException
@@ -10,6 +11,11 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID
 from .region import Regions
 from .client import ClientFactory
+
+
+def _runtime() -> RuntimeOptions:
+    """Return a RuntimeOptions instance; ignore_ssl is enabled when DISABLE_SSL_VERIFY=1 (local debugging only)."""
+    return RuntimeOptions(ignore_ssl=os.getenv('DISABLE_SSL_VERIFY') == '1')
 
 
 class SecurityGroup:
@@ -58,7 +64,7 @@ class SecurityGroup:
             port_range='-1/-1',
             source_prefix_list_id=prefix_list_id)
         # Set runtime options
-        runtime = RuntimeOptions()
+        runtime = _runtime()
         try:
             # Call the AuthorizeSecurityGroup API
             security_group_authorization_response = self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime)
@@ -98,7 +104,7 @@ class SecurityGroup:
             region_id=region_id, security_group_name=name, description=description, vpc_id=vpc_id
         )
         # Set runtime options
-        runtime = RuntimeOptions()
+        runtime = _runtime()
         try:
             # Call the CreateSecurityGroup API
             create_sg_response = self.client.create_security_group_with_options(create_sg_request, runtime)
@@ -128,7 +134,7 @@ class SecurityGroup:
         )
         client: Optional[Ecs20140526Client] = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
         # Set runtime options
-        runtime = RuntimeOptions()
+        runtime = _runtime()
         try:
             # Call the DescribeSecurityGroups API
             describe_sg_response = client.describe_security_groups_with_options(describe_sg_request, runtime)

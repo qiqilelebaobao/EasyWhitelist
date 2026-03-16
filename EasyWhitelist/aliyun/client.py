@@ -1,8 +1,11 @@
 import os
+import warnings
 from typing import Optional
 
+import certifi
+import urllib3
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
-from alibabacloud_tea_openapi.models import Config
+from alibabacloud_tea_openapi.utils_models import Config
 
 
 class ClientFactory:
@@ -44,6 +47,7 @@ class ClientFactory:
             access_key_id=access_key_id,
             access_key_secret=access_key_secret,
             endpoint=endpoint,
+            ca=certifi.where()
         )
 
         if proxy_port is not None:
@@ -52,5 +56,15 @@ class ClientFactory:
             proxy_url = f"http://{proxy_host}:{proxy_port}"
             config_kwargs["http_proxy"] = proxy_url
             config_kwargs["https_proxy"] = proxy_url
+
+            # Suppress InsecureRequestWarning for localhost proxy connections:
+            # certifi's CA bundle has no cert for localhost, so TLS verification
+            # will always warn — this is expected and acceptable for local proxies.
+            if proxy_host in ("localhost", "127.0.0.1", "::1"):
+                warnings.filterwarnings(
+                    "ignore",
+                    category=urllib3.exceptions.InsecureRequestWarning,
+                    message=rf".*{proxy_host}.*",
+                )
 
         return Ecs20140526Client(Config(**config_kwargs))

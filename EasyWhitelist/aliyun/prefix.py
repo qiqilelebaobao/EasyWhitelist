@@ -1,6 +1,7 @@
 import json
 import logging
 import ipaddress
+import os
 from datetime import datetime
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -10,7 +11,6 @@ from darabonba.runtime import RuntimeOptions
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-
 from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..util.cli import print_header, print_tail, COLS
 from ..ip_detector.detectors import get_iplist
@@ -18,6 +18,11 @@ from ..ip_detector.detectors import get_iplist
 from .defaults import DEFAULT_MAX_ENTRIES
 from .region import Regions
 from .client import ClientFactory
+
+
+def _runtime() -> RuntimeOptions:
+    """Return a RuntimeOptions instance; ignore_ssl is enabled when DISABLE_SSL_VERIFY=1 (local debugging only)."""
+    return RuntimeOptions(ignore_ssl=os.getenv('DISABLE_SSL_VERIFY') == '1')
 
 
 class PrefixList:
@@ -86,7 +91,7 @@ class Prefix:
                 ) for ip in client_ip_list]
             )
             # Set runtime options
-            runtime = RuntimeOptions()
+            runtime = _runtime()
             try:
                 # Call the ModifyPrefixList API
                 modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
@@ -200,7 +205,7 @@ class Prefix:
             address_family='IPv4'
         )
         # Set runtime options
-        runtime = RuntimeOptions()
+        runtime = _runtime()
         try:
             # Call the CreatePrefixList API
             create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
@@ -248,7 +253,7 @@ class Prefix:
             ) for ip in client_ip_list]
         )
         # Set runtime options
-        runtime = RuntimeOptions()
+        runtime = _runtime()
         try:
             # Call the ModifyPrefixList API
             modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
@@ -281,7 +286,7 @@ class Prefix:
         describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(region_id=region_id)
 
         # Set runtime options
-        runtime = RuntimeOptions()
+        runtime = _runtime()
         try:
             # Call the DescribePrefixLists API
             describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
@@ -359,7 +364,7 @@ class Prefix:
     def _get_prefix_detail_by_id(self, region_id, prefix_list_id: str):
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[prefix] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
-        runtime = RuntimeOptions()
+        runtime = _runtime()
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
                 region_id=region_id,
