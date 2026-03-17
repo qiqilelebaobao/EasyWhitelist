@@ -1,8 +1,8 @@
 import requests
 import re
 import logging
-import os
 
+from ..util.nm import _IGNORE_SSL
 from . import utils
 
 
@@ -19,7 +19,7 @@ def get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy=None):
         if proxy:
             response = requests.get(u, headers=headers, timeout=(3, 5),
                                     proxies={"http": f"http://127.0.0.1:{proxy}", "https": f"http://127.0.0.1:{proxy}"},
-                                    verify=False if os.getenv('DISABLE_SSL_VERIFY') == '1' else True)
+                                    verify=not _IGNORE_SSL)
         else:
             response = requests.get(u, headers=headers, timeout=(3, 5))
 

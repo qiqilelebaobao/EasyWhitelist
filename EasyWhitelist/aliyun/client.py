@@ -6,13 +6,15 @@ import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
+from .defaults import _IGNORE_SSL
+
 # Tea SDK bundles certifi's CA into a custom _TLSAdapter ssl_context, so TLS
 # verification IS happening correctly.  However, older urllib3 versions only set
 # conn.is_verified=True when ca_certs is passed explicitly; they cannot inspect
 # the CA loaded into a custom ssl_context and therefore always emit
 # InsecureRequestWarning even though the connection IS verified.  Suppress it
 # unconditionally here — this is safe because ca=certifi.where() is always set.
-if os.getenv('DISABLE_SSL_VERIFY') == '1':
+if _IGNORE_SSL:
     warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 
