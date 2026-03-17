@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from urllib.parse import urlparse
 
-from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
@@ -14,7 +13,7 @@ from ..util.cli import echo_ok, echo_err, echo_info
 from ..util.cli import print_header, print_tail, COLS
 from ..detector.detectors import get_iplist
 
-from .defaults import DEFAULT_MAX_ENTRIES, _runtime
+from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
 
@@ -66,39 +65,13 @@ class Prefix:
             return 1
 
         client_ip_list = get_iplist(self.proxy_port)
-        # Validate, deduplicate, and cap the IP list
         client_ip_list = self._normalize_ip_list(client_ip_list)
         echo_info(f"Updating {len(self.prefix_list)} prefix list(s) across regions {[pl.region_id for pl in self.prefix_list]} → {client_ip_list}")
 
-        failed = 0
-        for prefix in self.prefix_list:
-            client: Ecs20140526Client = ClientFactory.create_client(prefix.region_id, self.proxy_port)
-
-            # Build the ModifyPrefixList request object
-            modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
-                region_id=prefix.region_id,
-                prefix_list_id=prefix.prefix_list_id,
-                add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
-                    cidr=ip,
-                    description=f"EasyWhitelist@{datetime.now().strftime('%Y-%m-%d %H:%M')}"
-                ) for ip in client_ip_list]
-            )
-            # Set runtime options
-            runtime = _runtime(self.proxy_port is not None)
-            try:
-                # Call the ModifyPrefixList API
-                modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
-                logging.debug(json.dumps(modify_prefix_list_response.body.to_map()))
-            except UnretryableException:
-                logging.exception("[aliyun] Network error when modifying prefix list")
-                failed += 1
-            except TeaException:
-                logging.exception("[aliyun] Tea API error when modifying prefix list")
-                failed += 1
-            except Exception:
-                logging.exception("[aliyun] Unexpected error when modifying prefix list")
-                failed += 1
-
+        failed = sum(
+            not self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
+            for pl in self.prefix_list
+        )
         return 0 if failed == 0 else 1
 
     def print_prefix_list(self) -> int:
@@ -202,29 +175,19 @@ class Prefix:
             max_entries=DEFAULT_MAX_ENTRIES,
             address_family='IPv4'
         )
-        # Set runtime options
         runtime = _runtime(self.proxy_port is not None)
-        try:
-            # Call the CreatePrefixList API
-            create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
-            ret_data = create_prefix_list_response.body.to_map()
-            logging.debug(json.dumps(ret_data))
-            return PrefixList(ret_data["PrefixListId"], region_id) if "PrefixListId" in ret_data else None
-
-        except UnretryableException:
-            logging.exception("[aliyun] Network error when creating prefix list")
+        resp = _ecs_api_call(
+            lambda: client.create_prefix_list_with_options(create_prefix_list_request, runtime),
+            "creating prefix list",
+        )
+        if resp is None:
             return None
-        except TeaException:
-            logging.exception("[aliyun] Tea API error when creating prefix list")
-            return None
-        except Exception:
-            logging.exception("[aliyun] Unexpected error when creating prefix list")
-            return None
+        ret_data = resp.body.to_map()
+        logging.debug(json.dumps(ret_data))
+        return PrefixList(ret_data["PrefixListId"], region_id) if "PrefixListId" in ret_data else None
 
     def _update_prefix_list(self) -> int:
         """Retrieve the current client IP list, validate and deduplicate the entries, then append them to the prefix list.
-
-        Requires self.prefix_list_id and self.region_id to be properly initialized.
 
         Returns:
             0 on success, 1 if prerequisites are missing or the API call fails.
@@ -233,39 +196,40 @@ class Prefix:
             logging.error("[aliyun] Prefix list ID or region ID is not initialized")
             return 1
 
-        client: Ecs20140526Client = ClientFactory.create_client(self.current_prefix_list.region_id, self.proxy_port)
-
         client_ip_list = get_iplist(self.proxy_port)
-        # Validate, deduplicate, and cap the IP list
         client_ip_list = self._normalize_ip_list(client_ip_list)
         echo_info(f"Updating {self.current_prefix_list.prefix_list_id} in {self.current_prefix_list.region_id} → {client_ip_list}")
 
-        # Build the ModifyPrefixList request object
-        modify_prefix_list_request = ecs_20140526_models.ModifyPrefixListRequest(
-            region_id=self.current_prefix_list.region_id,
-            prefix_list_id=self.current_prefix_list.prefix_list_id,
+        return 0 if self._modify_one_prefix_list(
+            self.current_prefix_list.region_id,
+            self.current_prefix_list.prefix_list_id,
+            client_ip_list,
+        ) else 1
+
+    def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:
+        """Send a ModifyPrefixList request for a single prefix list.
+
+        Returns:
+            True on success; False on failure.
+        """
+        client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
+        request = ecs_20140526_models.ModifyPrefixListRequest(
+            region_id=region_id,
+            prefix_list_id=prefix_list_id,
             add_entry=[ecs_20140526_models.ModifyPrefixListRequestAddEntry(
                 cidr=ip,
                 description=f"EasyWhitelist@{datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            ) for ip in client_ip_list]
+            ) for ip in ip_list]
         )
-        # Set runtime options
         runtime = _runtime(self.proxy_port is not None)
-        try:
-            # Call the ModifyPrefixList API
-            modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
-            logging.debug(json.dumps(modify_prefix_list_response.body.to_map()))
-            return 0
-
-        except UnretryableException:
-            logging.exception("[aliyun] Network error when modifying prefix list")
-            return 1
-        except TeaException:
-            logging.exception("[aliyun] Tea API error when modifying prefix list")
-            return 1
-        except Exception:
-            logging.exception("[aliyun] Unexpected error when modifying prefix list")
-            return 1
+        resp = _ecs_api_call(
+            lambda: client.modify_prefix_list_with_options(request, runtime),
+            "modifying prefix list",
+        )
+        if resp is not None:
+            logging.debug(json.dumps(resp.body.to_map()))
+            return True
+        return False
 
     def _fetch_prefix_lists(self, region_id: str) -> Optional[dict]:
         """Call the ECS DescribePrefixLists API to list all prefix lists in the given region.
@@ -299,14 +263,8 @@ class Prefix:
                 if not next_token:
                     break
             return {"PrefixLists": {"PrefixList": all_entries}}
-        except UnretryableException:
-            logging.exception("[aliyun] Network error when describing prefix lists")
-            return None
-        except TeaException:
-            logging.exception("[aliyun] Tea API error when describing prefix lists")
-            return None
         except Exception:
-            logging.exception("[aliyun] Unexpected error when describing prefix lists")
+            logging.exception("[aliyun] Error when describing prefix lists")
             return None
 
     def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> List[PrefixList]:

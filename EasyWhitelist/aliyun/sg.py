@@ -2,13 +2,12 @@ import json
 import logging
 from typing import Dict, Any, Optional, Tuple
 
-from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.cli import echo_ok, echo_err
 
-from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID, _runtime
+from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID, _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
 
@@ -87,23 +86,16 @@ class SecurityGroup:
             ip_protocol='all',
             port_range='-1/-1',
             source_prefix_list_id=prefix_list_id)
-        # Set runtime options
         runtime = _runtime(self.proxy_port is not None)
-        try:
-            # Call the AuthorizeSecurityGroup API
-            security_group_authorization_response = self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime)
-            logging.debug(json.dumps(security_group_authorization_response.body.to_map()))
-            echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
-            return True
-        except UnretryableException:
-            logging.exception("[aliyun] Network error when creating security group rule")
+        resp = _ecs_api_call(
+            lambda: self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime),  # type: ignore[union-attr]
+            "creating security group rule",
+        )
+        if resp is None:
             return False
-        except TeaException:
-            logging.exception("[aliyun] Tea API error when creating security group rule")
-            return False
-        except Exception:
-            logging.exception("[aliyun] Unexpected error when creating security group rule")
-            return False
+        logging.debug(json.dumps(resp.body.to_map()))
+        echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
+        return True
 
     def create_security_group(self, name: str = 'test_sg',
                               description: str = 'test_sg_desc',
@@ -127,22 +119,15 @@ class SecurityGroup:
         create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
             region_id=region_id, security_group_name=name, description=description, vpc_id=vpc_id
         )
-        # Set runtime options
         runtime = _runtime(self.proxy_port is not None)
-        try:
-            # Call the CreateSecurityGroup API
-            create_sg_response = client.create_security_group_with_options(create_sg_request, runtime)
-            logging.debug(json.dumps(create_sg_response.body.to_map()))
-            return create_sg_response.body.to_map()
-        except UnretryableException:
-            logging.exception("[aliyun] Network error when creating security group")
+        resp = _ecs_api_call(
+            lambda: client.create_security_group_with_options(create_sg_request, runtime),
+            "creating security group",
+        )
+        if resp is None:
             return None
-        except TeaException:
-            logging.exception("[aliyun] Tea API error when creating security group")
-            return None
-        except Exception:
-            logging.exception("[aliyun] Unexpected error when creating security group")
-            return None
+        logging.debug(json.dumps(resp.body.to_map()))
+        return resp.body.to_map()
 
     def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
         """Retrieve ALL security groups in the given region using page-based pagination.
@@ -173,17 +158,10 @@ class SecurityGroup:
                 logging.debug(json.dumps(body))
                 page_sgs = (body.get("SecurityGroups") or {}).get("SecurityGroup") or []
                 all_sgs.extend(page_sgs)
-                # Stop when we have received all entries or the page was empty
                 if not page_sgs or len(all_sgs) >= (body.get("TotalCount") or 0):
                     break
                 page_number += 1
             return {"SecurityGroups": {"SecurityGroup": all_sgs}}
-        except UnretryableException:
-            logging.exception("[aliyun] Network error when describing security groups")
-            return None
-        except TeaException:
-            logging.exception("[aliyun] Tea API error when describing security groups")
-            return None
         except Exception:
-            logging.exception("[aliyun] Unexpected error when describing security groups")
+            logging.exception("[aliyun] Error when describing security groups")
             return None
