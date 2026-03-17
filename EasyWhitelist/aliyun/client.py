@@ -6,7 +6,7 @@ import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
-from .defaults import _IGNORE_SSL
+from ..util.nm import _IGNORE_SSL
 
 # Tea SDK bundles certifi's CA into a custom _TLSAdapter ssl_context, so TLS
 # verification IS happening correctly.  However, older urllib3 versions only set
@@ -27,10 +27,12 @@ class ClientFactory:
         proxy_port: Optional[int] = None,
         proxy_host: str = "localhost",
     ) -> Ecs20140526Client:
-        """
-        :param region: Alibaba Cloud region, e.g. 'cn-hangzhou'
-        :param proxy_port: Proxy port (1–65535); None if no proxy is used
-        :param proxy_host: Proxy hostname or IP address; defaults to 'localhost'
+        """Create an authenticated ECS client for the given region.
+
+        Args:
+            region: Alibaba Cloud region, e.g. 'cn-hangzhou'.
+            proxy_port: Proxy port (1–65535); None if no proxy is used.
+            proxy_host: Proxy hostname or IP address; defaults to 'localhost'.
         """
         if not region:
             raise ValueError("region must not be empty")

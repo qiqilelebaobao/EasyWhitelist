@@ -37,7 +37,7 @@ class Prefix:
         self.proxy_port = parsed.port if parsed else None
         self.prefix_list: List[PrefixList] = self._discover_prefix_list()
         self.current_prefix_list = None
-        logging.info("[prefix] using prefix list %s", [pl.__dict__ for pl in self.prefix_list] if self.prefix_list else None)
+        logging.info("[aliyun] using prefix list %s", [pl.__dict__ for pl in self.prefix_list] if self.prefix_list else None)
 
     def init_prefix(self, region_id: str) -> int:
         """Find or create a prefix list in the given region and populate it with the current client IP.
@@ -88,15 +88,15 @@ class Prefix:
             try:
                 # Call the ModifyPrefixList API
                 modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
-                logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
+                logging.debug(json.dumps(modify_prefix_list_response.body.to_map()))
             except UnretryableException:
-                logging.exception("Network error when modifying prefix list")
+                logging.exception("[aliyun] Network error when modifying prefix list")
                 failed += 1
             except TeaException:
-                logging.exception("Tea API error when modifying prefix list")
+                logging.exception("[aliyun] Tea API error when modifying prefix list")
                 failed += 1
             except Exception:
-                logging.exception("Unexpected error when modifying prefix list")
+                logging.exception("[aliyun] Unexpected error when modifying prefix list")
                 failed += 1
 
         return 0 if failed == 0 else 1
@@ -120,7 +120,7 @@ class Prefix:
         for prefix in self.prefix_list:
             fetched_prefix_lists = self._fetch_prefix_lists(prefix.region_id)
             if not fetched_prefix_lists or 'PrefixLists' not in fetched_prefix_lists or 'PrefixList' not in fetched_prefix_lists['PrefixLists']:
-                logging.error("No prefix list information to display for region %s.", prefix.region_id)
+                logging.error("[aliyun] No prefix list information to display for region %s.", prefix.region_id)
                 any_error = True
                 continue
 
@@ -140,7 +140,7 @@ class Prefix:
                       f"{t_name:{COLS['name']}}"
                       )
 
-        logging.info("[prefix] prefix list IDs: %s", ":".join(template_ids))
+        logging.info("[aliyun] prefix list IDs: %s", ":".join(template_ids))
         print_tail()
 
         return 2 if any_error else 0
@@ -200,17 +200,17 @@ class Prefix:
             # Call the CreatePrefixList API
             create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
             ret_data = create_prefix_list_response.body.to_map()
-            logging.info(json.dumps(ret_data))
+            logging.debug(json.dumps(ret_data))
             return PrefixList(ret_data["PrefixListId"], region_id) if "PrefixListId" in ret_data else None
 
         except UnretryableException:
-            logging.exception("Network error when creating prefix list")
+            logging.exception("[aliyun] Network error when creating prefix list")
             return None
         except TeaException:
-            logging.exception("Tea API error when creating prefix list")
+            logging.exception("[aliyun] Tea API error when creating prefix list")
             return None
         except Exception:
-            logging.exception("Unexpected error when creating prefix list")
+            logging.exception("[aliyun] Unexpected error when creating prefix list")
             return None
 
     def _update_prefix_list(self) -> int:
@@ -222,7 +222,7 @@ class Prefix:
             0 on success, 1 if prerequisites are missing or the API call fails.
         """
         if not self.current_prefix_list:
-            logging.error("Prefix list ID or region ID is not initialized")
+            logging.error("[aliyun] Prefix list ID or region ID is not initialized")
             return 1
 
         client: Ecs20140526Client = ClientFactory.create_client(self.current_prefix_list.region_id, self.proxy_port)
@@ -246,17 +246,17 @@ class Prefix:
         try:
             # Call the ModifyPrefixList API
             modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
-            logging.info(json.dumps(modify_prefix_list_response.body.to_map()))
+            logging.debug(json.dumps(modify_prefix_list_response.body.to_map()))
             return 0
 
         except UnretryableException:
-            logging.exception("Network error when modifying prefix list")
+            logging.exception("[aliyun] Network error when modifying prefix list")
             return 1
         except TeaException:
-            logging.exception("Tea API error when modifying prefix list")
+            logging.exception("[aliyun] Tea API error when modifying prefix list")
             return 1
         except Exception:
-            logging.exception("Unexpected error when modifying prefix list")
+            logging.exception("[aliyun] Unexpected error when modifying prefix list")
             return 1
 
     def _fetch_prefix_lists(self, region_id: str) -> Optional[dict]:
@@ -271,7 +271,7 @@ class Prefix:
             None on network or API error.
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
-        logging.info("[prefix] Retrieving prefix lists in region %s...", region_id)
+        logging.info("[aliyun] Retrieving prefix lists in region %s...", region_id)
         runtime = _runtime(self.proxy_port is not None)
         all_entries: list = []
         next_token: Optional[str] = None
@@ -284,7 +284,7 @@ class Prefix:
                 describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(**req_kwargs)
                 describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
                 body_map = describe_prefix_lists_response.body.to_map()
-                logging.debug("[prefix] API response, detail=%s", json.dumps(body_map))
+                logging.debug("[aliyun] API response, detail=%s", json.dumps(body_map))
                 page_entries = (body_map.get("PrefixLists") or {}).get("PrefixList") or []
                 all_entries.extend(page_entries)
                 next_token = body_map.get("NextToken") or None
@@ -292,13 +292,13 @@ class Prefix:
                     break
             return {"PrefixLists": {"PrefixList": all_entries}}
         except UnretryableException:
-            logging.exception("Network error when describing prefix lists")
+            logging.exception("[aliyun] Network error when describing prefix lists")
             return None
         except TeaException:
-            logging.exception("Tea API error when describing prefix lists")
+            logging.exception("[aliyun] Tea API error when describing prefix lists")
             return None
         except Exception:
-            logging.exception("Unexpected error when describing prefix lists")
+            logging.exception("[aliyun] Unexpected error when describing prefix lists")
             return None
 
     def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> List[PrefixList]:
@@ -310,17 +310,17 @@ class Prefix:
         Returns:
             A list of PrefixList objects if found; empty list if not found.
         """
-        logging.info("[prefix] searching for a prefix list across all regions, prefix_name=%s", prefix_name)
+        logging.info("[aliyun] searching for a prefix list across all regions, prefix_name=%s", prefix_name)
         prefix_list = []
         for region_id in self.regions.region_ids:
-            logging.info("[prefix] searching in region %s", region_id)
+            logging.info("[aliyun] searching in region %s", region_id)
             prefix_lists = self._fetch_prefix_lists(region_id)
             logging.debug(prefix_lists)
             if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
                 for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
                     logging.debug(prefix)
                     if prefix['PrefixListName'].startswith(prefix_name):
-                        logging.info("[prefix] found prefix list: name=%s, id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
+                        logging.info("[aliyun] found prefix list: name=%s, id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
                         prefix_list.append(PrefixList(prefix['PrefixListId'], region_id))
         return prefix_list
 
@@ -361,7 +361,7 @@ class Prefix:
 
     def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> List[Dict[str, Any]]:
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
-        logging.info("[prefix] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
+        logging.info("[aliyun] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
         runtime = _runtime(self.proxy_port is not None)
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
@@ -370,9 +370,9 @@ class Prefix:
             )
             describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
-            logging.info(current_entries)
+            logging.debug("[aliyun] prefix list entries: %s", current_entries)
         except Exception:
-            logging.exception("[prefix] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
+            logging.exception("[aliyun] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
             current_entries = []
         return current_entries
 
