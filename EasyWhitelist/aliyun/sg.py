@@ -63,7 +63,7 @@ class SecurityGroup:
         try:
             # Call the AuthorizeSecurityGroup API
             security_group_authorization_response = self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime)
-            logging.info(json.dumps(security_group_authorization_response.body.to_map()))
+            logging.debug(json.dumps(security_group_authorization_response.body.to_map()))
             echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
             return True
         except UnretryableException:
@@ -103,7 +103,7 @@ class SecurityGroup:
         try:
             # Call the CreateSecurityGroup API
             create_sg_response = client.create_security_group_with_options(create_sg_request, runtime)
-            logging.info(json.dumps(create_sg_response.body.to_map()))
+            logging.debug(json.dumps(create_sg_response.body.to_map()))
             return create_sg_response.body.to_map()
         except UnretryableException:
             logging.exception("Network error when creating security group")
