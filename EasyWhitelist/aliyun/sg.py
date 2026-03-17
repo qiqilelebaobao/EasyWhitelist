@@ -27,7 +27,7 @@ class SecurityGroup:
             return
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
 
-    def _find_in_region(self, region_id):
+    def _find_in_region(self, region_id: str) -> Optional[Dict[str, Any]]:
         # Retrieve all security groups in the region to find the target one
         security_groups = self._fetch_security_groups(region_id)
         if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
@@ -47,7 +47,7 @@ class SecurityGroup:
         return None, None
 
     # Alibaba Cloud silently ignores this call if the rule already exists; otherwise it creates the rule immediately.
-    def add_prefix_list_rule(self, prefix_list_id: str):
+    def add_prefix_list_rule(self, prefix_list_id: str) -> bool:
         if not self.region_id or not self.client:
             logging.error("[aliyun] region_id or client is not set; SecurityGroup was not found during initialization")
             return False

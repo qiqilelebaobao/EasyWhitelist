@@ -2,7 +2,7 @@ import json
 import logging
 import ipaddress
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, Any, List, Optional
 from urllib.parse import urlparse
 
 from Tea.exceptions import UnretryableException, TeaException
@@ -153,7 +153,7 @@ class Prefix:
             region_id: Target Alibaba Cloud region.
 
         Returns:
-            Prefix list ID string; None if both lookup and creation fail.
+            PrefixList object on success; None if both lookup and creation fail.
         """
         # 1. Reuse the existing prefix list only if it was found in the same region as the security group.
         #    Prefix lists are region-scoped; reusing one from a different region would have no effect.
@@ -359,7 +359,7 @@ class Prefix:
 
         return normalized
 
-    def _get_prefix_detail_by_id(self, region_id, prefix_list_id: str):
+    def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> List[Dict[str, Any]]:
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[prefix] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
         runtime = _runtime(self.proxy_port is not None)
