@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
@@ -21,8 +21,8 @@ class SecurityGroup:
         self.sg_name = sg_name
         self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
 
-        self.region_id: Optional[str] = self._find_security_group()[1]
-        if not self.region_id:
+        sg, self.region_id = self._find_security_group()
+        if not self.region_id or sg is None:
             echo_err(f"Security group {sg_id} not found in any region")
             return
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
@@ -38,7 +38,7 @@ class SecurityGroup:
         logging.info("[aliyun] Security group with ID %s not found in region %s", self.sg_id, region_id)
         return None
 
-    def _find_security_group(self):
+    def _find_security_group(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         for region_id in self.regions.region_ids:
             sg = self._find_in_region(region_id)
             if sg:
