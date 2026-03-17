@@ -127,17 +127,26 @@ class Prefix:
             for prefix_entry in fetched_prefix_lists["PrefixLists"]["PrefixList"]:
                 row += 1
                 template_ids.append(prefix_entry["PrefixListId"])
-                addreset = ",".join([element['Cidr'] for element in self._get_prefix_detail_by_id(prefix.region_id, prefix_entry["PrefixListId"])])
+                entries = [element['Cidr'] for element in self._get_prefix_detail_by_id(prefix.region_id, prefix_entry["PrefixListId"])]
                 t_id = prefix_entry["PrefixListId"]
                 t_time = prefix_entry["CreationTime"]
                 t_name = prefix_entry["PrefixListName"]
+
+                # Show first entry (or empty) on the main row
+                first_addr = entries[0] if entries else ""
+                suffix = f" (+{len(entries) - 1})" if len(entries) > 1 else ""
+                addr_display = f"{first_addr}{suffix}"
                 print(f"{str(row):<{COLS['idx']}}"
                       f"{prefix.region_id:<{COLS['region']}}"
                       f"{t_id:<{COLS['id']}}"
                       f"{t_time:<{COLS['ctime']}}"
-                      f"{addreset:<{COLS['addrs']}}"
+                      f"{addr_display:<{COLS['addrs']}}"
                       f"{t_name:{COLS['name']}}"
                       )
+                # Print remaining entries on continuation lines
+                indent = " " * (COLS['idx'] + COLS['region'] + COLS['id'] + COLS['ctime'])
+                for extra in entries[1:]:
+                    print(f"{indent}{extra}")
 
         logging.info("[aliyun] prefix list IDs: %s", ":".join(template_ids))
         print_tail()
