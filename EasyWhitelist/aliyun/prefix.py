@@ -10,13 +10,13 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.nm import TEMPLATE_NAME_PREFIX
+from ..util.cli import echo_ok, echo_err, echo_info
 from ..util.cli import print_header, print_tail, COLS
 from ..detector.detectors import get_iplist
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime
 from .region import Regions
 from .client import ClientFactory
-from ..util.cli import echo_ok, echo_err, echo_info
 
 
 class PrefixList:
@@ -33,7 +33,7 @@ class Prefix:
             regions: A Regions object containing information for all target regions.
         """
         self.regions = regions
-        parsed = urlparse(regions.proxy) if regions.proxy else None
+        parsed = urlparse(regions.proxy_url) if regions.proxy_url else None
         self.proxy_port = parsed.port if parsed else None
         self.prefix_list: List[PrefixList] = self._discover_prefix_list()
         self.current_prefix_list = None
@@ -84,7 +84,7 @@ class Prefix:
                 ) for ip in client_ip_list]
             )
             # Set runtime options
-            runtime = _runtime()
+            runtime = _runtime(self.proxy_port is not None)
             try:
                 # Call the ModifyPrefixList API
                 modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
@@ -195,7 +195,7 @@ class Prefix:
             address_family='IPv4'
         )
         # Set runtime options
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_port is not None)
         try:
             # Call the CreatePrefixList API
             create_prefix_list_response = client.create_prefix_list_with_options(create_prefix_list_request, runtime)  # type: ignore
@@ -242,7 +242,7 @@ class Prefix:
             ) for ip in client_ip_list]
         )
         # Set runtime options
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_port is not None)
         try:
             # Call the ModifyPrefixList API
             modify_prefix_list_response = client.modify_prefix_list_with_options(modify_prefix_list_request, runtime)  # type: ignore
@@ -272,7 +272,7 @@ class Prefix:
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[prefix] Retrieving prefix lists in region %s...", region_id)
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_port is not None)
         all_entries: list = []
         next_token: Optional[str] = None
         max_results = 100  # maximum allowed by the ECS API
@@ -362,7 +362,7 @@ class Prefix:
     def _get_prefix_detail_by_id(self, region_id, prefix_list_id: str):
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[prefix] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_port is not None)
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
                 region_id=region_id,

@@ -6,10 +6,11 @@ from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
+from ..util.cli import echo_ok, echo_err
+
 from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID, _runtime
 from .region import Regions
 from .client import ClientFactory
-from ..util.cli import echo_ok, echo_err
 
 
 class SecurityGroup:
@@ -58,7 +59,7 @@ class SecurityGroup:
             port_range='-1/-1',
             source_prefix_list_id=prefix_list_id)
         # Set runtime options
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_port is not None)
         try:
             # Call the AuthorizeSecurityGroup API
             security_group_authorization_response = self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime)
@@ -98,7 +99,7 @@ class SecurityGroup:
             region_id=region_id, security_group_name=name, description=description, vpc_id=vpc_id
         )
         # Set runtime options
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_port is not None)
         try:
             # Call the CreateSecurityGroup API
             create_sg_response = client.create_security_group_with_options(create_sg_request, runtime)
@@ -127,7 +128,7 @@ class SecurityGroup:
             Merged response dict on success (all pages combined); None on failure (logged).
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_port is not None)
         all_sgs: list = []
         page_number = 1
         page_size = 100  # maximum allowed by the ECS API

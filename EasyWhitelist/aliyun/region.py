@@ -5,8 +5,8 @@ from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-from .defaults import _runtime
 from ..util.cli import echo_err
+from .defaults import _runtime
 
 
 class Regions:
@@ -24,12 +24,12 @@ class Regions:
             TeaException: If the API returns an error response.
             KeyError: If the expected fields are missing from the response.
         """
-        self.proxy = proxy_url
+        self.proxy_url = proxy_url
         self.region_ids: List[str] = []
         self.region_endpoints: List[str] = []
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
-        runtime = _runtime()
+        runtime = _runtime(self.proxy_url is not None)
         try:
             response = client.describe_regions_with_options(describe_regions_request, runtime)
             regions = response.body.to_map()['Regions']['Region']

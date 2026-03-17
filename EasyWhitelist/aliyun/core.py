@@ -1,12 +1,13 @@
 import logging
 from typing import Optional
 
+from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401 (echo_ok/info available for future use)
+
 from .defaults import DEFAULT_REGION
 from .region import Regions
 from .client import ClientFactory
 from .prefix import Prefix
 from .sg import SecurityGroup
-from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401 (echo_ok/info available for future use)
 
 
 def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], sg_id: Optional[str]) -> int:
