@@ -127,7 +127,6 @@ class Prefix:
             for prefix_entry in fetched_prefix_lists["PrefixLists"]["PrefixList"]:
                 row += 1
                 template_ids.append(prefix_entry["PrefixListId"])
-                # addr_set = prefix["AddressSet"]
                 addreset = ",".join([element['Cidr'] for element in self._get_prefix_detail_by_id(prefix.region_id, prefix_entry["PrefixListId"])])
                 t_id = prefix_entry["PrefixListId"]
                 t_time = prefix_entry["CreationTime"]
@@ -347,14 +346,14 @@ class Prefix:
                 net = ipaddress.ip_network(s, strict=False)
                 cidr = str(net)
             except ValueError:
-                logging.warning("Invalid IP/CIDR skipped: %s", s)
+                logging.warning("[aliyun] Invalid IP/CIDR skipped: %s", s)
                 continue
             if cidr in seen:
                 continue
             seen.add(cidr)
             normalized.append(cidr)
             if len(normalized) >= DEFAULT_MAX_ENTRIES:
-                logging.warning("Truncating IP list to %d entries (DEFAULT_MAX_ENTRIES)", DEFAULT_MAX_ENTRIES)
+                logging.warning("[aliyun] Truncating IP list to %d entries (DEFAULT_MAX_ENTRIES)", DEFAULT_MAX_ENTRIES)
                 break
 
         return normalized

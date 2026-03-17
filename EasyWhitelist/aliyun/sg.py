@@ -15,6 +15,14 @@ from .client import ClientFactory
 
 class SecurityGroup:
     def __init__(self, sg_id: str, regions: Regions, proxy_port: Optional[int] = None, sg_name: str = ''):
+        """Look up a security group by ID across all known regions.
+
+        Args:
+            sg_id: Security group ID to look up.
+            regions: Regions helper with the list of regions to search.
+            proxy_port: Optional proxy port for network requests.
+            sg_name: Optional security group name; auto-populated from the API if empty.
+        """
         self.regions = regions
         self.sg_id = sg_id
         self.proxy_port = proxy_port
@@ -28,7 +36,14 @@ class SecurityGroup:
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
 
     def _find_in_region(self, region_id: str) -> Optional[Dict[str, Any]]:
-        # Retrieve all security groups in the region to find the target one
+        """Search for self.sg_id in a single region.
+
+        Args:
+            region_id: The region to search in.
+
+        Returns:
+            The security group dict if found; None otherwise.
+        """
         security_groups = self._fetch_security_groups(region_id)
         if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
             for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
@@ -39,6 +54,11 @@ class SecurityGroup:
         return None
 
     def _find_security_group(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+        """Iterate all regions to locate self.sg_id.
+
+        Returns:
+            A (sg_dict, region_id) tuple on success; (None, None) if not found.
+        """
         for region_id in self.regions.region_ids:
             sg = self._find_in_region(region_id)
             if sg:
@@ -46,8 +66,17 @@ class SecurityGroup:
 
         return None, None
 
-    # Alibaba Cloud silently ignores this call if the rule already exists; otherwise it creates the rule immediately.
     def add_prefix_list_rule(self, prefix_list_id: str) -> bool:
+        """Authorize inbound traffic from a prefix list into this security group.
+
+        Alibaba Cloud silently ignores duplicate rules.
+
+        Args:
+            prefix_list_id: The prefix list to allow.
+
+        Returns:
+            True on success; False on failure.
+        """
         if not self.region_id or not self.client:
             logging.error("[aliyun] region_id or client is not set; SecurityGroup was not found during initialization")
             return False
@@ -67,13 +96,13 @@ class SecurityGroup:
             echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
             return True
         except UnretryableException:
-            logging.exception("Network error when creating security group rule")
+            logging.exception("[aliyun] Network error when creating security group rule")
             return False
         except TeaException:
-            logging.exception("Tea API error when creating security group rule")
+            logging.exception("[aliyun] Tea API error when creating security group rule")
             return False
         except Exception:
-            logging.exception("Unexpected error when creating security group rule")
+            logging.exception("[aliyun] Unexpected error when creating security group rule")
             return False
 
     def create_security_group(self, name: str = 'test_sg',
@@ -106,13 +135,13 @@ class SecurityGroup:
             logging.debug(json.dumps(create_sg_response.body.to_map()))
             return create_sg_response.body.to_map()
         except UnretryableException:
-            logging.exception("Network error when creating security group")
+            logging.exception("[aliyun] Network error when creating security group")
             return None
         except TeaException:
-            logging.exception("Tea API error when creating security group")
+            logging.exception("[aliyun] Tea API error when creating security group")
             return None
         except Exception:
-            logging.exception("Unexpected error when creating security group")
+            logging.exception("[aliyun] Unexpected error when creating security group")
             return None
 
     def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
@@ -150,11 +179,11 @@ class SecurityGroup:
                 page_number += 1
             return {"SecurityGroups": {"SecurityGroup": all_sgs}}
         except UnretryableException:
-            logging.exception("Network error when describing security groups")
+            logging.exception("[aliyun] Network error when describing security groups")
             return None
         except TeaException:
-            logging.exception("Tea API error when describing security groups")
+            logging.exception("[aliyun] Tea API error when describing security groups")
             return None
         except Exception:
-            logging.exception("Unexpected error when describing security groups")
+            logging.exception("[aliyun] Unexpected error when describing security groups")
             return None
