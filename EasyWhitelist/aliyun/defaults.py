@@ -13,6 +13,6 @@ DEFAULT_VPC_ID = ''
 DEFAULT_MAX_ENTRIES = 20
 
 
-def _runtime(if_proxy: bool = False) -> RuntimeOptions:
+def _runtime(use_proxy: bool = False) -> RuntimeOptions:
     """Return a RuntimeOptions instance; ignore_ssl is enabled when DISABLE_SSL_VERIFY=1 (local debugging only)."""
-    return RuntimeOptions(ignore_ssl=_IGNORE_SSL and if_proxy)
+    return RuntimeOptions(ignore_ssl=_IGNORE_SSL and use_proxy)
