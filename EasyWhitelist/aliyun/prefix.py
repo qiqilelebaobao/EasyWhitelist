@@ -19,9 +19,11 @@ from .client import ClientFactory
 
 
 class PrefixList:
-    def __init__(self, prefix_list_id: str, region_id: str):
+    def __init__(self, prefix_list_id: str, region_id: str, creation_time: Optional[str] = None, prefix_list_name: Optional[str] = None):
         self.prefix_list_id = prefix_list_id
         self.region_id = region_id
+        self.creation_time = creation_time
+        self.prefix_list_name = prefix_list_name
 
 
 class Prefix:
@@ -90,23 +92,16 @@ class Prefix:
         any_error = False
 
         for prefix in self.prefix_list:
-            prefix_entries = self._fetch_prefix_lists(prefix.region_id)
-            if not prefix_entries:
-                logging.error("[aliyun] No prefix list information to display for region %s.", prefix.region_id)
-                any_error = True
-                continue
-
-            for entry in prefix_entries:
-                row += 1
-                cidrs = [e['Cidr'] for e in self._get_prefix_detail_by_id(prefix.region_id, entry["PrefixListId"])]
-                first = cidrs[0] if cidrs else ""
-                suffix = f" (+{len(cidrs) - 1})" if len(cidrs) > 1 else ""
-                print_row(idx=row, region=prefix.region_id,
-                          id=entry['PrefixListId'], ctime=entry['CreationTime'],
-                          addrs=f"{first}{suffix}", name=entry['PrefixListName'])
-                for extra in cidrs[1:]:
-                    print_row(addrs=extra)
-                print_separator()
+            row += 1
+            cidrs = [e['Cidr'] for e in self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id)]
+            first = cidrs[0] if cidrs else ""
+            suffix = f" (+{len(cidrs) - 1})" if len(cidrs) > 1 else ""
+            print_row(idx=row, region=prefix.region_id,
+                      id=prefix.prefix_list_id, ctime=prefix.creation_time,
+                      addrs=f"{first}{suffix}", name=prefix.prefix_list_name)
+            for extra in cidrs[1:]:
+                print_row(addrs=extra)
+            print_separator()
 
         logging.info("[aliyun] prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
         print_tail()
@@ -270,7 +265,7 @@ class Prefix:
                 logging.debug(entry)
                 if entry['PrefixListName'].startswith(prefix_name):
                     logging.info("[aliyun] found prefix list: name=%s, id=%s", entry['PrefixListName'], entry['PrefixListId'])
-                    prefix_list.append(PrefixList(entry['PrefixListId'], region_id))
+                    prefix_list.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
         return prefix_list
 
     @staticmethod
