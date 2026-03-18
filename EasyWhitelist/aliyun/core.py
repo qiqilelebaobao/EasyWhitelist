@@ -3,9 +3,7 @@ from typing import Optional
 
 from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401 (echo_ok/info available for future use)
 
-from .defaults import DEFAULT_REGION
 from .region import Regions
-from .client import ClientFactory
 from .prefix import Prefix
 from .sg import SecurityGroup
 
@@ -69,7 +67,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
                  action, target, target_id, proxy_port)
 
     if target == "template":
-        regions = Regions(ClientFactory.create_client(DEFAULT_REGION, proxy_port), proxy_port=proxy_port)
+        regions = Regions(proxy_port)
         prefix = Prefix(regions)
 
         action_map = {

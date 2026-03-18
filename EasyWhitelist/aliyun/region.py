@@ -6,18 +6,18 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.cli import echo_err
-from .defaults import _runtime
+from .client import ClientFactory
+from .defaults import _runtime, DEFAULT_REGION
 
 
 class Regions:
     """Fetches and stores all available Alibaba Cloud regions for a given ECS client."""
 
-    def __init__(self, client: Ecs20140526Client, proxy_port: Optional[int] = None):
+    def __init__(self, proxy_port: Optional[int] = None):
         """Initialize by calling DescribeRegions and populating region IDs and endpoints.
 
         Args:
-            client: An authenticated Alibaba Cloud ECS client instance.
-            proxy_url: Optional proxy URL (e.g. 'http://localhost:7890') to propagate to sub-clients.
+            proxy_port: Optional proxy port (1–65535) to propagate to sub-clients.
 
         Raises:
             UnretryableException: If the API call cannot be retried.
@@ -27,6 +27,8 @@ class Regions:
         self.proxy_url = f"http://localhost:{proxy_port}" if proxy_port is not None else None
         self.region_ids: List[str] = []
         self.region_endpoints: List[str] = []
+
+        client = ClientFactory.create_client(DEFAULT_REGION, proxy_port)
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = _runtime(self.proxy_url is not None)
