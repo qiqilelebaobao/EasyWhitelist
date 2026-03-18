@@ -86,42 +86,32 @@ class Prefix:
 
         print_header('Alibaba Cloud Prefix List')
 
-        template_ids = []
         row = 0
         any_error = False
 
         for prefix in self.prefix_list:
-            fetched_prefix_lists = self._fetch_prefix_lists(prefix.region_id)
-            if not fetched_prefix_lists or 'PrefixLists' not in fetched_prefix_lists or 'PrefixList' not in fetched_prefix_lists['PrefixLists']:
+            prefix_entries = self._fetch_prefix_lists(prefix.region_id)
+            if not prefix_entries:
                 logging.error("[aliyun] No prefix list information to display for region %s.", prefix.region_id)
                 any_error = True
                 continue
 
-            for prefix_entry in fetched_prefix_lists["PrefixLists"]["PrefixList"]:
+            for entry in prefix_entries:
                 row += 1
-                template_ids.append(prefix_entry["PrefixListId"])
-                entries = [element['Cidr'] for element in self._get_prefix_detail_by_id(prefix.region_id, prefix_entry["PrefixListId"])]
-                t_id = prefix_entry["PrefixListId"]
-                t_time = prefix_entry["CreationTime"]
-                t_name = prefix_entry["PrefixListName"]
-
-                # Show first entry (or empty) on the main row
-                first_addr = entries[0] if entries else ""
-                suffix = f" (+{len(entries) - 1})" if len(entries) > 1 else ""
-                addr_display = f"{first_addr}{suffix}"
-                print(f"{str(row):<{COLS['idx']}}"
+                cidrs = [e['Cidr'] for e in self._get_prefix_detail_by_id(prefix.region_id, entry["PrefixListId"])]
+                first = cidrs[0] if cidrs else ""
+                suffix = f" (+{len(cidrs) - 1})" if len(cidrs) > 1 else ""
+                print(f"{row:<{COLS['idx']}}"
                       f"{prefix.region_id:<{COLS['region']}}"
-                      f"{t_id:<{COLS['id']}}"
-                      f"{t_time:<{COLS['ctime']}}"
-                      f"{addr_display:<{COLS['addrs']}}"
-                      f"{t_name:{COLS['name']}}"
-                      )
-                # Print remaining entries on continuation lines
+                      f"{entry['PrefixListId']:<{COLS['id']}}"
+                      f"{entry['CreationTime']:<{COLS['ctime']}}"
+                      f"{first}{suffix:<{COLS['addrs']}}"
+                      f"{entry['PrefixListName']:{COLS['name']}}")
                 indent = " " * (COLS['idx'] + COLS['region'] + COLS['id'] + COLS['ctime'])
-                for extra in entries[1:]:
+                for extra in cidrs[1:]:
                     print(f"{indent}{extra}")
 
-        logging.info("[aliyun] prefix list IDs: %s", ":".join(template_ids))
+        logging.info("[aliyun] prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
         print_tail()
 
         return 2 if any_error else 0
@@ -231,16 +221,15 @@ class Prefix:
             return True
         return False
 
-    def _fetch_prefix_lists(self, region_id: str) -> Optional[dict]:
+    def _fetch_prefix_lists(self, region_id: str) -> List[Dict[str, Any]]:
         """Call the ECS DescribePrefixLists API to list all prefix lists in the given region.
-        Iterates all pages via NextToken / MaxResults and returns a merged result.
+        Iterates all pages via NextToken / MaxResults and returns a flat list.
 
         Args:
             region_id: The Alibaba Cloud region to query.
 
         Returns:
-            A dict with key 'PrefixLists' -> {'PrefixList': [...]} containing all pages;
-            None on network or API error.
+            A list of prefix list dicts; empty list on network or API error.
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[aliyun] Retrieving prefix lists in region %s...", region_id)
@@ -262,10 +251,10 @@ class Prefix:
                 next_token = body_map.get("NextToken") or None
                 if not next_token:
                     break
-            return {"PrefixLists": {"PrefixList": all_entries}}
+            return all_entries
         except Exception:
             logging.exception("[aliyun] Error when describing prefix lists")
-            return None
+            return []
 
     def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> List[PrefixList]:
         """Iterate over all regions in self.regions to find a prefix list whose name starts with prefix_name.
@@ -280,14 +269,11 @@ class Prefix:
         prefix_list = []
         for region_id in self.regions.region_ids:
             logging.info("[aliyun] searching in region %s", region_id)
-            prefix_lists = self._fetch_prefix_lists(region_id)
-            logging.debug(prefix_lists)
-            if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
-                for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
-                    logging.debug(prefix)
-                    if prefix['PrefixListName'].startswith(prefix_name):
-                        logging.info("[aliyun] found prefix list: name=%s, id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
-                        prefix_list.append(PrefixList(prefix['PrefixListId'], region_id))
+            for entry in self._fetch_prefix_lists(region_id):
+                logging.debug(entry)
+                if entry['PrefixListName'].startswith(prefix_name):
+                    logging.info("[aliyun] found prefix list: name=%s, id=%s", entry['PrefixListName'], entry['PrefixListId'])
+                    prefix_list.append(PrefixList(entry['PrefixListId'], region_id))
         return prefix_list
 
     @staticmethod

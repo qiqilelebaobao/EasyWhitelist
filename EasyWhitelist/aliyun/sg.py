@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple
 
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
@@ -43,12 +43,10 @@ class SecurityGroup:
         Returns:
             The security group dict if found; None otherwise.
         """
-        security_groups = self._fetch_security_groups(region_id)
-        if security_groups and "SecurityGroups" in security_groups and "SecurityGroup" in security_groups["SecurityGroups"]:
-            for sg in security_groups["SecurityGroups"]["SecurityGroup"]:
-                if sg["SecurityGroupId"] == self.sg_id:
-                    echo_ok(f"Found security group {self.sg_id} in {region_id}")
-                    return sg
+        for sg in self._fetch_security_groups(region_id):
+            if sg["SecurityGroupId"] == self.sg_id:
+                echo_ok(f"Found security group {self.sg_id} in {region_id}")
+                return sg
         logging.info("[aliyun] Security group with ID %s not found in region %s", self.sg_id, region_id)
         return None
 
@@ -129,17 +127,17 @@ class SecurityGroup:
         logging.debug(json.dumps(resp.body.to_map()))
         return resp.body.to_map()
 
-    def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> Optional[Dict[str, Any]]:
+    def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> List[Dict[str, Any]]:
         """Retrieve ALL security groups in the given region using page-based pagination.
 
         DescribeSecurityGroups returns at most 100 entries per page; this method iterates
-        all pages and returns a merged result in the same shape as a single-page response.
+        all pages and returns a flat list.
 
         Args:
             region_id: Region ID; defaults to DEFAULT_REGION.
 
         Returns:
-            Merged response dict on success (all pages combined); None on failure (logged).
+            A list of security group dicts; empty list on failure (logged).
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
         runtime = _runtime(self.proxy_port is not None)
@@ -161,7 +159,7 @@ class SecurityGroup:
                 if not page_sgs or len(all_sgs) >= (body.get("TotalCount") or 0):
                     break
                 page_number += 1
-            return {"SecurityGroups": {"SecurityGroup": all_sgs}}
+            return all_sgs
         except Exception:
             logging.exception("[aliyun] Error when describing security groups")
-            return None
+            return []
