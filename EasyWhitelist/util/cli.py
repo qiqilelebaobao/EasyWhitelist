@@ -5,7 +5,6 @@ _GREEN = "\033[32m"
 _RED = "\033[31m"
 _CYAN = "\033[36m"
 
-HEADER_WIDTH = 175
 COLS = {
     "idx": 5,
     "region": 20,
@@ -14,6 +13,7 @@ COLS = {
     "addrs": 60,
     "name": 30,
 }
+HEADER_WIDTH = sum(COLS.values())
 
 
 def echo_ok(msg: str) -> None:
@@ -45,6 +45,10 @@ def print_header(title: str) -> None:
     print("\u2500" * HEADER_WIDTH)
     print(header)
     print("\u2500" * HEADER_WIDTH)
+
+
+def print_separator() -> None:
+    print("\u2504" * HEADER_WIDTH)
 
 
 def print_tail() -> None:

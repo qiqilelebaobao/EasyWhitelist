@@ -10,7 +10,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..util.cli import echo_ok, echo_err, echo_info
-from ..util.cli import print_header, print_tail, COLS
+from ..util.cli import print_header, print_separator, print_tail, COLS
 from ..detector.detectors import get_iplist
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
@@ -101,15 +101,17 @@ class Prefix:
                 cidrs = [e['Cidr'] for e in self._get_prefix_detail_by_id(prefix.region_id, entry["PrefixListId"])]
                 first = cidrs[0] if cidrs else ""
                 suffix = f" (+{len(cidrs) - 1})" if len(cidrs) > 1 else ""
+                addr_display = f"{first}{suffix}"
                 print(f"{row:<{COLS['idx']}}"
                       f"{prefix.region_id:<{COLS['region']}}"
                       f"{entry['PrefixListId']:<{COLS['id']}}"
                       f"{entry['CreationTime']:<{COLS['ctime']}}"
-                      f"{first}{suffix:<{COLS['addrs']}}"
+                      f"{addr_display:<{COLS['addrs']}}"
                       f"{entry['PrefixListName']:{COLS['name']}}")
                 indent = " " * (COLS['idx'] + COLS['region'] + COLS['id'] + COLS['ctime'])
                 for extra in cidrs[1:]:
                     print(f"{indent}{extra}")
+                print_separator()
 
         logging.info("[aliyun] prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
         print_tail()
