@@ -7,7 +7,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.cli import echo_err
 from .client import ClientFactory
-from .defaults import _runtime, DEFAULT_REGION
+from .defaults import _runtime, DEFAULT_REGION_1, DEFAULT_REGION_2
 
 
 class Regions:
@@ -28,7 +28,7 @@ class Regions:
         self.region_ids: List[str] = []
         self.region_endpoints: List[str] = []
 
-        client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION, proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION_1, proxy_port) or ClientFactory.create_client(DEFAULT_REGION_2, proxy_port)
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = _runtime(self.proxy_url is not None)

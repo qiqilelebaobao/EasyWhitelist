@@ -13,7 +13,10 @@ from ..util.nm import _IGNORE_SSL
 
 T = TypeVar('T')
 
-DEFAULT_REGION = 'cn-hangzhou'
+DEFAULT_REGION_1 = 'cn-hangzhou'
+DEFAULT_REGION_2 = 'cn-chengdu'
+
+
 # NOTE: DEFAULT_VPC_ID is a placeholder only; inject a real VPC ID via ALIBABA_CLOUD_VPC_ID env var in production.
 DEFAULT_VPC_ID = ''
 DEFAULT_MAX_ENTRIES = 20
