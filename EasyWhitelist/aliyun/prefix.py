@@ -19,7 +19,17 @@ from .client import ClientFactory
 
 
 class PrefixList:
+    """Data class representing an Alibaba Cloud ECS prefix list."""
+
     def __init__(self, prefix_list_id: str, region_id: str, creation_time: Optional[str] = None, prefix_list_name: Optional[str] = None):
+        """Initialize a PrefixList instance.
+
+        Args:
+            prefix_list_id: The unique identifier of the prefix list.
+            region_id: The Alibaba Cloud region where the prefix list resides.
+            creation_time: ISO-8601 creation timestamp returned by the API.
+            prefix_list_name: Human-readable name of the prefix list.
+        """
         self.prefix_list_id = prefix_list_id
         self.region_id = region_id
         self.creation_time = creation_time
@@ -27,6 +37,8 @@ class PrefixList:
 
 
 class Prefix:
+    """Manage Alibaba Cloud ECS prefix lists across multiple regions."""
+
     def __init__(self, regions: Regions) -> None:
         """Initialize the Prefix helper.
 
@@ -304,6 +316,15 @@ class Prefix:
         return normalized
 
     def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> List[Dict[str, Any]]:
+        """Fetch the CIDR entries of a specific prefix list.
+
+        Args:
+            region_id: The Alibaba Cloud region of the prefix list.
+            prefix_list_id: The unique identifier of the prefix list.
+
+        Returns:
+            A list of entry dicts (each containing 'Cidr' and 'Description'); empty list on error.
+        """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[aliyun] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
         runtime = _runtime(self.proxy_port is not None)
