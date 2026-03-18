@@ -12,7 +12,7 @@ from .defaults import _runtime
 class Regions:
     """Fetches and stores all available Alibaba Cloud regions for a given ECS client."""
 
-    def __init__(self, client: Ecs20140526Client, proxy_url: Optional[str] = None):
+    def __init__(self, client: Ecs20140526Client, proxy_port: Optional[int] = None):
         """Initialize by calling DescribeRegions and populating region IDs and endpoints.
 
         Args:
@@ -24,7 +24,7 @@ class Regions:
             TeaException: If the API returns an error response.
             KeyError: If the expected fields are missing from the response.
         """
-        self.proxy_url = proxy_url
+        self.proxy_url = f"http://localhost:{proxy_port}" if proxy_port is not None else None
         self.region_ids: List[str] = []
         self.region_endpoints: List[str] = []
 
