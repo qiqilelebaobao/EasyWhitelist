@@ -7,7 +7,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.cli import echo_ok, echo_err
 
-from .defaults import DEFAULT_REGION, DEFAULT_VPC_ID, _runtime, _ecs_api_call
+from .defaults import DEFAULT_REGION_1, DEFAULT_VPC_ID, _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
 
@@ -97,7 +97,7 @@ class SecurityGroup:
 
     def create_security_group(self, name: str = 'test_sg',
                               description: str = 'test_sg_desc',
-                              region_id: str = DEFAULT_REGION,
+                              region_id: str = DEFAULT_REGION_1,
                               vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
         """Create a security group in the specified VPC and region.
 
@@ -127,7 +127,7 @@ class SecurityGroup:
         logging.debug(json.dumps(resp.body.to_map()))
         return resp.body.to_map()
 
-    def _fetch_security_groups(self, region_id: str = DEFAULT_REGION) -> List[Dict[str, Any]]:
+    def _fetch_security_groups(self, region_id) -> List[Dict[str, Any]]:
         """Retrieve ALL security groups in the given region using page-based pagination.
 
         DescribeSecurityGroups returns at most 100 entries per page; this method iterates

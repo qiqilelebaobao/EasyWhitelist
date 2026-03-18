@@ -60,3 +60,31 @@ def print_separator() -> None:
 def print_tail() -> None:
     print(_build_line('\u2514', '\u2534', '\u2518'))
     print()
+
+
+def print_update_banner(title: str) -> None:
+    """Print a compact banner for update operations."""
+    width = 60
+    print(f"\n  {_BOLD}{_CYAN}{'\u2500' * 3} {title} {'\u2500' * (width - len(title) - 5)}{_RST}")
+
+
+def print_ip_list(ip_list: list) -> None:
+    """Print detected IPs in a compact list."""
+    for ip in ip_list:
+        print(f"    {_CYAN}\u25B8{_RST}  {ip}")
+
+
+def print_region_result(region: str, prefix_id: str, success: bool) -> None:
+    """Print a single region update result line."""
+    mark = f"{_GREEN}\u2714{_RST}" if success else f"{_RED}\u2718{_RST}"
+    status = "ok" if success else "failed"
+    print(f"    {mark}  {region:<20} {prefix_id:<30} {status}")
+
+
+def print_summary(total: int, failed: int) -> None:
+    """Print a final summary line for update operations."""
+    succeeded = total - failed
+    if failed == 0:
+        print(f"\n  {_GREEN}\u2714{_RST}  Done: {succeeded}/{total} prefix list(s) updated successfully\n")
+    else:
+        print(f"\n  {_RED}\u2718{_RST}  Done: {succeeded}/{total} succeeded, {failed} failed\n")

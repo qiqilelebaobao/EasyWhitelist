@@ -11,6 +11,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from ..util.nm import TEMPLATE_NAME_PREFIX
 from ..util.cli import echo_ok, echo_err, echo_info
 from ..util.cli import print_header, print_row, print_separator, print_tail
+from ..util.cli import print_update_banner, print_ip_list, print_region_result, print_summary
 from ..detector.detectors import get_iplist
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
@@ -80,12 +81,21 @@ class Prefix:
 
         client_ip_list = get_iplist(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
-        echo_info(f"Updating {len(self.prefix_list)} prefix list(s) across regions {[pl.region_id for pl in self.prefix_list]} → {client_ip_list}")
 
-        failed = sum(
-            not self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
-            for pl in self.prefix_list
-        )
+        print_update_banner(f"Update {len(self.prefix_list)} Prefix List(s)")
+        echo_info(f"Detected {len(client_ip_list)} IP(s):")
+        print_ip_list(client_ip_list)
+        echo_info(f"Target regions: {', '.join(pl.region_id for pl in self.prefix_list)}")
+        print()
+
+        failed = 0
+        for pl in self.prefix_list:
+            ok = self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
+            print_region_result(pl.region_id, pl.prefix_list_id, ok)
+            if not ok:
+                failed += 1
+
+        print_summary(len(self.prefix_list), failed)
         return 0 if failed == 0 else 1
 
     def print_prefix_list(self) -> int:
@@ -192,13 +202,21 @@ class Prefix:
 
         client_ip_list = get_iplist(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
-        echo_info(f"Updating {self.current_prefix_list.prefix_list_id} in {self.current_prefix_list.region_id} → {client_ip_list}")
 
-        return 0 if self._modify_one_prefix_list(
+        print_update_banner("Init Prefix List")
+        echo_info(f"Detected {len(client_ip_list)} IP(s):")
+        print_ip_list(client_ip_list)
+        echo_info(f"Target: {self.current_prefix_list.prefix_list_id} in {self.current_prefix_list.region_id}")
+        print()
+
+        ok = self._modify_one_prefix_list(
             self.current_prefix_list.region_id,
             self.current_prefix_list.prefix_list_id,
             client_ip_list,
-        ) else 1
+        )
+        print_region_result(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, ok)
+        print_summary(1, 0 if ok else 1)
+        return 0 if ok else 1
 
     def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:
         """Send a ModifyPrefixList request for a single prefix list.
