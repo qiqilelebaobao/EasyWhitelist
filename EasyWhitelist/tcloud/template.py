@@ -9,7 +9,7 @@ from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentClo
 
 from ..detector.detectors import get_iplist
 from ..util.nm import TEMPLATE_NAME_PREFIX, TEMPLATE_ID_PREFIX
-from ..util.cli import print_header, print_tail, COLS
+from ..util.cli import print_header, print_row, print_tail
 
 
 class CreateResult(Enum):
@@ -47,12 +47,7 @@ def print_template(common_client) -> List[str]:
         t_id = template["AddressTemplateId"]
         t_time = template["CreatedTime"]
         t_name = template["AddressTemplateName"]
-        print(f"{str(i):{COLS['idx']}}"
-              f"{t_id:{COLS['id']}}"
-              f"{t_time:{COLS['ctime']}}"
-              f"{addreset:<{COLS['addrs']}}"
-              f"{t_name:{COLS['name']}}"
-              )
+        print_row(idx=i, id=t_id, ctime=t_time, addrs=addreset, name=t_name)
 
     print_tail()
 

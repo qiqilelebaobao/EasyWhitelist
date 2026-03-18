@@ -14,6 +14,7 @@ COLS = {
     "name": 30,
 }
 HEADER_WIDTH = sum(COLS.values())
+_COL_WIDTHS = list(COLS.values())
 
 
 def echo_ok(msg: str) -> None:
@@ -31,25 +32,31 @@ def echo_info(msg: str) -> None:
     print(f"  {_CYAN}\u203a{_RST}  {msg}")
 
 
-def print_header(title: str) -> None:
-    header = (f"{_BOLD}"
-              f"{'#':<{COLS['idx']}}"
-              f"{'Region':<{COLS['region']}}"
-              f"{'Template ID':<{COLS['id']}}"
-              f"{'CreatedTime':<{COLS['ctime']}}"
-              f"{'Addresses':<{COLS['addrs']}}"
-              f"{'AddressTemplateName':<{COLS['name']}}"
-              f"{_RST}")
+def _build_line(left: str, mid: str, right: str, fill: str = '\u2500') -> str:
+    return left + mid.join(fill * w for w in _COL_WIDTHS) + right
 
-    print(f"\n{_BOLD}{_CYAN}{title:^{HEADER_WIDTH}}{_RST}")
-    print("\u2500" * HEADER_WIDTH)
-    print(header)
-    print("\u2500" * HEADER_WIDTH)
+
+def print_header(title: str) -> None:
+    table_width = HEADER_WIDTH + len(COLS) + 1
+    col_names = ['#', 'Region', 'Template ID', 'CreatedTime', 'Addresses', 'Name']
+    cells = [f"{_BOLD}{n:<{w}}{_RST}" for n, w in zip(col_names, _COL_WIDTHS)]
+
+    print(f"\n{_BOLD}{_CYAN}{title:^{table_width}}{_RST}")
+    print(_build_line('\u250c', '\u252c', '\u2510'))
+    print('\u2502' + '\u2502'.join(cells) + '\u2502')
+    print(_build_line('\u251c', '\u253c', '\u2524'))
+
+
+def print_row(**values) -> None:
+    """Print a table row. Pass column values as keyword arguments matching COLS keys."""
+    cells = [f"{str(values.get(key, '')):<{width}}" for key, width in COLS.items()]
+    print('\u2502' + '\u2502'.join(cells) + '\u2502')
 
 
 def print_separator() -> None:
-    print("\u2504" * HEADER_WIDTH)
+    print(_build_line('\u251c', '\u253c', '\u2524', '\u2504'))
 
 
 def print_tail() -> None:
-    print("\u2500" * HEADER_WIDTH + "\n")
+    print(_build_line('\u2514', '\u2534', '\u2518'))
+    print()
