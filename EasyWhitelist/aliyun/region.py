@@ -28,7 +28,7 @@ class Regions:
         self.region_ids: List[str] = []
         self.region_endpoints: List[str] = []
 
-        client = ClientFactory.create_client(DEFAULT_REGION, proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION, proxy_port)
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = _runtime(self.proxy_url is not None)
