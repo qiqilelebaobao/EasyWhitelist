@@ -70,6 +70,8 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         regions = Regions(proxy_port)
         prefix = Prefix(regions)
 
+        logging.info("[aliyun] initialized Regions and Prefix instances for template operations")
+
         action_map = {
             "init": lambda: init_whitelist(prefix, regions, proxy_port, target_id),
             "list": lambda: prefix.print_prefix_list(),

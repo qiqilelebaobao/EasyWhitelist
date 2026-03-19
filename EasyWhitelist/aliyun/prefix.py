@@ -122,20 +122,32 @@ class Prefix:
 
         any_error = False
 
-        def fetch_entries(prefix: PrefixList):
-            return (prefix, self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id))
+        logging.info("[aliyun] fetching prefix list details with up to %d concurrent workers...", DEFAULT_CONCURRENT_WORKERS)
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1)) as executor:
-            futures = {executor.submit(fetch_entries, prefix): prefix for prefix in self.prefix_list}
-            results = []
-            for future in as_completed(futures):
-                prefix, entries = future.result()
-                results.append((prefix, entries))
+            results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]] = [None] * len(self.prefix_list)
 
-        results.sort(key=lambda x: self.prefix_list.index(x[0]))  # 保持原顺序
+            def fetch_entries(prefix: PrefixList, index: int):
+                return index, prefix, self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id)
+
+            futures = {
+                executor.submit(fetch_entries, prefix, i): i
+                for i, prefix in enumerate(self.prefix_list)
+            }
+
+            for future in as_completed(futures):
+                try:
+                    idx, prefix, entries = future.result()
+                    results[idx] = (prefix, entries)
+                except Exception:
+                    logging.exception("[aliyun] Error searching prefix list in region %s", futures[future])
+
         row = 0
-        for prefix, entries in results:
+        for item in results:
+            if item is None:
+                continue
             row += 1
+            prefix, entries = item
             if entries is None:
                 any_error = True
                 entries = []
@@ -327,14 +339,19 @@ class Prefix:
                     found.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
             return found
 
-        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids) or 1)) as executor:
-            futures = {executor.submit(_search_region, rid): rid for rid in self.regions.region_ids}
-            for future in as_completed(futures):
-                try:
-                    prefix_list.extend(future.result())
-                except Exception:
-                    logging.exception("[aliyun] Error searching prefix list in region %s", futures[future])
+        def _search_region_safe(region_id: str) -> List[PrefixList]:
+            try:
+                return _search_region(region_id)
+            except Exception:
+                logging.exception("[aliyun] Error searching prefix list in region %s", region_id)
+                return []
 
+        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids) or 1)) as executor:
+            for result in executor.map(_search_region_safe, self.regions.region_ids):
+                prefix_list.extend(result)
+
+        logging.info("[aliyun] completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
+                     len(prefix_list), len(self.regions.region_ids))
         return prefix_list
 
     @staticmethod
