@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-from ..util.nm import TEMPLATE_NAME_PREFIX
+from ..util.nm import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS
 from ..util.cli import echo_ok, echo_err, echo_info
 from ..util.cli import print_header, print_row, print_separator, print_tail
 from ..util.cli import print_update_banner, print_ip_list, print_region_result, print_summary
@@ -317,7 +317,7 @@ class Prefix:
                     found.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
             return found
 
-        with ThreadPoolExecutor(max_workers=min(32, len(self.regions.region_ids) or 1)) as executor:
+        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids) or 1)) as executor:
             futures = {executor.submit(_search_region, rid): rid for rid in self.regions.region_ids}
             for future in as_completed(futures):
                 try:
