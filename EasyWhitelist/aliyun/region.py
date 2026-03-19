@@ -28,7 +28,11 @@ class Regions:
         self.region_ids: List[str] = []
         self.region_endpoints: List[str] = []
 
-        client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION_1, proxy_port) or ClientFactory.create_client(DEFAULT_REGION_2, proxy_port)
+        try:
+            client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION_1, proxy_port)
+        except Exception:
+            logging.warning("[aliyun] Failed to create client for %s, falling back to %s", DEFAULT_REGION_1, DEFAULT_REGION_2)
+            client = ClientFactory.create_client(DEFAULT_REGION_2, proxy_port)
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = _runtime(self.proxy_url is not None)

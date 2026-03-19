@@ -115,7 +115,11 @@ class Prefix:
 
         for prefix in self.prefix_list:
             row += 1
-            cidrs = [e['Cidr'] for e in self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id)]
+            entries = self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id)
+            if entries is None:
+                any_error = True
+                entries = []
+            cidrs = [e['Cidr'] for e in entries]
             first = cidrs[0] if cidrs else ""
             suffix = f" (+{len(cidrs) - 1})" if len(cidrs) > 1 else ""
             print_row(idx=row, region=prefix.region_id,
@@ -333,7 +337,7 @@ class Prefix:
 
         return normalized
 
-    def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> List[Dict[str, Any]]:
+    def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> Optional[List[Dict[str, Any]]]:
         """Fetch the CIDR entries of a specific prefix list.
 
         Args:
@@ -341,7 +345,7 @@ class Prefix:
             prefix_list_id: The unique identifier of the prefix list.
 
         Returns:
-            A list of entry dicts (each containing 'Cidr' and 'Description'); empty list on error.
+            A list of entry dicts (each containing 'Cidr' and 'Description'); None on error.
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
         logging.info("[aliyun] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
@@ -355,8 +359,8 @@ class Prefix:
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
             logging.debug("[aliyun] prefix list entries: %s", current_entries)
         except Exception:
-            logging.exception("[aliyun] Failed to describe prefix list attributes for %s; will append only", prefix_list_id)
-            current_entries = []
+            logging.exception("[aliyun] Failed to describe prefix list attributes for %s", prefix_list_id)
+            return None
         return current_entries
 
     # def _auto_search_prefix_by_name(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[str]:
