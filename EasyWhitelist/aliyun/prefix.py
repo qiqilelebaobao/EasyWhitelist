@@ -120,12 +120,22 @@ class Prefix:
 
         print_header('Alibaba Cloud Prefix List')
 
-        row = 0
         any_error = False
 
-        for prefix in self.prefix_list:
+        def fetch_entries(prefix: PrefixList):
+            return (prefix, self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id))
+
+        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1)) as executor:
+            futures = {executor.submit(fetch_entries, prefix): prefix for prefix in self.prefix_list}
+            results = []
+            for future in as_completed(futures):
+                prefix, entries = future.result()
+                results.append((prefix, entries))
+
+        results.sort(key=lambda x: self.prefix_list.index(x[0]))  # 保持原顺序
+        row = 0
+        for prefix, entries in results:
             row += 1
-            entries = self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id)
             if entries is None:
                 any_error = True
                 entries = []
