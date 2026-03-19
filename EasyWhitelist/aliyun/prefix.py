@@ -1,6 +1,7 @@
 import json
 import logging
 import ipaddress
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from urllib.parse import urlparse
@@ -304,14 +305,26 @@ class Prefix:
             A list of PrefixList objects if found; empty list if not found.
         """
         logging.info("[aliyun] searching for a prefix list across all regions, prefix_name=%s", prefix_name)
-        prefix_list = []
-        for region_id in self.regions.region_ids:
+        prefix_list: List[PrefixList] = []
+
+        def _search_region(region_id: str) -> List[PrefixList]:
             logging.info("[aliyun] searching in region %s", region_id)
+            found: List[PrefixList] = []
             for entry in self._fetch_prefix_lists(region_id):
                 logging.debug(entry)
                 if entry['PrefixListName'].startswith(prefix_name):
                     logging.info("[aliyun] found prefix list: name=%s, id=%s", entry['PrefixListName'], entry['PrefixListId'])
-                    prefix_list.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
+                    found.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
+            return found
+
+        with ThreadPoolExecutor(max_workers=min(8, len(self.regions.region_ids) or 1)) as executor:
+            futures = {executor.submit(_search_region, rid): rid for rid in self.regions.region_ids}
+            for future in as_completed(futures):
+                try:
+                    prefix_list.extend(future.result())
+                except Exception:
+                    logging.exception("[aliyun] Error searching prefix list in region %s", futures[future])
+
         return prefix_list
 
     @staticmethod
