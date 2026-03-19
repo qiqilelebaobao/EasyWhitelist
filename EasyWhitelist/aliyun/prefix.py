@@ -317,7 +317,7 @@ class Prefix:
                     found.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
             return found
 
-        with ThreadPoolExecutor(max_workers=min(8, len(self.regions.region_ids) or 1)) as executor:
+        with ThreadPoolExecutor(max_workers=min(32, len(self.regions.region_ids) or 1)) as executor:
             futures = {executor.submit(_search_region, rid): rid for rid in self.regions.region_ids}
             for future in as_completed(futures):
                 try:
