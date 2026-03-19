@@ -122,9 +122,12 @@ class Prefix:
             cidrs = [e['Cidr'] for e in entries]
             first = cidrs[0] if cidrs else ""
             suffix = f" (+{len(cidrs) - 1})" if len(cidrs) > 1 else ""
-            print_row(idx=row, region=prefix.region_id,
-                      id=prefix.prefix_list_id, ctime=prefix.creation_time,
-                      addrs=f"{first}{suffix}", name=prefix.prefix_list_name)
+            print_row(idx=row,
+                      region=prefix.region_id,
+                      id=prefix.prefix_list_id,
+                      ctime=prefix.creation_time,
+                      addrs=f"{first}{suffix}",
+                      name=prefix.prefix_list_name)
             for extra in cidrs[1:]:
                 print_row(addrs=extra)
             print_separator()
