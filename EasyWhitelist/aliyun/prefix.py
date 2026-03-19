@@ -49,9 +49,17 @@ class Prefix:
         self.regions = regions
         parsed = urlparse(regions.proxy_url) if regions.proxy_url else None
         self.proxy_port = parsed.port if parsed else None
-        self.prefix_list: List[PrefixList] = self._discover_prefix_list()
+        self._prefix_list: Optional[List[PrefixList]] = None
         self.current_prefix_list = None
-        logging.info("[aliyun] using prefix list %s", [pl.__dict__ for pl in self.prefix_list] if self.prefix_list else None)
+
+    @property
+    def prefix_list(self) -> List[PrefixList]:
+        """Lazily discover prefix lists across all regions on first access."""
+        if self._prefix_list is None:
+            self._prefix_list = self._discover_prefix_list()
+            logging.info("[aliyun] using prefix list %s",
+                         [pl.__dict__ for pl in self._prefix_list] if self._prefix_list else None)
+        return self._prefix_list
 
     def init_prefix(self, region_id: str) -> int:
         """Find or create a prefix list in the given region and populate it with the current client IP.
@@ -105,6 +113,7 @@ class Prefix:
             0 on success; 1 if the client or region is not initialized; 2 if no prefix list data is available.
         """
 
+        logging.info("[aliyun] printing prefix list.")
         if not self.prefix_list:
             return 1
 
