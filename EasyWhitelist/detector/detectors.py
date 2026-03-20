@@ -3,13 +3,15 @@ import re
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from typing import List
+
 from ..util.nm import _IGNORE_SSL, DEFAULT_CONCURRENT_WORKERS
 from . import utils
 
 
 def get_ip_list(proxy_port=None):
 
-    client_ip_list = _get_local_ips(proxy_port)
+    client_ip_list: List[str] = _get_local_ips(proxy_port)
     # 用 dict.fromkeys 去重，同时保留顺序（set() 会破坏顺序）
     client_ip_list = list(dict.fromkeys(client_ip_list))
 
