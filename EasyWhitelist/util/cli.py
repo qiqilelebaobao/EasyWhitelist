@@ -10,7 +10,7 @@ COLS = {
     "region": 16,
     "id": 25,
     "ctime": 20,
-    "addrs": 40,
+    "addrs": 35,
     "name": 30,
 }
 HEADER_WIDTH = sum(COLS.values())
