@@ -10,9 +10,9 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.nm import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS
-from ..util.cli import echo_ok, echo_err, echo_info
+from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401
 from ..util.cli import print_header, print_row, print_separator, print_tail
-from ..util.cli import print_update_banner, print_ip_list, print_region_result, print_summary
+from ..util.cli import print_update_banner, print_ip_list, print_region_result, print_summary  # noqa: F401
 from ..detector.detectors import get_iplist
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
@@ -266,7 +266,7 @@ class Prefix:
                 'id': self.current_prefix_list.prefix_list_id,
                 'status': status,
                 'info': f"{len(client_ip_list)} IP(s)"
-                        if status == 'ok' else 'update failed',
+                if status == 'ok' else 'update failed',
                 'name': self.current_prefix_list.prefix_list_name or '',
             }
         ])
