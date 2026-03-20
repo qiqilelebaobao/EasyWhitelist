@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from typing import List
 
-from ..util.nm import _IGNORE_SSL, DEFAULT_CONCURRENT_WORKERS
+from ..util.defaults import _IGNORE_SSL, DEFAULT_CONCURRENT_WORKERS
 from . import utils
 
 

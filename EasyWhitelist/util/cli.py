@@ -1,9 +1,4 @@
-
-_RST = "\033[0m"
-_BOLD = "\033[1m"
-_GREEN = "\033[32m"
-_RED = "\033[31m"
-_CYAN = "\033[36m"
+from .defaults import _BOLD, _CYAN, _GREEN, _RED, _RST
 
 COLS = {
     "idx": 5,

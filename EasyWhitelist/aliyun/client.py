@@ -6,7 +6,7 @@ import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
-from ..util.nm import _IGNORE_SSL
+from ..util.defaults import _IGNORE_SSL
 
 # Tea SDK bundles certifi's CA into a custom _TLSAdapter ssl_context, so TLS
 # verification IS happening correctly.  However, older urllib3 versions only set

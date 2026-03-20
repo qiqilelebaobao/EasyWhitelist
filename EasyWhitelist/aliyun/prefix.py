@@ -11,7 +11,7 @@ from tqdm import tqdm
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-from ..util.nm import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS
+from ..util.defaults import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS, _GREEN, _RST
 from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401
 from ..util.cli import print_header, print_row, print_separator, print_tail
 from ..util.cli import print_update_banner, print_ip_list, print_region_result, print_summary  # noqa: F401
@@ -97,7 +97,7 @@ class Prefix:
         failed = 0
         pbar = tqdm(
             self.prefix_list,
-            desc='Updating prefix list',
+            desc=f'  {_GREEN}\u2714{_RST}  Updating prefix list',
             unit='pl',
             ncols=84,
             mininterval=0.3,
@@ -154,7 +154,7 @@ class Prefix:
 
             with tqdm(
                 total=len(futures),
-                desc='Fetching prefix list details',
+                desc=f'  {_GREEN}\u2714{_RST}  Fetching prefix list details',
                 unit='task',
                 ncols=84,
                 mininterval=0.3,
@@ -402,7 +402,7 @@ class Prefix:
             futures = {executor.submit(_search_region_safe, region_id): region_id for region_id in self.regions.region_ids}
             with tqdm(
                 total=len(futures),
-                desc='Searching prefix lists',
+                desc=f'  {_GREEN}\u2714{_RST}  Searching prefix lists',
                 unit='region',
                 ncols=84,
                 mininterval=0.3,

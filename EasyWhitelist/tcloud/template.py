@@ -8,7 +8,7 @@ from enum import Enum, auto
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
 from ..detector.detectors import get_ip_list
-from ..util.nm import TEMPLATE_NAME_PREFIX, TEMPLATE_ID_PREFIX
+from ..util.defaults import TEMPLATE_NAME_PREFIX, TEMPLATE_ID_PREFIX
 from ..util.cli import print_header, print_row, print_tail
 
 

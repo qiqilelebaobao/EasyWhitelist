@@ -9,7 +9,7 @@ from typing import Callable, Optional, TypeVar
 
 from darabonba.runtime import RuntimeOptions
 from Tea.exceptions import UnretryableException, TeaException
-from ..util.nm import _IGNORE_SSL
+from ..util.defaults import _IGNORE_SSL
 
 T = TypeVar('T')
 
