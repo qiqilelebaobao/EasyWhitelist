@@ -50,8 +50,8 @@ def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy_port=None):
         respon = response.text
         l_ip = utils.parse_ip_from_response(respon, patt)
         logging.info("[ip.detect] fetched local IP, url=%s ip=%s", u, l_ip)
-
         return l_ip
+
     except Exception as e:
         logging.error("[ip.detect] parse failed, reason=exception, detail=%s", e)
         return None
