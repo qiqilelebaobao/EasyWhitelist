@@ -34,7 +34,7 @@ classifiers = [
   ]
 
 dependencies = [
-  "tencentcloud-sdk-python", "alibabacloud_ecs20140526"
+  "tencentcloud-sdk-python", "alibabacloud_ecs20140526", "tqdm"
 ]
 
 dynamic = ["version"]

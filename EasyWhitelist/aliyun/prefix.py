@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from urllib.parse import urlparse
 
+from tqdm import tqdm
+
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
@@ -93,17 +95,30 @@ class Prefix:
 
         rows = []
         failed = 0
-        for pl in self.prefix_list:
-            ok = self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
-            if not ok:
-                failed += 1
-            rows.append({
-                'region': pl.region_id,
-                'id': pl.prefix_list_id,
-                'status': 'ok' if ok else 'failed',
-                'info': f"{len(client_ip_list)} IP(s)",
-                'name': pl.prefix_list_name or '',
-            })
+        pbar = tqdm(
+            self.prefix_list,
+            desc='Updating prefix list',
+            unit='pl',
+            ncols=84,
+            mininterval=0.3,
+            maxinterval=1.0,
+            ascii=True,
+            bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]',
+        )
+        try:
+            for pl in pbar:
+                ok = self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
+                if not ok:
+                    failed += 1
+                rows.append({
+                    'region': pl.region_id,
+                    'id': pl.prefix_list_id,
+                    'status': 'ok' if ok else 'failed',
+                    'info': f"{len(client_ip_list)} IP(s)",
+                    'name': pl.prefix_list_name or '',
+                })
+        finally:
+            pbar.close()
 
         self._print_prefix_operation('Alibaba Cloud Prefix Update', rows)
 
@@ -125,8 +140,6 @@ class Prefix:
         if not self.prefix_list:
             return 1
 
-        print_header('Alibaba Cloud Prefix List')
-
         any_error = False
 
         logging.info("[aliyun] fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
@@ -139,13 +152,26 @@ class Prefix:
 
             futures = {executor.submit(fetch_entries, prefix, i): i for i, prefix in enumerate(self.prefix_list)}
 
-            for future in as_completed(futures):
-                try:
-                    idx, prefix, entries = future.result()
-                    results[idx] = (prefix, entries)
-                except Exception:
-                    logging.exception("[aliyun] Error searching prefix list in region %s", futures[future])
+            with tqdm(
+                total=len(futures),
+                desc='Fetching prefix list details',
+                unit='task',
+                ncols=84,
+                mininterval=0.3,
+                maxinterval=1.0,
+                ascii=True,
+                bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]',
+            ) as pbar:
+                for future in as_completed(futures):
+                    try:
+                        idx, prefix, entries = future.result()
+                        results[idx] = (prefix, entries)
+                    except Exception:
+                        logging.exception("[aliyun] Error searching prefix list in region %s", futures[future])
+                    finally:
+                        pbar.update(1)
 
+        print_header('Alibaba Cloud Prefix List')
         any_error = self._print_prefix_list_results(results)
 
         logging.info("[aliyun] prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
