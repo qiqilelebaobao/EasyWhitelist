@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401 (echo_ok/info available for future use)
+from ..util.cli import echo_ok, echo_err, echo_info, print_header, print_row, print_tail
 
 from .region import Regions
 from .prefix import Prefix
@@ -25,6 +25,16 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         4 - failed to get/create/update prefix list
         5 - failed to create security group rule
     """
+    def _print_init_summary(region: Optional[str], prefix_list_id: Optional[str], status: str, detail: str):
+        print_header('Alibaba Cloud Template Init')
+        print_row(idx=1,
+                  region=region or '',
+                  id=prefix_list_id or '',
+                  ctime=status,
+                  addrs=detail,
+                  name='whitelist')
+        print_tail()
+
     if not sg_id:
         echo_err("Security group ID is required for initialization")
         return 1
@@ -38,6 +48,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         return 2
 
     if not sg.region_id:
+        echo_err(f"Security group {sg_id} not found in any region")
         return 3
 
     # 2. Get or create the prefix list and update it with the current client IP
@@ -51,6 +62,8 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         echo_err("Failed to create security group rule with prefix list")
         return 5
 
+    echo_ok("Successfully initialized template-based whitelist")
+    _print_init_summary(sg.region_id, prefix.current_prefix_list.prefix_list_id, 'ok', 'whitelist initialized')
     return 0
 
 

@@ -91,21 +91,28 @@ class Prefix:
         client_ip_list = get_iplist(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
-        print_update_banner(f"Update {len(self.prefix_list)} Prefix List(s)")
-        echo_info(f"Detected {len(client_ip_list)} IP(s):")
-        print_ip_list(client_ip_list)
-        echo_info(f"Target regions: {', '.join(pl.region_id for pl in self.prefix_list)}")
-        print()
-
+        rows = []
         failed = 0
         for pl in self.prefix_list:
             ok = self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
-            print_region_result(pl.region_id, pl.prefix_list_id, ok)
             if not ok:
                 failed += 1
+            rows.append({
+                'region': pl.region_id,
+                'id': pl.prefix_list_id,
+                'status': 'ok' if ok else 'failed',
+                'info': f"{len(client_ip_list)} IP(s)",
+                'name': pl.prefix_list_name or '',
+            })
 
-        print_summary(len(self.prefix_list), failed)
-        return 0 if failed == 0 else 1
+        self._print_prefix_operation('Alibaba Cloud Prefix Update', rows)
+
+        if failed == 0:
+            echo_ok(f"Done: {len(self.prefix_list)}/{len(self.prefix_list)} prefix list(s) updated successfully")
+            return 0
+
+        echo_err(f"Done: {len(self.prefix_list) - failed}/{len(self.prefix_list)} succeeded, {failed} failed")
+        return 1
 
     def print_prefix_list(self) -> int:
         """Print a tabular summary of all prefix lists in the current region.
@@ -247,20 +254,29 @@ class Prefix:
         client_ip_list = get_iplist(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
-        print_update_banner("Init Prefix List")
-        echo_info(f"Detected {len(client_ip_list)} IP(s):")
-        print_ip_list(client_ip_list)
-        echo_info(f"Target: {self.current_prefix_list.prefix_list_id} in {self.current_prefix_list.region_id}")
-        print()
-
-        ok = self._modify_one_prefix_list(
+        status = "ok" if self._modify_one_prefix_list(
             self.current_prefix_list.region_id,
             self.current_prefix_list.prefix_list_id,
             client_ip_list,
-        )
-        print_region_result(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, ok)
-        print_summary(1, 0 if ok else 1)
-        return 0 if ok else 1
+        ) else "failed"
+
+        self._print_prefix_operation('Alibaba Cloud Prefix Init', [
+            {
+                'region': self.current_prefix_list.region_id,
+                'id': self.current_prefix_list.prefix_list_id,
+                'status': status,
+                'info': f"{len(client_ip_list)} IP(s)"
+                        if status == 'ok' else 'update failed',
+                'name': self.current_prefix_list.prefix_list_name or '',
+            }
+        ])
+
+        if status == 'ok':
+            echo_ok(f"Prefix list {self.current_prefix_list.prefix_list_id} updated")
+            return 0
+
+        echo_err(f"Prefix list {self.current_prefix_list.prefix_list_id} update failed")
+        return 1
 
     def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:
         """Send a ModifyPrefixList request for a single prefix list.
@@ -286,6 +302,20 @@ class Prefix:
             logging.debug(json.dumps(resp.body.to_map()))
             return True
         return False
+
+    def _print_prefix_operation(self, title: str, rows: List[Dict[str, str]]) -> None:
+        """Print a compact table for prefix operation results."""
+        print_header(title)
+        for i, row in enumerate(rows, start=1):
+            print_row(
+                idx=i,
+                region=row.get("region", ""),
+                id=row.get("id", ""),
+                ctime=row.get("status", ""),
+                addrs=row.get("info", ""),
+                name=row.get("name", ""),
+            )
+        print_tail()
 
     def _fetch_prefix_lists(self, region_id: str) -> List[Dict[str, Any]]:
         """Call the ECS DescribePrefixLists API to list all prefix lists in the given region.
@@ -318,8 +348,8 @@ class Prefix:
                 if not next_token:
                     break
             return all_entries
-        except Exception:
-            logging.exception("[aliyun] Error when describing prefix lists")
+        except Exception as err:
+            logging.error("[aliyun] Failed to describe prefix lists in region %s, err=%s", region_id, err)
             return []
 
     def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> List[PrefixList]:
@@ -347,8 +377,8 @@ class Prefix:
         def _search_region_safe(region_id: str) -> List[PrefixList]:
             try:
                 return _search_region(region_id)
-            except Exception:
-                logging.exception("[aliyun] Error searching prefix list in region %s", region_id)
+            except Exception as err:
+                logging.error("[aliyun] Error searching prefix list in region %s, err=%s", region_id, err)
                 return []
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids) or 1)) as executor:
