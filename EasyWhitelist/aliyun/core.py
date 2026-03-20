@@ -25,14 +25,14 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         4 - failed to get/create/update prefix list
         5 - failed to create security group rule
     """
-    def _print_init_summary(region: Optional[str], prefix_list_id: Optional[str], status: str, detail: str):
+    def _print_init_summary(region: Optional[str], prefix_list_id: Optional[str], ctime: str, addrs: str, name: str) -> None:
         print_header('Alibaba Cloud Template Init')
         print_row(idx=1,
                   region=region or '',
                   id=prefix_list_id or '',
-                  ctime=status,
-                  addrs=detail,
-                  name='whitelist')
+                  ctime=ctime,
+                  addrs=addrs,
+                  name=name)
         print_tail()
 
     if not sg_id:
@@ -63,7 +63,11 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         return 5
 
     echo_ok("Successfully initialized template-based whitelist")
-    _print_init_summary(sg.region_id, prefix.current_prefix_list.prefix_list_id, 'ok', 'whitelist initialized')
+    _print_init_summary(sg.region_id,
+                        prefix.current_prefix_list.prefix_list_id,
+                        prefix.current_prefix_list.creation_time if prefix.current_prefix_list.creation_time else '',
+                        "n/a",
+                        prefix.current_prefix_list.prefix_list_name if prefix.current_prefix_list.prefix_list_name else '')
     return 0
 
 

@@ -260,17 +260,6 @@ class Prefix:
             client_ip_list,
         ) else "failed"
 
-        self._print_prefix_operation('Alibaba Cloud Prefix Init', [
-            {
-                'region': self.current_prefix_list.region_id,
-                'id': self.current_prefix_list.prefix_list_id,
-                'status': status,
-                'info': f"{len(client_ip_list)} IP(s)"
-                if status == 'ok' else 'update failed',
-                'name': self.current_prefix_list.prefix_list_name or '',
-            }
-        ])
-
         if status == 'ok':
             echo_ok(f"Prefix list {self.current_prefix_list.prefix_list_id} updated")
             return 0
