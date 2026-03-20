@@ -13,7 +13,7 @@ from ..util.nm import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS
 from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401
 from ..util.cli import print_header, print_row, print_separator, print_tail
 from ..util.cli import print_update_banner, print_ip_list, print_region_result, print_summary  # noqa: F401
-from ..detector.detectors import get_iplist
+from ..detector.detectors import get_ip_list
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
 from .region import Regions
@@ -88,7 +88,7 @@ class Prefix:
             echo_err(f'No prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" found in any region — run init first')
             return 1
 
-        client_ip_list = get_iplist(self.proxy_port)
+        client_ip_list = get_ip_list(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
         rows = []
@@ -251,7 +251,7 @@ class Prefix:
             logging.error("[aliyun] Prefix list ID or region ID is not initialized")
             return 1
 
-        client_ip_list = get_iplist(self.proxy_port)
+        client_ip_list = get_ip_list(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
         status = "ok" if self._modify_one_prefix_list(

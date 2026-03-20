@@ -7,7 +7,7 @@ from enum import Enum, auto
 
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
-from ..detector.detectors import get_iplist
+from ..detector.detectors import get_ip_list
 from ..util.nm import TEMPLATE_NAME_PREFIX, TEMPLATE_ID_PREFIX
 from ..util.cli import print_header, print_row, print_tail
 
@@ -99,7 +99,7 @@ def set_template(common_client, target_id, proxy: Optional[int] = None):
         logging.warning("[template] set failed, reason=wrong template id, hint=check prefix")
         return False
 
-    client_iplist = get_iplist(proxy)
+    client_iplist = get_ip_list(proxy)
 
     if _modify_template_address(common_client, target_id, client_iplist):
         print(f"✅ [成功] 模板 {target_id} 已更新 -> {client_iplist}")
@@ -147,7 +147,7 @@ def create_template(common_client, proxy=None):
             set_template(common_client, template_id)
             return template_id, CreateResult.UPDATED_EXISTING
 
-        ip_list = get_iplist(proxy)
+        ip_list = get_ip_list(proxy)
         random_suffix = random.randint(1, 9999)
         template_name = f"{TEMPLATE_NAME_PREFIX}{random_suffix:04d}"
         params = {
