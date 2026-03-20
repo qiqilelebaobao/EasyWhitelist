@@ -290,7 +290,7 @@ class Prefix:
             A list of prefix list dicts; empty list on network or API error.
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
-        logging.info("[aliyun] Retrieving prefix lists in region %s...", region_id)
+        logging.debug("[aliyun] Retrieving prefix lists in region %s...", region_id)
         runtime = _runtime(self.proxy_port is not None)
         all_entries: list = []
         next_token: Optional[str] = None
@@ -346,9 +346,15 @@ class Prefix:
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids) or 1)) as executor:
             logging.info("[aliyun] submitting search tasks for (%s), total %d regions ...",
                          self.regions.region_ids, len(self.regions.region_ids))
-            for result in executor.map(_search_region_safe, self.regions.region_ids):
-                logging.info("[aliyun] completed search in one region, found %d matching prefix list(s)", len(result))
-                prefix_list.extend(result)
+            futures = {executor.submit(_search_region_safe, region_id): region_id for region_id in self.regions.region_ids}
+            for future in as_completed(futures):
+                region_id = futures[future]
+                try:
+                    result = future.result()
+                    logging.debug("[aliyun] completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
+                    prefix_list.extend(result)
+                except Exception:
+                    logging.exception("[aliyun] Error searching prefix list in region %s", region_id)
 
         logging.info("[aliyun] completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
                      len(prefix_list), len(self.regions.region_ids))
