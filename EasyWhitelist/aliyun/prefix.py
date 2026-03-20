@@ -122,7 +122,7 @@ class Prefix:
 
         any_error = False
 
-        logging.info("[aliyun] fetching prefix list details with up to %d concurrent workers...", DEFAULT_CONCURRENT_WORKERS)
+        logging.info("[aliyun] fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1)) as executor:
             results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]] = [None] * len(self.prefix_list)
@@ -130,10 +130,7 @@ class Prefix:
             def fetch_entries(prefix: PrefixList, index: int):
                 return index, prefix, self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id)
 
-            futures = {
-                executor.submit(fetch_entries, prefix, i): i
-                for i, prefix in enumerate(self.prefix_list)
-            }
+            futures = {executor.submit(fetch_entries, prefix, i): i for i, prefix in enumerate(self.prefix_list)}
 
             for future in as_completed(futures):
                 try:
@@ -347,7 +344,10 @@ class Prefix:
                 return []
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids) or 1)) as executor:
+            logging.info("[aliyun] submitting search tasks for (%s), total %d regions ...",
+                         self.regions.region_ids, len(self.regions.region_ids))
             for result in executor.map(_search_region_safe, self.regions.region_ids):
+                logging.info("[aliyun] completed search in one region, found %d matching prefix list(s)", len(result))
                 prefix_list.extend(result)
 
         logging.info("[aliyun] completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
@@ -409,7 +409,7 @@ class Prefix:
             )
             describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
-            logging.debug("[aliyun] prefix list entries: %s", current_entries)
+            logging.info("[aliyun] prefix list entries: %s", current_entries)
         except Exception:
             logging.exception("[aliyun] Failed to describe prefix list attributes for %s", prefix_list_id)
             return None
