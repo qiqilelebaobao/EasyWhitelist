@@ -139,7 +139,18 @@ class Prefix:
                 except Exception:
                     logging.exception("[aliyun] Error searching prefix list in region %s", futures[future])
 
+        any_error = self._print_prefix_list_results(results)
+
+        logging.info("[aliyun] prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
+        print_tail()
+
+        return 2 if any_error else 0
+
+    def _print_prefix_list_results(self, results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]]) -> bool:
+        """Render prefix list query results in table form and return any-error flag."""
         row = 0
+        any_error = False
+
         for item in results:
             if item is None:
                 continue
@@ -161,10 +172,7 @@ class Prefix:
                 print_row(addrs=extra)
             print_separator()
 
-        logging.info("[aliyun] prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
-        print_tail()
-
-        return 2 if any_error else 0
+        return any_error
 
     def _ensure_prefix_list(self, region_id: str) -> Optional[PrefixList]:
         """Find an existing prefix list in the given region (name starts with TEMPLATE_NAME_PREFIX),
