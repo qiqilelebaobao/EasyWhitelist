@@ -7,10 +7,10 @@ _CYAN = "\033[36m"
 
 COLS = {
     "idx": 5,
-    "region": 20,
-    "id": 30,
-    "ctime": 30,
-    "addrs": 60,
+    "region": 16,
+    "id": 25,
+    "ctime": 20,
+    "addrs": 40,
     "name": 30,
 }
 HEADER_WIDTH = sum(COLS.values())

@@ -400,14 +400,26 @@ class Prefix:
             logging.info("[aliyun] submitting search tasks for (%s), total %d regions ...",
                          self.regions.region_ids, len(self.regions.region_ids))
             futures = {executor.submit(_search_region_safe, region_id): region_id for region_id in self.regions.region_ids}
-            for future in as_completed(futures):
-                region_id = futures[future]
-                try:
-                    result = future.result()
-                    logging.debug("[aliyun] completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
-                    prefix_list.extend(result)
-                except Exception:
-                    logging.exception("[aliyun] Error searching prefix list in region %s", region_id)
+            with tqdm(
+                total=len(futures),
+                desc='Searching prefix lists',
+                unit='region',
+                ncols=84,
+                mininterval=0.3,
+                maxinterval=1.0,
+                ascii=True,
+                bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]',
+            ) as pbar:
+                for future in as_completed(futures):
+                    region_id = futures[future]
+                    try:
+                        result = future.result()
+                        logging.debug("[aliyun] completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
+                        prefix_list.extend(result)
+                    except Exception:
+                        logging.exception("[aliyun] Error searching prefix list in region %s", region_id)
+                    finally:
+                        pbar.update(1)
 
         logging.info("[aliyun] completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
                      len(prefix_list), len(self.regions.region_ids))
