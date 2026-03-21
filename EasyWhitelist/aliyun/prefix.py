@@ -181,13 +181,10 @@ class Prefix:
 
     def _print_prefix_list_results(self, results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]]) -> bool:
         """Render prefix list query results in table form and return any-error flag."""
-        row = 0
         any_error = False
 
-        for item in results:
-            if item is None:
-                continue
-            row += 1
+        items = [item for item in results if item is not None]
+        for idx, item in enumerate(items, start=1):
             prefix, entries = item
             if entries is None:
                 any_error = True
@@ -195,7 +192,7 @@ class Prefix:
             cidrs = [e['Cidr'] for e in entries]
             first = cidrs[0] if cidrs else ""
             suffix = f" (+{len(cidrs) - 1})" if len(cidrs) > 1 else ""
-            print_row(idx=row,
+            print_row(idx=idx,
                       region=prefix.region_id,
                       id=prefix.prefix_list_id,
                       ctime=prefix.creation_time,
@@ -203,7 +200,8 @@ class Prefix:
                       name=prefix.prefix_list_name)
             for extra in cidrs[1:]:
                 print_row(addrs=extra)
-            print_separator()
+            if idx != len(items):
+                print_separator()
 
         return any_error
 
