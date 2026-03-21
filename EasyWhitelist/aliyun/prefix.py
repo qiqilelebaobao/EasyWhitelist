@@ -205,32 +205,40 @@ class Prefix:
         return any_error
 
     def _ensure_prefix_list(self, region_id: str) -> Optional[PrefixList]:
-        """Find an existing prefix list in the given region (name starts with TEMPLATE_NAME_PREFIX),
-        or create one if none exists.
+        """高效查找或创建指定 region 的 prefix list，仅查目标 region，避免全局遍历。"""
+        # 优先用缓存
+        if self._prefix_list is not None:
+            for pl in self._prefix_list:
+                if pl.region_id == region_id:
+                    self.current_prefix_list = pl
+                    echo_ok(f"Reusing prefix list {pl.prefix_list_id} in {region_id}")
+                    return pl
 
-        Args:
-            region_id: Target Alibaba Cloud region.
+        # 只查目标 region
+        found = []
+        for entry in self._fetch_prefix_lists(region_id):
+            if entry['PrefixListName'].startswith(TEMPLATE_NAME_PREFIX):
+                found.append(PrefixList(entry['PrefixListId'], region_id, entry.get('CreationTime'), entry.get('PrefixListName')))
+        if found:
+            # 更新缓存
+            if self._prefix_list is None:
+                self._prefix_list = []
+            self._prefix_list.extend([pl for pl in found if pl not in self._prefix_list])
+            self.current_prefix_list = found[0]
+            echo_ok(f"Reusing prefix list {found[0].prefix_list_id} in {region_id}")
+            return found[0]
 
-        Returns:
-            PrefixList object on success; None if both lookup and creation fail.
-        """
-        # 1. Reuse the existing prefix list only if it was found in the same region as the security group.
-        #    Prefix lists are region-scoped; reusing one from a different region would have no effect.
-        if self.prefix_list and region_id in [pl.region_id for pl in self.prefix_list]:
-            self.current_prefix_list = next(pl for pl in self.prefix_list if pl.region_id == region_id)
-            echo_ok(f"Reusing prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
+        # 没有则创建
+        self.current_prefix_list = self._create_prefix_list(region_id)
+        if self.current_prefix_list:
+            if self._prefix_list is None:
+                self._prefix_list = []
+            self._prefix_list.append(self.current_prefix_list)
+            echo_ok(f"Created prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
+            return self.current_prefix_list
 
-        # 2. Create a new prefix list in the target region
-        else:
-            self.current_prefix_list = self._create_prefix_list(region_id)
-            if self.current_prefix_list:
-                echo_ok(f"Created prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
-
-        if not self.current_prefix_list:
-            echo_err(f'Failed to find or create a prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" in {region_id}')
-            return None
-
-        return self.current_prefix_list
+        echo_err(f'Failed to find or create a prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" in {region_id}')
+        return None
 
     def _create_prefix_list(self, region_id: str, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[PrefixList]:
         """Create a prefix list in the given region by calling the ECS CreatePrefixList API.
