@@ -120,10 +120,9 @@ class Prefix:
         finally:
             pbar.close()
 
-        self._print_prefix_operation('Alibaba Cloud Prefix Update', rows)
-
         if failed == 0:
             echo_ok(f"Done: {len(self.prefix_list)}/{len(self.prefix_list)} prefix list(s) updated successfully")
+            self._print_prefix_operation('Alibaba Cloud Prefix Update', rows)
             return 0
 
         echo_err(f"Done: {len(self.prefix_list) - failed}/{len(self.prefix_list)} succeeded, {failed} failed")
