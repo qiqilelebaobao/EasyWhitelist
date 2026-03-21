@@ -1,10 +1,12 @@
 import json
 import logging
 from typing import Dict, Any, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
+from ..util.defaults import DEFAULT_CONCURRENT_WORKERS
 from ..util.cli import echo_ok, echo_err
 
 from .defaults import DEFAULT_REGION_1, DEFAULT_VPC_ID, _runtime, _ecs_api_call
@@ -56,11 +58,17 @@ class SecurityGroup:
         Returns:
             A (sg_dict, region_id) tuple on success; (None, None) if not found.
         """
-        for region_id in self.regions.region_ids:
-            sg = self._find_in_region(region_id)
-            if sg:
-                return sg, region_id
-
+        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids))) as executor:
+            future_to_region = {executor.submit(self._find_in_region, region_id): region_id for region_id in self.regions.region_ids}
+            for future in as_completed(future_to_region):
+                try:
+                    sg = future.result()
+                except Exception as e:
+                    logging.error(f"Exception when searching security group in region {future_to_region[future]}: {e}")
+                    continue
+                if sg:
+                    logging.info(f"Security group {self.sg_id} found in region {future_to_region[future]}")
+                    return sg, future_to_region[future]
         return None, None
 
     def add_prefix_list_rule(self, prefix_list_id: str) -> bool:
@@ -161,5 +169,5 @@ class SecurityGroup:
                 page_number += 1
             return all_sgs
         except Exception:
-            logging.exception("[aliyun] Error when describing security groups")
+            logging.error("[aliyun] Error when describing security groups")
             return []
