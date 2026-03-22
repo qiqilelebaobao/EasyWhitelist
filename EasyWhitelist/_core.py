@@ -1,10 +1,20 @@
 import sys
 import logging
 
+from .util.app import create_app_dir
 from .config import arg
 from .config.log import set_log
 from .tcloud.core import t_main
 from .aliyun.core import aliyun_main
+
+
+def init_app():
+    """Initialize the application, including creating necessary directories and setting up logging."""
+    app_dir = create_app_dir()
+    if app_dir is None:
+        logging.error("[init] Failed to initialize application directory, exiting.")
+        sys.exit(1)
+    logging.info(f"[init] Application directory initialized at: {app_dir}")
 
 
 def main() -> None:
@@ -13,6 +23,8 @@ def main() -> None:
 
     set_log(args.verbose)
     logging.info("[cli] arg parsed, detail=%s", args)
+
+    init_app()
 
     cloud_provider = args.cloud
     logging.info("[cli] cloud provider selected, provider=%s", cloud_provider.upper())
