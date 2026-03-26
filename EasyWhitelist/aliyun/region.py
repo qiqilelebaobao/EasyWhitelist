@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from Tea.exceptions import UnretryableException, TeaException
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
@@ -25,8 +25,7 @@ class Regions:
             KeyError: If the expected fields are missing from the response.
         """
         self.proxy_url = f"http://localhost:{proxy_port}" if proxy_port is not None else None
-        self.region_ids: List[str] = []
-        self.region_endpoints: List[str] = []
+        self.regions_list: List[Dict] = []
 
         try:
             client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION_1, proxy_port)
@@ -38,12 +37,9 @@ class Regions:
         runtime = _runtime(self.proxy_url is not None)
         try:
             response = client.describe_regions_with_options(describe_regions_request, runtime)
-            regions = response.body.to_map()['Regions']['Region']
-            logging.debug("[aliyun] DescribeRegions response: %s", regions)
-            # Extract region IDs and their corresponding API endpoints
-            self.region_ids = [region['RegionId'] for region in regions]
-            self.region_endpoints = [region['RegionEndpoint'] for region in regions]
+            self.regions_list: List[Dict] = response.body.to_map()['Regions']['Region']
+            logging.debug("[aliyun] DescribeRegions response: %s", self.regions_list)
         except (UnretryableException, TeaException, KeyError) as e:
             echo_err(f"Failed to describe regions: {e}")
-            logging.exception("[aliyun] Failed to describe regions")
+            logging.error("[aliyun] Failed to describe regions")
             raise

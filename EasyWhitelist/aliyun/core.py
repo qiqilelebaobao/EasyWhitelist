@@ -85,7 +85,7 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
 
     if target == "template":
         regions = Regions(proxy_port)
-        logging.info("[aliyun] fetched regions: %s", regions.region_ids)
+        logging.info("[aliyun] fetched regions: %s", regions.regions_list)
         prefix = Prefix(regions)
         logging.info("[aliyun] initialized Regions and Prefix instances for template operations")
 

@@ -3,12 +3,22 @@ import sqlite3
 import logging
 
 
-def init_db(app_dir: str) -> None:
+def init_db(app_dir: str) -> bool:
     """Initialize the database, including creating necessary tables if they don't exist."""
     try:
         db_path = os.path.join(app_dir, "whitelist.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+
+        # Create regions table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS regions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                cloud_provider TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        ''')
 
         # Create templates table
         cursor.execute('''
@@ -34,5 +44,7 @@ def init_db(app_dir: str) -> None:
 
         conn.commit()
         logging.info(f"[db] Database initialized successfully at {db_path}")
+        return True
     except Exception as e:
         logging.error(f"[db] Failed to initialize database: {str(e)}")
+        return False

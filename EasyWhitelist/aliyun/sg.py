@@ -58,8 +58,8 @@ class SecurityGroup:
         Returns:
             A (sg_dict, region_id) tuple on success; (None, None) if not found.
         """
-        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids))) as executor:
-            future_to_region = {executor.submit(self._find_in_region, region_id): region_id for region_id in self.regions.region_ids}
+        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list))) as executor:
+            future_to_region = {executor.submit(self._find_in_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             for future in as_completed(future_to_region):
                 try:
                     sg = future.result()

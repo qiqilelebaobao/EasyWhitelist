@@ -401,10 +401,10 @@ class Prefix:
                 logging.error("[aliyun] Error searching prefix list in region %s, err=%s", region_id, err)
                 return []
 
-        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.region_ids) or 1)) as executor:
-            logging.info("[aliyun] submitting search tasks for (%s), total %d regions ...",
-                         self.regions.region_ids, len(self.regions.region_ids))
-            futures = {executor.submit(_search_region_safe, region_id): region_id for region_id in self.regions.region_ids}
+        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1)) as executor:
+            logging.info("[aliyun] submitting search tasks for (%d), total %d regions ...",
+                         min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1), len(self.regions.regions_list))
+            futures = {executor.submit(_search_region_safe, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             with tqdm(
                 total=len(futures),
                 desc=f'  {_GREEN}\u2714{_RST}  Searching prefix lists',
@@ -426,8 +426,9 @@ class Prefix:
                     finally:
                         pbar.update(1)
 
-        logging.info("[aliyun] completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
-                     len(prefix_list), len(self.regions.region_ids))
+        logging.info(
+            "[aliyun] completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
+            len(prefix_list), len(self.regions.regions_list))
         return prefix_list
 
     @staticmethod

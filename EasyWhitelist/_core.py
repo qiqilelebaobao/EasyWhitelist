@@ -16,7 +16,10 @@ def init_app_and_db():
         logging.error("[init] Failed to initialize application directory, exiting.")
         sys.exit(1)
     logging.info(f"[init] Application directory initialized at: {app_dir}")
-    init_db(app_dir)
+
+    if not init_db(app_dir):
+        logging.error("[init] Failed to initialize database, exiting.")
+        sys.exit(1)
     logging.info("[init] Database initialized successfully")
 
 
