@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict
 
 
@@ -111,7 +111,7 @@ def is_cache_fresh(app_dir: str, max_age_days: int = 1) -> bool:
     except ValueError:
         return False
 
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     if max_age_days < 0:
         return False
 
