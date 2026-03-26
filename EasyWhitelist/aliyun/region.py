@@ -100,12 +100,6 @@ class Regions:
         self.proxy_url = f"http://localhost:{proxy_port}" if proxy_port is not None else None
         self.regions_list: List[Dict] = []
 
-        try:
-            client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION_1, proxy_port)
-        except Exception:
-            logging.warning("[aliyun] Failed to create client for %s, falling back to %s", DEFAULT_REGION_1, DEFAULT_REGION_2)
-            client = ClientFactory.create_client(DEFAULT_REGION_2, proxy_port)
-
         if app_dir:
             try:
                 if _is_cache_fresh(app_dir):
@@ -114,6 +108,12 @@ class Regions:
                     return
             except Exception as db_exc:
                 logging.warning(f"[db] Cache check failed, will fetch from network: {db_exc}")
+
+        try:
+            client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION_1, proxy_port)
+        except Exception:
+            logging.warning("[aliyun] Failed to create client for %s, falling back to %s", DEFAULT_REGION_1, DEFAULT_REGION_2)
+            client = ClientFactory.create_client(DEFAULT_REGION_2, proxy_port)
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = _runtime(self.proxy_url is not None)
