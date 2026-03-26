@@ -1,4 +1,6 @@
+import os
 import logging
+import sqlite3
 from typing import List, Optional, Dict
 
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
@@ -11,11 +13,14 @@ from .defaults import _runtime, DEFAULT_REGION_1, DEFAULT_REGION_2
 
 def _load_regions(app_dir: Optional[str], proxy_port: Optional[int]) -> List[Dict]:
     """Load regions from cache when fresh, otherwise fetch from Aliyun API."""
+    conn = None
     if app_dir:
+        db_path = os.path.join(app_dir, "whitelist.db")
+        conn = sqlite3.connect(db_path)
         try:
-            if is_cache_fresh(app_dir):
+            if is_cache_fresh(app_dir, conn=conn):
                 logging.info("[db] Loaded regions from cache")
-                return load_cached_regions(app_dir)
+                return load_cached_regions(app_dir, conn=conn)
         except Exception as db_exc:
             logging.warning(f"[db] Cache check failed, will fetch from network: {db_exc}")
 
@@ -32,11 +37,14 @@ def _load_regions(app_dir: Optional[str], proxy_port: Optional[int]) -> List[Dic
     regions = response.body.to_map()['Regions']['Region']
     logging.debug("[aliyun] DescribeRegions response: %s", regions)
 
-    if app_dir:
+    if app_dir and conn is not None:
         try:
-            upsert_regions(app_dir, regions, cloud_provider='aliyun')
+            upsert_regions(app_dir, conn, regions, cloud_provider='aliyun')
         except Exception as db_exc:
             logging.warning(f"[aliyun] Failed to cache regions to db: {db_exc}")
+
+    if conn is not None:
+        conn.close()
 
     return regions
 

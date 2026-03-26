@@ -59,8 +59,11 @@ def _db_path(app_dir: str) -> str:
     return os.path.join(app_dir, "whitelist.db")
 
 
-def upsert_regions(app_dir: str, regions: List[Dict], cloud_provider: str = 'aliyun') -> None:
-    with sqlite3.connect(_db_path(app_dir)) as conn:
+def upsert_regions(app_dir: str,
+                   conn: sqlite3.Connection,
+                   regions: List[Dict], cloud_provider: str = 'aliyun',
+                   ) -> None:
+    try:
         cursor = conn.cursor()
         for region in regions:
             region_id = region.get('RegionId', '')
@@ -78,30 +81,41 @@ def upsert_regions(app_dir: str, regions: List[Dict], cloud_provider: str = 'ali
                 """,
                 (region_id, region.get('LocalName', ''), region.get('RegionEndpoint', ''), cloud_provider)
             )
+            conn.commit()
+    except Exception as e:
+        logging.error(f"[db] Failed to upsert regions: {e}")
 
 
-def load_cached_regions(app_dir: str) -> List[Dict]:
-    with sqlite3.connect(_db_path(app_dir)) as conn:
+def load_cached_regions(app_dir: str, conn: sqlite3.Connection) -> List[Dict]:
+
+    try:
         cursor = conn.cursor()
         cursor.execute("SELECT region_id, name, region_endpoint, cloud_provider FROM regions")
         rows = cursor.fetchall()
 
-    return [
-        {
-            'RegionId': r[0],
-            'LocalName': r[1],
-            'RegionEndpoint': r[2],
-            'CloudProvider': r[3],
-        }
-        for r in rows
-    ]
+        return [
+            {
+                'RegionId': r[0],
+                'LocalName': r[1],
+                'RegionEndpoint': r[2],
+                'CloudProvider': r[3],
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        logging.error(f"[db] Failed to load cached regions: {e}")
+        return []
 
 
-def is_cache_fresh(app_dir: str, max_age_days: int = 1) -> bool:
-    with sqlite3.connect(_db_path(app_dir)) as conn:
+def is_cache_fresh(app_dir: str, conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
+
+    try:
         cursor = conn.cursor()
         cursor.execute("SELECT date(MAX(updated_at)) FROM regions")
         row = cursor.fetchone()
+    except Exception as e:
+        logging.error(f"[db] Failed to check cache freshness: {e}")
+        return False
 
     if not row or not row[0]:
         return False
