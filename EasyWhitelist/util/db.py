@@ -18,7 +18,8 @@ def init_db(app_dir: str) -> bool:
                 name TEXT,
                 region_endpoint TEXT,
                 cloud_provider TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
         ''')
 
