@@ -2,7 +2,7 @@ import os
 import logging
 
 
-def create_app_dir(app_dir_name="EasyWhitelist"):
+def generate_app_directory(app_dir_name="EasyWhitelist"):
     """
     跨平台在用户目录下创建 APP 专属目录
     :param app_dir_name: 自定义 APP 目录名（如 "MyMovieDB"）

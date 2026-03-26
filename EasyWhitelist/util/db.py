@@ -14,7 +14,9 @@ def init_db(app_dir: str) -> bool:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS regions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
+                region_id TEXT UNIQUE NOT NULL,
+                name TEXT,
+                region_endpoint TEXT,
                 cloud_provider TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )

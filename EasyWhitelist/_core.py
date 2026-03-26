@@ -1,7 +1,7 @@
 import sys
 import logging
 
-from .util.app import create_app_dir
+from .util.app import generate_app_directory
 from .util.db import init_db
 from .config import arg
 from .config.log import set_log
@@ -11,7 +11,7 @@ from .aliyun.core import aliyun_main
 
 def init_app_and_db():
     """Initialize the application, including creating necessary directories and setting up logging."""
-    app_dir = create_app_dir()
+    app_dir = generate_app_directory()
     if app_dir is None:
         logging.error("[init] Failed to initialize application directory, exiting.")
         sys.exit(1)
