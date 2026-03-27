@@ -41,13 +41,12 @@ def upsert_regions(app_dir: str,
                    regions: List[Dict], cloud_provider: str = 'aliyun',
                    ) -> None:
     try:
-        logging.info(f"[db] Upserting {len(regions)} regions into database for cloud provider: {cloud_provider}")
+        now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         for region in regions:
             region_id = region.get('RegionId', '')
             if not region_id:
                 continue
-            now_iso = datetime.now(timezone.utc).isoformat()
             cursor.execute(
                 """
                 INSERT INTO regions (region_id, name, region_endpoint, cloud_provider, created_at, updated_at)
@@ -58,11 +57,17 @@ def upsert_regions(app_dir: str,
                     cloud_provider=excluded.cloud_provider,
                     updated_at=excluded.updated_at
                 """,
-                (region_id, region.get('LocalName', ''), region.get('RegionEndpoint', ''), cloud_provider, now_iso, now_iso)
+                (region_id,
+                 region.get('LocalName', ''),
+                 region.get('RegionEndpoint', ''),
+                 cloud_provider,
+                 now_iso,
+                 now_iso)
             )
         conn.commit()
     except Exception as e:
         logging.error(f"[db] Failed to upsert regions: {e}")
+        conn.rollback()
 
 
 def load_cached_regions(app_dir: str, conn: sqlite3.Connection) -> List[Dict]:
@@ -87,34 +92,31 @@ def load_cached_regions(app_dir: str, conn: sqlite3.Connection) -> List[Dict]:
 
 
 def is_cache_fresh(conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
-
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT date(MAX(updated_at)) FROM regions")
+        cursor.execute("SELECT MAX(updated_at) FROM regions")
         row = cursor.fetchone()
     except Exception as e:
-        logging.error(f"[db] Failed to check cache freshness: {e}")
+        logging.error("[db] Failed to check cache freshness: %s", e)
         return False
 
     if not row or not row[0]:
         return False
 
+    val = row[0].strip()
     try:
-        # 可能存储的字符串是日期 (YYYY-MM-DD) 或含时区的日期时间
-
-        normalized = row[0].replace("Z", "+00:00")
-        last_dt = datetime.fromisoformat(normalized)
+        if val.endswith("Z"):
+            val = val[:-1] + "+00:00"
+        last_dt = datetime.fromisoformat(val)
         if last_dt.tzinfo is None:
             last_dt = last_dt.replace(tzinfo=timezone.utc)
-        last_date = last_dt.astimezone().date()
-
-    except Exception:
+    except ValueError:
+        logging.warning("[db] unparseable updated_at: %s", val)
         return False
 
     local_today = datetime.now(timezone.utc).astimezone().date()
+
     if max_age_days < 0:
         return False
 
-    logging.info("last_date=%s local_today=%s max_age_days=%s", last_date, local_today, max_age_days)
-
-    return last_date > (local_today - timedelta(days=max_age_days))
+    return last_dt.astimezone().date() > (local_today - timedelta(days=max_age_days))
