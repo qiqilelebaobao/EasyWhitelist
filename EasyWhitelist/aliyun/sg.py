@@ -125,6 +125,10 @@ class SecurityGroup:
         sg, region_id = self._find_security_group()
         if sg and region_id:
             self.sg_name = sg.get("SecurityGroupName", "")
+            self.vpc_id = sg.get("VpcId", "")
+            self.sg_type = sg.get("SecurityGroupType", "")
+            self.description = sg.get("Description", "")
+
             region_name = self.regions.get_region_name(region_id) if hasattr(self.regions, 'get_region_name') else ''
             self._cache_security_group(region_id, region_name)
         return sg, region_id
@@ -156,7 +160,7 @@ class SecurityGroup:
             return
 
         try:
-            upsert_security_group(self.conn, self.sg_id, region_id, region_name)
+            upsert_security_group(self.conn, self.sg_id, "aliyun", region_id, self.sg_name, self.vpc_id, self.sg_type, self.description)
             logging.info("[db] Cached security group %s => %s/%s", self.sg_id, region_id, region_name)
         except Exception as e:
             logging.warning("[db] Failed to cache security group %s: %s", self.sg_id, e)

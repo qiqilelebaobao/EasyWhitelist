@@ -16,10 +16,10 @@ def init_db(app_dir: str) -> bool:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS regions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    cloud_provider TEXT NOT NULL,
                     region_id TEXT UNIQUE NOT NULL,
                     name TEXT,
                     region_endpoint TEXT,
-                    cloud_provider TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
@@ -29,9 +29,13 @@ def init_db(app_dir: str) -> bool:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS security_groups (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    cloud_provider TEXT NOT NULL,
                     sg_id TEXT UNIQUE NOT NULL,
                     region_id TEXT NOT NULL,
-                    region_name TEXT,
+                    sg_name TEXT,
+                    vpc_id TEXT,
+                    sg_type TEXT,
+                    description TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
@@ -83,21 +87,29 @@ def upsert_regions(conn: sqlite3.Connection,
 
 def upsert_security_group(conn: sqlite3.Connection,
                           sg_id: str,
+                          cloud_provider: str,
                           region_id: str,
-                          region_name: str = '') -> None:
+                          sg_name: str = '',
+                          vpc_id: str = '',
+                          sg_type: str = '',
+                          description: str = '') -> None:
     try:
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO security_groups (sg_id, region_id, region_name, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO security_groups (sg_id, region_id, sg_name, vpc_id, sg_type, description, cloud_provider, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(sg_id) DO UPDATE SET
                 region_id=excluded.region_id,
-                region_name=excluded.region_name,
+                sg_name=excluded.sg_name,
+                vpc_id=excluded.vpc_id,
+                sg_type=excluded.sg_type,
+                description=excluded.description,
+                cloud_provider=excluded.cloud_provider,
                 updated_at=excluded.updated_at
             """,
-            (sg_id, region_id, region_name, now_iso, now_iso)
+            (sg_id, region_id, sg_name, vpc_id, sg_type, description, cloud_provider, now_iso, now_iso)
         )
         conn.commit()
     except Exception as e:
@@ -129,14 +141,18 @@ def load_cached_regions(conn: sqlite3.Connection) -> List[Dict]:
 def load_cached_security_group(conn: sqlite3.Connection, sg_id: str) -> Dict[str, str]:
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT sg_id, region_id, region_name FROM security_groups WHERE sg_id = ?", (sg_id,))
+        cursor.execute("SELECT sg_id, region_id, sg_name, vpc_id, sg_type, description, cloud_provider FROM security_groups WHERE sg_id = ?", (sg_id,))
         row = cursor.fetchone()
         if not row:
             return {}
         return {
             'sg_id': row[0],
             'region_id': row[1],
-            'region_name': row[2],
+            'sg_name': row[2],
+            'vpc_id': row[3],
+            'sg_type': row[4],
+            'description': row[5],
+            'cloud_provider': row[6],
         }
     except Exception as e:
         logging.error(f"[db] Failed to load cached security group: {e}")
