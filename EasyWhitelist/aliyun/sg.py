@@ -1,7 +1,5 @@
 import json
 import logging
-import os
-import sqlite3
 from typing import Dict, Any, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -31,10 +29,9 @@ class SecurityGroup:
         self.sg_id = sg_id
         self.proxy_port = proxy_port
         self.sg_name = sg_name
+        self.conn = regions.conn
 
         self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
-        db_path = os.path.join(self.regions.app_dir, "whitelist.db") if self.regions.app_dir else None
-        self.conn = self._get_db_connection(db_path)
 
         # Try cached security group first
         self.region_id = None
@@ -133,16 +130,6 @@ class SecurityGroup:
             self._cache_security_group(region_id, region_name)
         return sg, region_id
 
-    def _get_db_connection(self, db_path: Optional[str]) -> Optional[sqlite3.Connection]:
-        """Create and return a sqlite3 connection, or None if not available."""
-        if not db_path:
-            return None
-        try:
-            return sqlite3.connect(db_path)
-        except Exception as e:
-            logging.warning("[db] Unable to open DB connection %s: %s", db_path, e)
-            return None
-
     def _load_cached_security_group(self) -> Dict[str, str]:
         """Load a cached security group from SQLite and return an empty dict if missing."""
         if not self.conn:
@@ -164,16 +151,6 @@ class SecurityGroup:
             logging.info("[db] Cached security group %s => %s/%s", self.sg_id, region_id, region_name)
         except Exception as e:
             logging.warning("[db] Failed to cache security group %s: %s", self.sg_id, e)
-
-    def _close(self) -> None:
-        """Close the DB connection if open."""
-        if self.conn:
-            try:
-                self.conn.close()
-            except Exception as e:
-                logging.warning("[db] Failed to close DB connection: %s", e)
-            finally:
-                self.conn = None
 
     def _fetch_security_groups(self, region_id) -> List[Dict[str, Any]]:
         """Retrieve ALL security groups in the given region using page-based pagination.
@@ -211,7 +188,3 @@ class SecurityGroup:
         except Exception:
             logging.error("[aliyun] Error when describing security groups")
             return []
-
-    def __del__(self):
-        """Ensure the DB connection is closed when object is garbage-collected."""
-        self._close()

@@ -51,7 +51,7 @@ def init_db(app_dir: str) -> bool:
                     source_type TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    UNIQUE(normalized_cidr, source_region, source_type)
+                    UNIQUE(raw_ip)
                 )
             ''')
 
@@ -143,8 +143,10 @@ def upsert_ip_address(conn: sqlite3.Connection,
             """
             INSERT INTO ip_addresses (raw_ip, normalized_cidr, source_region, source_type, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(normalized_cidr, source_region, source_type) DO UPDATE SET
-                raw_ip=COALESCE(ip_addresses.raw_ip, excluded.raw_ip),
+            ON CONFLICT(raw_ip) DO UPDATE SET
+                normalized_cidr=excluded.normalized_cidr,
+                source_region=excluded.source_region,
+                source_type=excluded.source_type,
                 updated_at=excluded.updated_at
             """,
             (raw_ip, normalized_cidr, source_region, source_type, now_iso, now_iso)
