@@ -12,7 +12,7 @@ from ..util.defaults import DEFAULT_CONCURRENT_WORKERS
 from ..util.cli import echo_ok, echo_err
 from ..util.db import load_cached_security_group, upsert_security_group
 
-from .defaults import DEFAULT_REGION_1, DEFAULT_VPC_ID, _runtime, _ecs_api_call
+from .defaults import _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
 
@@ -31,8 +31,8 @@ class SecurityGroup:
         self.sg_id = sg_id
         self.proxy_port = proxy_port
         self.sg_name = sg_name
-        self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
 
+        self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
         db_path = os.path.join(self.regions.app_dir, "whitelist.db") if self.regions.app_dir else None
         self.conn = self._get_db_connection(db_path)
 
@@ -53,7 +53,39 @@ class SecurityGroup:
 
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
 
-    def _find_in_region(self, region_id: str) -> Optional[Dict[str, Any]]:
+    def add_prefix_list_rule(self, prefix_list_id: str) -> bool:
+        """Authorize inbound traffic from a prefix list into this security group.
+
+        Alibaba Cloud silently ignores duplicate rules.
+
+        Args:
+            prefix_list_id: The prefix list to allow.
+
+        Returns:
+            True on success; False on failure.
+        """
+        if not self.region_id or not self.client:
+            logging.error("[aliyun] region_id or client is not set; SecurityGroup was not found during initialization")
+            return False
+        # Build the AuthorizeSecurityGroup request object
+        create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(
+            region_id=self.region_id,
+            security_group_id=self.sg_id,
+            ip_protocol='all',
+            port_range='-1/-1',
+            source_prefix_list_id=prefix_list_id)
+        runtime = _runtime(self.proxy_port is not None)
+        resp = _ecs_api_call(
+            lambda: self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime),  # type: ignore[union-attr]
+            "creating security group rule",
+        )
+        if resp is None:
+            return False
+        logging.debug(json.dumps(resp.body.to_map()))
+        echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
+        return True
+
+    def _search_security_group_by_region(self, region_id: str) -> Optional[Dict[str, Any]]:
         """Search for self.sg_id in a single region.
 
         Args:
@@ -76,7 +108,7 @@ class SecurityGroup:
             A (sg_dict, region_id) tuple on success; (None, None) if not found.
         """
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list))) as executor:
-            future_to_region = {executor.submit(self._find_in_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
+            future_to_region = {executor.submit(self._search_security_group_by_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             for future in as_completed(future_to_region):
                 try:
                     sg = future.result()
@@ -129,7 +161,7 @@ class SecurityGroup:
         except Exception as e:
             logging.warning("[db] Failed to cache security group %s: %s", self.sg_id, e)
 
-    def close(self) -> None:
+    def _close(self) -> None:
         """Close the DB connection if open."""
         if self.conn:
             try:
@@ -138,74 +170,6 @@ class SecurityGroup:
                 logging.warning("[db] Failed to close DB connection: %s", e)
             finally:
                 self.conn = None
-
-    def __del__(self):
-        """Ensure the DB connection is closed when object is garbage-collected."""
-        self.close()
-
-    def add_prefix_list_rule(self, prefix_list_id: str) -> bool:
-        """Authorize inbound traffic from a prefix list into this security group.
-
-        Alibaba Cloud silently ignores duplicate rules.
-
-        Args:
-            prefix_list_id: The prefix list to allow.
-
-        Returns:
-            True on success; False on failure.
-        """
-        if not self.region_id or not self.client:
-            logging.error("[aliyun] region_id or client is not set; SecurityGroup was not found during initialization")
-            return False
-        # Build the AuthorizeSecurityGroup request object
-        create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(
-            region_id=self.region_id,
-            security_group_id=self.sg_id,
-            ip_protocol='all',
-            port_range='-1/-1',
-            source_prefix_list_id=prefix_list_id)
-        runtime = _runtime(self.proxy_port is not None)
-        resp = _ecs_api_call(
-            lambda: self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime),  # type: ignore[union-attr]
-            "creating security group rule",
-        )
-        if resp is None:
-            return False
-        logging.debug(json.dumps(resp.body.to_map()))
-        echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
-        return True
-
-    def create_security_group(self, name: str = 'test_sg',
-                              description: str = 'test_sg_desc',
-                              region_id: str = DEFAULT_REGION_1,
-                              vpc_id: str = DEFAULT_VPC_ID) -> Optional[Dict[str, Any]]:
-        """Create a security group in the specified VPC and region.
-
-        Args:
-            name: Security group name.
-            description: Security group description.
-            region_id: Region ID.
-            vpc_id: VPC ID.
-
-        Returns:
-            Response dict on success; None on failure (logged).
-        """
-        # Create a client scoped to the target region; the instance-level self.client is bound
-        # to self.region_id and must not be reused here when region_id differs.
-        client: Ecs20140526Client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
-        # Build the CreateSecurityGroup request object
-        create_sg_request = ecs_20140526_models.CreateSecurityGroupRequest(
-            region_id=region_id, security_group_name=name, description=description, vpc_id=vpc_id
-        )
-        runtime = _runtime(self.proxy_port is not None)
-        resp = _ecs_api_call(
-            lambda: client.create_security_group_with_options(create_sg_request, runtime),
-            "creating security group",
-        )
-        if resp is None:
-            return None
-        logging.debug(json.dumps(resp.body.to_map()))
-        return resp.body.to_map()
 
     def _fetch_security_groups(self, region_id) -> List[Dict[str, Any]]:
         """Retrieve ALL security groups in the given region using page-based pagination.
@@ -243,3 +207,7 @@ class SecurityGroup:
         except Exception:
             logging.error("[aliyun] Error when describing security groups")
             return []
+
+    def __del__(self):
+        """Ensure the DB connection is closed when object is garbage-collected."""
+        self._close()
