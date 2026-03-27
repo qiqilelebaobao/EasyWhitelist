@@ -2,7 +2,7 @@ import os
 import sqlite3
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 
 def init_db(app_dir: str) -> bool:
@@ -38,6 +38,20 @@ def init_db(app_dir: str) -> bool:
                     description TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
+                )
+            ''')
+
+            # Create IP address history table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ip_addresses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    raw_ip TEXT,
+                    normalized_cidr TEXT NOT NULL,
+                    source_region TEXT,
+                    source_type TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(normalized_cidr, source_region, source_type)
                 )
             ''')
 
@@ -114,6 +128,30 @@ def upsert_security_group(conn: sqlite3.Connection,
         conn.commit()
     except Exception as e:
         logging.error(f"[db] Failed to upsert security group: {e}")
+        conn.rollback()
+
+
+def upsert_ip_address(conn: sqlite3.Connection,
+                      raw_ip: Optional[str],
+                      normalized_cidr: str,
+                      source_region: Optional[str] = None,
+                      source_type: Optional[str] = None) -> None:
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO ip_addresses (raw_ip, normalized_cidr, source_region, source_type, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(normalized_cidr, source_region, source_type) DO UPDATE SET
+                raw_ip=COALESCE(ip_addresses.raw_ip, excluded.raw_ip),
+                updated_at=excluded.updated_at
+            """,
+            (raw_ip, normalized_cidr, source_region, source_type, now_iso, now_iso)
+        )
+        conn.commit()
+    except Exception as e:
+        logging.error(f"[db] Failed to upsert ip address: {e}")
         conn.rollback()
 
 

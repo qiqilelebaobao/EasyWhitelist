@@ -20,6 +20,7 @@ from ..detector.detectors import get_ip_list
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
+from ..util.db import upsert_ip_address
 
 
 class PrefixList:
@@ -283,7 +284,8 @@ class Prefix:
             return 1
 
         client_ip_list = get_ip_list(self.proxy_port)
-        client_ip_list = self._normalize_ip_list(client_ip_list)
+        source_region = self.current_prefix_list.region_id if self.current_prefix_list else None
+        client_ip_list = self._normalize_ip_list(client_ip_list, source_region)
 
         status = "ok" if self._modify_one_prefix_list(
             self.current_prefix_list.region_id,
@@ -431,19 +433,20 @@ class Prefix:
             len(prefix_list), len(self.regions.regions_list))
         return prefix_list
 
-    @staticmethod
-    def _normalize_ip_list(ip_list: List[str]) -> List[str]:
+    def _normalize_ip_list(self, ip_list: List[str], source_region: Optional[str] = None) -> List[str]:
         """Validate, normalize to CIDR strings, deduplicate, and limit to DEFAULT_MAX_ENTRIES.
 
         - Each element may be a bare IP address or a CIDR string.
         - Normalizes to canonical network form (e.g. '1.2.3.4' -> '1.2.3.4/32').
         - Preserves order, removes duplicates, and truncates to DEFAULT_MAX_ENTRIES.
         """
+
         if not ip_list:
             return []
 
         normalized: List[str] = []
         seen = set()
+
         for raw in ip_list:
             if raw is None:
                 continue
@@ -460,6 +463,14 @@ class Prefix:
                 continue
             seen.add(cidr)
             normalized.append(cidr)
+
+            # 记录到 SQLite，用于后续分析
+            if self.regions.conn:
+                try:
+                    upsert_ip_address(self.regions.conn, s, cidr, source_region, 'prefix')
+                except Exception as e:
+                    logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
+
             if len(normalized) >= DEFAULT_MAX_ENTRIES:
                 logging.warning("[aliyun] Truncating IP list to %d entries (DEFAULT_MAX_ENTRIES)", DEFAULT_MAX_ENTRIES)
                 break
