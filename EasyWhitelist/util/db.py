@@ -25,6 +25,18 @@ def init_db(app_dir: str) -> bool:
                 )
             ''')
 
+            # Create security group cache table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS security_groups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    sg_id TEXT UNIQUE NOT NULL,
+                    region_id TEXT NOT NULL,
+                    region_name TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            ''')
+
         logging.info(f"[db] Database initialized successfully at {db_path}")
         return True
     except Exception as e:
@@ -70,7 +82,31 @@ def upsert_regions(app_dir: str,
         conn.rollback()
 
 
-def load_cached_regions(app_dir: str, conn: sqlite3.Connection) -> List[Dict]:
+def upsert_security_group(conn: sqlite3.Connection,
+                          sg_id: str,
+                          region_id: str,
+                          region_name: str = '') -> None:
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO security_groups (sg_id, region_id, region_name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(sg_id) DO UPDATE SET
+                region_id=excluded.region_id,
+                region_name=excluded.region_name,
+                updated_at=excluded.updated_at
+            """,
+            (sg_id, region_id, region_name, now_iso, now_iso)
+        )
+        conn.commit()
+    except Exception as e:
+        logging.error(f"[db] Failed to upsert security group: {e}")
+        conn.rollback()
+
+
+def load_cached_regions(conn: sqlite3.Connection) -> List[Dict]:
 
     try:
         cursor = conn.cursor()
@@ -89,6 +125,23 @@ def load_cached_regions(app_dir: str, conn: sqlite3.Connection) -> List[Dict]:
     except Exception as e:
         logging.error(f"[db] Failed to load cached regions: {e}")
         return []
+
+
+def load_cached_security_group(conn: sqlite3.Connection, sg_id: str) -> Dict[str, str]:
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT sg_id, region_id, region_name FROM security_groups WHERE sg_id = ?", (sg_id,))
+        row = cursor.fetchone()
+        if not row:
+            return {}
+        return {
+            'sg_id': row[0],
+            'region_id': row[1],
+            'region_name': row[2],
+        }
+    except Exception as e:
+        logging.error(f"[db] Failed to load cached security group: {e}")
+        return {}
 
 
 def is_cache_fresh(conn: sqlite3.Connection, max_age_days: int = 1) -> bool:

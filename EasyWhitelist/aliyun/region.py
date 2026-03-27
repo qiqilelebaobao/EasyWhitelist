@@ -55,4 +55,12 @@ class Regions:
     def __init__(self, proxy_port: Optional[int] = None, app_dir: Optional[str] = None):
         """Initialize by loading regions from cache or cloud, and populating region list."""
         self.proxy_url = f"http://localhost:{proxy_port}" if proxy_port is not None else None
+        self.app_dir = app_dir
         self.regions_list = _load_regions(app_dir, proxy_port)
+
+    def get_region_name(self, region_id: str) -> str:
+        """Return LocalName/region_name for a known region_id (empty string if not found)."""
+        for r in self.regions_list or []:
+            if r.get('RegionId') == region_id:
+                return r.get('LocalName', '') or r.get('name', '') or ''
+        return ''

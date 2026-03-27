@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import sqlite3
 from typing import Dict, Any, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -8,6 +10,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.defaults import DEFAULT_CONCURRENT_WORKERS
 from ..util.cli import echo_ok, echo_err
+from ..util.db import load_cached_security_group, upsert_security_group
 
 from .defaults import DEFAULT_REGION_1, DEFAULT_VPC_ID, _runtime, _ecs_api_call
 from .region import Regions
@@ -30,10 +33,24 @@ class SecurityGroup:
         self.sg_name = sg_name
         self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
 
-        sg, self.region_id = self._find_security_group()
-        if not self.region_id or sg is None:
-            echo_err(f"Security group {sg_id} not found in any region")
-            return
+        db_path = os.path.join(self.regions.app_dir, "whitelist.db") if self.regions.app_dir else None
+        self.conn = self._get_db_connection(db_path)
+
+        # Try cached security group first
+        self.region_id = None
+        cached = self._load_cached_security_group()
+        if cached:
+            self.region_id = cached.get('region_id')
+            self.sg_name = self.sg_name or cached.get('region_name', '')
+            logging.info("[db] Security group %s loaded from cache: %s/%s", self.sg_id, self.region_id, self.sg_name)
+
+        # If not cached, do online lookup and cache result
+        if not self.region_id:
+            sg, self.region_id = self._find_security_group_and_cache()
+            if not self.region_id or sg is None:
+                echo_err(f"Security group {sg_id} not found in any region")
+                return
+
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
 
     def _find_in_region(self, region_id: str) -> Optional[Dict[str, Any]]:
@@ -70,6 +87,61 @@ class SecurityGroup:
                     logging.info(f"Security group {self.sg_id} found in region {future_to_region[future]}")
                     return sg, future_to_region[future]
         return None, None
+
+    def _find_security_group_and_cache(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+        """Find the security group and cache it in the instance for future use."""
+        sg, region_id = self._find_security_group()
+        if sg and region_id:
+            self.sg_name = sg.get("SecurityGroupName", "")
+            region_name = self.regions.get_region_name(region_id) if hasattr(self.regions, 'get_region_name') else ''
+            self._cache_security_group(region_id, region_name)
+        return sg, region_id
+
+    def _get_db_connection(self, db_path: Optional[str]) -> Optional[sqlite3.Connection]:
+        """Create and return a sqlite3 connection, or None if not available."""
+        if not db_path:
+            return None
+        try:
+            return sqlite3.connect(db_path)
+        except Exception as e:
+            logging.warning("[db] Unable to open DB connection %s: %s", db_path, e)
+            return None
+
+    def _load_cached_security_group(self) -> Dict[str, str]:
+        """Load a cached security group from SQLite and return an empty dict if missing."""
+        if not self.conn:
+            return {}
+
+        try:
+            return load_cached_security_group(self.conn, self.sg_id)
+        except Exception as e:
+            logging.warning("[db] Failed to read cached security group %s: %s", self.sg_id, e)
+            return {}
+
+    def _cache_security_group(self, region_id: str, region_name: str = "") -> None:
+        """Cache the SG id + region in SQLite for faster future lookup."""
+        if not self.conn:
+            return
+
+        try:
+            upsert_security_group(self.conn, self.sg_id, region_id, region_name)
+            logging.info("[db] Cached security group %s => %s/%s", self.sg_id, region_id, region_name)
+        except Exception as e:
+            logging.warning("[db] Failed to cache security group %s: %s", self.sg_id, e)
+
+    def close(self) -> None:
+        """Close the DB connection if open."""
+        if self.conn:
+            try:
+                self.conn.close()
+            except Exception as e:
+                logging.warning("[db] Failed to close DB connection: %s", e)
+            finally:
+                self.conn = None
+
+    def __del__(self):
+        """Ensure the DB connection is closed when object is garbage-collected."""
+        self.close()
 
     def add_prefix_list_rule(self, prefix_list_id: str) -> bool:
         """Authorize inbound traffic from a prefix list into this security group.
