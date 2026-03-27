@@ -48,8 +48,7 @@ def _db_path(app_dir: str) -> str:
     return os.path.join(app_dir, "whitelist.db")
 
 
-def upsert_regions(app_dir: str,
-                   conn: sqlite3.Connection,
+def upsert_regions(conn: sqlite3.Connection,
                    regions: List[Dict], cloud_provider: str = 'aliyun',
                    ) -> None:
     try:
