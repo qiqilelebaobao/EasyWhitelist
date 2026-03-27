@@ -41,7 +41,6 @@ class Regions:
                 return load_cached_regions(conn=self.conn)
         except Exception as db_exc:
             logging.warning(f"[db] Cache check failed, will fetch from network: {db_exc}")
-        finally:
             return []
 
     def _fetch_regions_from_network(self, proxy_port: Optional[int], db_conn: Optional[sqlite3.Connection] = None) -> List[Dict]:

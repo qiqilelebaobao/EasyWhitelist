@@ -161,7 +161,6 @@ def load_cached_regions(conn: sqlite3.Connection) -> List[Dict]:
         cursor = conn.cursor()
         cursor.execute("SELECT region_id, name, region_endpoint, cloud_provider FROM regions")
         rows = cursor.fetchall()
-
         return [
             {
                 'RegionId': r[0],
