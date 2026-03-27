@@ -7,47 +7,24 @@ from typing import List, Dict
 
 def init_db(app_dir: str) -> bool:
     """Initialize the database, including creating necessary tables if they don't exist."""
+    db_path = os.path.join(app_dir, "whitelist.db")
     try:
-        db_path = os.path.join(app_dir, "whitelist.db")
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
 
-        # Create regions table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS regions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                region_id TEXT UNIQUE NOT NULL,
-                name TEXT,
-                region_endpoint TEXT,
-                cloud_provider TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-        ''')
+            # Create regions table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS regions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    region_id TEXT UNIQUE NOT NULL,
+                    name TEXT,
+                    region_endpoint TEXT,
+                    cloud_provider TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            ''')
 
-        # Create templates table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS templates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                region TEXT NOT NULL,
-                prefix_list_id TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        ''')
-
-        # Create rules table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS rules (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                template_id INTEGER NOT NULL,
-                description TEXT,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (template_id) REFERENCES templates (id) ON DELETE CASCADE
-            )
-        ''')
-
-        conn.commit()
         logging.info(f"[db] Database initialized successfully at {db_path}")
         return True
     except Exception as e:
@@ -64,24 +41,26 @@ def upsert_regions(app_dir: str,
                    regions: List[Dict], cloud_provider: str = 'aliyun',
                    ) -> None:
     try:
+        logging.info(f"[db] Upserting {len(regions)} regions into database for cloud provider: {cloud_provider}")
         cursor = conn.cursor()
         for region in regions:
             region_id = region.get('RegionId', '')
             if not region_id:
                 continue
+            now_iso = datetime.now(timezone.utc).isoformat()
             cursor.execute(
                 """
                 INSERT INTO regions (region_id, name, region_endpoint, cloud_provider, created_at, updated_at)
-                VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(region_id) DO UPDATE SET
                     name=excluded.name,
                     region_endpoint=excluded.region_endpoint,
                     cloud_provider=excluded.cloud_provider,
-                    updated_at=datetime('now')
+                    updated_at=excluded.updated_at
                 """,
-                (region_id, region.get('LocalName', ''), region.get('RegionEndpoint', ''), cloud_provider)
+                (region_id, region.get('LocalName', ''), region.get('RegionEndpoint', ''), cloud_provider, now_iso, now_iso)
             )
-            conn.commit()
+        conn.commit()
     except Exception as e:
         logging.error(f"[db] Failed to upsert regions: {e}")
 
@@ -107,7 +86,7 @@ def load_cached_regions(app_dir: str, conn: sqlite3.Connection) -> List[Dict]:
         return []
 
 
-def is_cache_fresh(app_dir: str, conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
+def is_cache_fresh(conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
 
     try:
         cursor = conn.cursor()
@@ -121,12 +100,21 @@ def is_cache_fresh(app_dir: str, conn: sqlite3.Connection, max_age_days: int = 1
         return False
 
     try:
-        last_date = datetime.fromisoformat(row[0]).date()
-    except ValueError:
+        # 可能存储的字符串是日期 (YYYY-MM-DD) 或含时区的日期时间
+
+        normalized = row[0].replace("Z", "+00:00")
+        last_dt = datetime.fromisoformat(normalized)
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        last_date = last_dt.astimezone().date()
+
+    except Exception:
         return False
 
-    today = datetime.now(timezone.utc).date()
+    local_today = datetime.now(timezone.utc).astimezone().date()
     if max_age_days < 0:
         return False
 
-    return last_date >= (today - timedelta(days=max_age_days))
+    logging.info("last_date=%s local_today=%s max_age_days=%s", last_date, local_today, max_age_days)
+
+    return last_date > (local_today - timedelta(days=max_age_days))

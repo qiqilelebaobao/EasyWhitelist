@@ -18,7 +18,7 @@ def _load_regions(app_dir: Optional[str], proxy_port: Optional[int]) -> List[Dic
         db_path = os.path.join(app_dir, "whitelist.db")
         conn = sqlite3.connect(db_path)
         try:
-            if is_cache_fresh(app_dir, conn=conn):
+            if is_cache_fresh(conn=conn):
                 logging.info("[db] Loaded regions from cache")
                 return load_cached_regions(app_dir, conn=conn)
         except Exception as db_exc:
