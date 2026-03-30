@@ -199,10 +199,14 @@ def load_cached_security_group(conn: sqlite3.Connection, sg_id: str) -> Dict[str
 
 
 def is_cache_fresh(conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
+    if max_age_days < 0:
+        return False
+
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT MAX(updated_at) FROM regions")
+        cursor.execute("SELECT MIN(updated_at) FROM regions")
         row = cursor.fetchone()
+        logging.debug("[db] Cache freshness check - latest updated_at: %s", row[0] if row else "None")
     except Exception as e:
         logging.error("[db] Failed to check cache freshness: %s", e)
         return False
@@ -223,7 +227,8 @@ def is_cache_fresh(conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
 
     local_today = datetime.now(timezone.utc).astimezone().date()
 
-    if max_age_days < 0:
-        return False
+    is_fresh = last_dt.astimezone().date() > (local_today - timedelta(days=max_age_days))
+    logging.debug("[db] Cache freshness check - last updated_at: %s, local today: %s, max_age_days: %d, is_fresh: %s",
+                  last_dt.isoformat(), local_today.isoformat(), max_age_days, is_fresh)
 
-    return last_dt.astimezone().date() > (local_today - timedelta(days=max_age_days))
+    return is_fresh

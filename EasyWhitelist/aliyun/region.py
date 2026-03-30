@@ -33,17 +33,20 @@ class Regions:
         """Load regions from cache when fresh, otherwise fetch from Aliyun API."""
         if not self.conn:
             logging.warning("[db] No database connection available; fetching regions from network")
-            return self._fetch_regions_from_network(proxy_port, db_conn=None)
+            return self._fetch_regions_from_network(proxy_port)
 
         try:
             if is_cache_fresh(conn=self.conn):
                 logging.info("[db] Loaded regions from cache")
                 return load_cached_regions(conn=self.conn)
+            else:
+                logging.info("[db] Cached regions are stale; fetching from network")
+                return self._fetch_regions_from_network(proxy_port)
         except Exception as db_exc:
             logging.warning("[db] Cache check failed; fetching regions from network: %s", db_exc)
             return []
 
-    def _fetch_regions_from_network(self, proxy_port: Optional[int], db_conn: Optional[sqlite3.Connection] = None) -> List[Dict]:
+    def _fetch_regions_from_network(self, proxy_port: Optional[int]) -> List[Dict]:
         """Fetch regions directly from Aliyun API without caching."""
         try:
             client: Ecs20140526Client = ClientFactory.create_client(DEFAULT_REGION_1, proxy_port)
@@ -54,13 +57,17 @@ class Regions:
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
         runtime = _runtime(proxy_port is not None)
 
-        response = client.describe_regions_with_options(describe_regions_request, runtime)
-        regions = response.body.to_map()['Regions']['Region']
-        logging.debug("[aliyun] DescribeRegions response: %s", regions)
+        try:
+            response = client.describe_regions_with_options(describe_regions_request, runtime)
+            regions = response.body.to_map().get('Regions', {}).get('Region', [])
+            logging.debug("[aliyun] DescribeRegions response: %s", regions)
+        except Exception as e:
+            logging.error("[aliyun] Failed to fetch regions from API: %s", e)
+            return []
 
-        if db_conn is not None:
+        if self.conn is not None:
             try:
-                upsert_regions(db_conn, regions, cloud_provider='aliyun')
+                upsert_regions(self.conn, regions, cloud_provider='aliyun')
             except Exception as db_exc:
                 logging.warning("[aliyun] Failed to cache regions to db: %s", db_exc)
 
@@ -72,6 +79,7 @@ class Regions:
         db_path = os.path.join(app_dir, "whitelist.db")
         try:
             conn = sqlite3.connect(db_path)
+            logging.debug("[db] Connected to database at %s", db_path)
             return conn
         except Exception as e:
             logging.error("[db] Failed to connect to database at %s: %s", db_path, e)
