@@ -55,7 +55,7 @@ def init_db(app_dir: str) -> bool:
                 )
             ''')
 
-        logging.info("[db] Database initialized successfully at %s", db_path)
+        logging.debug("[db] Database initialized successfully at %s", db_path)
         return True
     except Exception as e:
         logging.error("[db] Failed to initialize database: %s", e)

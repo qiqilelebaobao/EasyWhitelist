@@ -45,7 +45,7 @@ class SecurityGroup:
         if not self.region_id:
             sg, self.region_id = self._find_security_group_and_cache()
             if not self.region_id or sg is None:
-            echo_err(f"Security group {sg_id} not found in any region")
+                echo_err(f"Security group {sg_id} not found in any region")
                 return
 
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)

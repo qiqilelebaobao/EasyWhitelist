@@ -15,7 +15,6 @@ def init_app_and_db():
     if app_dir is None:
         logging.error("[core] Failed to create application directory.")
         return None
-    logging.info("[core] Application directory created at: %s", app_dir)
 
     if not init_db(app_dir):
         logging.error("[core] Failed to initialize database.")
