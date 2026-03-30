@@ -39,7 +39,7 @@ def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy_port=None):
         return None
 
     try:
-        logging.info("[ip.detect] Fetching local IP, url=%s proxy_port=%s", u, proxy_port if proxy_port else "n/a")
+        logging.info("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, proxy_port if proxy_port else "n/a")
 
         if proxy_port:
             response = requests.get(u, headers=headers, timeout=(3, 5),
@@ -51,11 +51,11 @@ def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy_port=None):
         # 获取响应内容
         respon = response.text
         l_ip = utils.parse_ip_from_response(respon, patt)
-        logging.info("[ip.detect] Fetched local IP, url=%s ip=%s", u, l_ip)
+        logging.info("[ip.detect] Fetched local IP from %s (ip=%s)", u, l_ip)
         return l_ip
 
     except Exception as e:
-        logging.error("[ip.detect] Parse failed, reason=exception, detail=%s", e)
+        logging.error("[ip.detect] Failed to parse response, error=%s", e)
         return None
 
 
@@ -84,6 +84,6 @@ def _get_local_ips(proxy_port=None):
                 if l_ip and _validate_ip(l_ip):
                     ip_list.append(l_ip)
             except Exception as e:
-                logging.error("[ip.detect] Parse failed, reason=exception, url=%s detail=%s", url, e)
-    logging.info("[ip.detect] Detected local IP list: %s", ip_list)
+                logging.error("[ip.detect] Failed to parse response from %s, error=%s", url, e)
+    logging.info("[ip.detect] Detected local IPs: %s", ip_list)
     return ip_list

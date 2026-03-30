@@ -26,7 +26,7 @@ def _get_template(common_client) -> Optional[dict]:
         return common_client.call_json("DescribeAddressTemplates", {})
 
     except TencentCloudSDKException as e:
-        logging.error("[template] DescribeAddressTemplates failed, %s", e)
+        logging.error("[template] DescribeAddressTemplates failed: %s", e)
         return None
 
 
@@ -68,11 +68,11 @@ def _modify_template_address(common_client, target_id, client_ips):
         if (TemplateSet := respon["Response"]["AddressTemplateSet"]) and TemplateSet[0]["AddressTemplateName"].startswith(TEMPLATE_NAME_PREFIX):
             pass
         else:
-            logging.error("[template] This is not a template generated from this tool. Shall not be modified.")
+            logging.error("[template] Template does not appear to have been created by this tool; aborting modification.")
             return False
     except (TencentCloudSDKException, IndexError) as err:
         # Catch IndexError when there is no matching target (e.g. "AddressTemplateSet": []).
-        logging.error("[template] API call failed, reason=exception, detail=%s", err)
+        logging.error("[template] API call failed: %s", err)
         raise RuntimeError(f"[template] API call failed: {err}") from err
 
     params = {"AddressTemplateId": target_id,
@@ -84,7 +84,7 @@ def _modify_template_address(common_client, target_id, client_ips):
             "ModifyAddressTemplateAttribute", params)
 
     except TencentCloudSDKException as err:
-        logging.error("[template] API call failed, reason=exception, detail=%s", err)
+        logging.error("[template] API call failed: %s", err)
         return False
 
     return True
@@ -93,11 +93,11 @@ def _modify_template_address(common_client, target_id, client_ips):
 def set_template(common_client, target_id, proxy: Optional[int] = None):
     """更新模板 IP，返回是否成功"""
     if not target_id:
-        logging.error("[template] Missing template_id, reason=empty input")
+        logging.error("[template] Missing template ID")
         return False
 
     if not target_id.startswith(TEMPLATE_ID_PREFIX):
-        logging.warning("[template] Set failed, reason=wrong template id, hint=check prefix")
+        logging.warning("[template] Set failed: invalid template ID (check prefix)")
         return False
 
     client_iplist = get_ip_list(proxy)
@@ -133,7 +133,7 @@ def create_template(common_client, proxy=None):
         params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
         respon = common_client.call_json("DescribeAddressTemplates", params)
 
-        logging.debug("[template] API response, detail=%s", json.dumps(respon, ensure_ascii=False))
+        logging.debug("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
 
         if respon["Response"]["AddressTemplateSet"]:
             # 找到第一个符合的模板就设置
@@ -141,7 +141,7 @@ def create_template(common_client, proxy=None):
             template_id = existing_template["AddressTemplateId"]
             template_name = existing_template["AddressTemplateName"]
 
-            logging.info("[template] Already have template without creation: %s", template_id)
+            logging.info("[template] Existing template found: %s", template_id)
 
             print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
 
@@ -159,14 +159,14 @@ def create_template(common_client, proxy=None):
 
         respon = common_client.call_json("CreateAddressTemplate", params)
         template_id = respon["Response"]["AddressTemplate"]["AddressTemplateId"]
-        logging.info("[template] API response, detail=%s", json.dumps(respon, ensure_ascii=False))
+        logging.info("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
 
         print(f"🔄 [进行中] 模板 {template_id} 已创建")
 
         return template_id, CreateResult.CREATED_NEW
 
     except TencentCloudSDKException as err:
-        logging.error("[template] API failed, reason=exception, detail=%s", err)
+        logging.error("[template] API failed: %s", err)
         return None, CreateResult.FAILED
 
 
@@ -181,7 +181,7 @@ def associate_template_2_rule(common_client, template_id, rule_id):
         respon = common_client.call_json("DescribeSecurityGroupPolicies", params)
 
         if respon["Response"]["SecurityGroupPolicySet"]["Ingress"]:
-            logging.info("[template] %s already associate to %s", template_id, rule_id)
+            logging.info("[template] %s already associated with %s", template_id, rule_id)
             print(f"❗ [中止] 已有属于程序创建的模板 {template_id} 关联到 {rule_id}，仅允许关联一次")
             return False
 
@@ -196,12 +196,12 @@ def associate_template_2_rule(common_client, template_id, rule_id):
                   }
 
         respon = common_client.call_json("CreateSecurityGroupPolicies", params)
-        logging.info("[template] API response, detail=%s", json.dumps(respon, ensure_ascii=False))
+        logging.info("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
         print(f"✅ [成功] 模板 {template_id} 已关联到 {rule_id}")
         return True
 
     except TencentCloudSDKException as err:
-        logging.error("[template] API failed, reason=exception, detail=%s", err)
+        logging.error("[template] API failed: %s", err)
         return False
 
 
@@ -230,7 +230,7 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
     """
 
     if not template_ids:
-        logging.warning("[template] No template available, reason=no template, hint=create one first")
+        logging.warning("[template] No templates available; create one first")
         return
 
     try:
@@ -238,9 +238,9 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
         if 1 <= index <= len(template_ids):
             set_template(common_client, template_ids[index - 1], proxy)
         else:
-            logging.warning("[template] Select failed, reason=index out of range, hint=available 1~%d", len(template_ids))
+            logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
     except ValueError:
-        logging.warning("[template] Select failed, reason=invalid number, input=%s hint=1~%d", user_input, len(template_ids))
+        logging.warning("[template] Selection failed: invalid number '%s' (expected 1~%d)", user_input, len(template_ids))
 
 
 def _handle_command_input(user_input: str, common_client, template_ids: list, proxy: Optional[str]) -> CommandAction:
@@ -273,7 +273,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         handler()
         return action
     else:
-        logging.warning("[cli] Command failed, reason=invalid command %s, hint=l/c/q", user_input)
+        logging.warning("[cli] Invalid command: %s (hint: l/c/q)", user_input)
         return CommandAction.CONTINUE
 
 
@@ -303,16 +303,16 @@ def loop_list(common_client, proxy: Optional[int] = None) -> None:
                     break
 
         except KeyboardInterrupt:
-            logging.warning("[cli] Operation cancelled, reason=user interrupt, hint=none")
+            logging.warning("[cli] Operation cancelled by user")
             break
 
         except ValueError as e:
-            logging.warning("[cli] Input failed, reason=value error %s, hint=retry", e)
+            logging.warning("[cli] Input failed: value error: %s", e)
 
         except ConnectionError as e:
-            logging.error("[http] Connection failed, reason=connection error, detail=%s", e)
+            logging.error("[http] Connection failed: %s", e)
             break
 
         except Exception as e:
-            logging.error("[http] Request failed, reason=unexpected, detail=%s", e)
+            logging.error("[http] Request failed: %s", e)
             break

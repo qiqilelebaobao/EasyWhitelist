@@ -32,7 +32,7 @@ class Regions:
     def _load_regions(self, proxy_port: Optional[int]) -> List[Dict]:
         """Load regions from cache when fresh, otherwise fetch from Aliyun API."""
         if not self.conn:
-            logging.warning("[db] No database connection available, will fetch regions from network")
+            logging.warning("[db] No database connection available; fetching regions from network")
             return self._fetch_regions_from_network(proxy_port, db_conn=None)
 
         try:
@@ -40,7 +40,7 @@ class Regions:
                 logging.info("[db] Loaded regions from cache")
                 return load_cached_regions(conn=self.conn)
         except Exception as db_exc:
-            logging.warning(f"[db] Cache check failed, will fetch from network: {db_exc}")
+            logging.warning("[db] Cache check failed; fetching regions from network: %s", db_exc)
             return []
 
     def _fetch_regions_from_network(self, proxy_port: Optional[int], db_conn: Optional[sqlite3.Connection] = None) -> List[Dict]:
@@ -62,7 +62,7 @@ class Regions:
             try:
                 upsert_regions(db_conn, regions, cloud_provider='aliyun')
             except Exception as db_exc:
-                logging.warning(f"[aliyun] Failed to cache regions to db: {db_exc}")
+                logging.warning("[aliyun] Failed to cache regions to db: %s", db_exc)
 
         return regions
 
@@ -74,5 +74,5 @@ class Regions:
             conn = sqlite3.connect(db_path)
             return conn
         except Exception as e:
-            logging.error(f"[db] Failed to connect to database at {db_path}: {e}")
+            logging.error("[db] Failed to connect to database at %s: %s", db_path, e)
             return None

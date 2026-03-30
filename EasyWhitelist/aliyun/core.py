@@ -83,14 +83,14 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         proxy_port: Proxy port (1–65535); None if no proxy is used.
         app_dir: Application directory (optional).
     """
-    logging.info("[aliyun] Entering aliyun handler (action=%s, target=%s, target_id=%s, proxy=%s, app_dir=%s)",
+    logging.info("[aliyun] Entering handler: action=%s, target=%s, target_id=%s, proxy=%s, app_dir=%s",
                  action, target, target_id, proxy_port, app_dir)
 
     if target == "template":
         regions = Regions(proxy_port, app_dir=app_dir)
-        logging.debug("[aliyun] Fetched regions: %s", regions.regions_list)
+        logging.debug("[aliyun] Regions fetched: %s", regions.regions_list)
         prefix = Prefix(regions)
-        logging.info("[aliyun] Initialized Regions and Prefix instances for template operations")
+        logging.info("[aliyun] Initialized Regions and Prefix instances for template operations.")
 
         action_map = {
             "init": lambda: init_whitelist(prefix, regions, proxy_port, target_id),
@@ -100,10 +100,10 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         if action in action_map:
             return action_map[action]()
 
-        logging.error("[aliyun] Unsupported operation, reason=unknown action, detail=%s", action)
+        logging.error("[aliyun] Unsupported action: %s", action)
         echo_err(f"Unsupported action: '{action}'. Valid actions: {list(action_map.keys())}")
         return 1
 
-    logging.error("[aliyun] Unsupported target, reason=not implemented, detail=%s", target)
+    logging.error("[aliyun] Unsupported target: %s", target)
     echo_err(f"Unsupported target: '{target}'. Currently supported: 'template'")
     return 1

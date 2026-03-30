@@ -20,8 +20,8 @@ def generate_app_directory(app_dir_name="EasyWhitelist"):
         return app_dir
 
     except PermissionError:
-        logging.error("❌ 权限不足：无法创建目录，请以管理员/root 运行")
+        logging.error("Insufficient permissions: cannot create application directory. Run as administrator/root.")
         return None
     except Exception as e:
-        logging.error(f"❌ 目录创建失败：{str(e)}")
+        logging.error("Failed to create application directory: %s", e)
         return None

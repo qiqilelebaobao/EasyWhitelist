@@ -61,7 +61,7 @@ class Prefix:
         """Lazily discover prefix lists across all regions on first access."""
         if self._prefix_list is None:
             self._prefix_list = self._discover_prefix_list()
-            logging.info("[aliyun] Using prefix list %s",
+            logging.info("[aliyun] Using prefix lists: %s",
                          [pl.__dict__ for pl in self._prefix_list] if self._prefix_list else None)
         return self._prefix_list
 

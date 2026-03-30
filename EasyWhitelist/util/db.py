@@ -55,10 +55,10 @@ def init_db(app_dir: str) -> bool:
                 )
             ''')
 
-        logging.info(f"[db] Database initialized successfully at {db_path}")
+        logging.info("[db] Database initialized successfully at %s", db_path)
         return True
     except Exception as e:
-        logging.error(f"[db] Failed to initialize database: {str(e)}")
+        logging.error("[db] Failed to initialize database: %s", e)
         return False
 
 
@@ -95,7 +95,7 @@ def upsert_regions(conn: sqlite3.Connection,
             )
         conn.commit()
     except Exception as e:
-        logging.error(f"[db] Failed to upsert regions: {e}")
+        logging.error("[db] Failed to upsert regions: %s", e)
         conn.rollback()
 
 
@@ -127,7 +127,7 @@ def upsert_security_group(conn: sqlite3.Connection,
         )
         conn.commit()
     except Exception as e:
-        logging.error(f"[db] Failed to upsert security group: {e}")
+        logging.error("[db] Failed to upsert security group: %s", e)
         conn.rollback()
 
 
@@ -153,7 +153,7 @@ def upsert_ip_address(conn: sqlite3.Connection,
         )
         conn.commit()
     except Exception as e:
-        logging.error(f"[db] Failed to upsert ip address: {e}")
+        logging.error("[db] Failed to upsert ip address: %s", e)
         conn.rollback()
 
 
@@ -173,7 +173,7 @@ def load_cached_regions(conn: sqlite3.Connection) -> List[Dict]:
             for r in rows
         ]
     except Exception as e:
-        logging.error(f"[db] Failed to load cached regions: {e}")
+        logging.error("[db] Failed to load cached regions: %s", e)
         return []
 
 
@@ -194,7 +194,7 @@ def load_cached_security_group(conn: sqlite3.Connection, sg_id: str) -> Dict[str
             'cloud_provider': row[6],
         }
     except Exception as e:
-        logging.error(f"[db] Failed to load cached security group: {e}")
+        logging.error("[db] Failed to load cached security group: %s", e)
         return {}
 
 

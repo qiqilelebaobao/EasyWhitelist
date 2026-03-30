@@ -35,9 +35,9 @@ def _ecs_api_call(fn: Callable[[], T], action: str, default: Optional[T] = None)
     try:
         return fn()
     except UnretryableException:
-        logging.exception("[aliyun] Network error when %s", action)
+        logging.exception("[aliyun] Network error during %s", action)
     except TeaException:
-        logging.exception("[aliyun] Tea API error when %s", action)
+        logging.exception("[aliyun] Tea API error during %s", action)
     except Exception:
-        logging.exception("[aliyun] Unexpected error when %s", action)
+        logging.exception("[aliyun] Unexpected error during %s", action)
     return default

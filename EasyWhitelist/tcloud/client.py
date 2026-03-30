@@ -15,7 +15,7 @@ def get_common_client(region, proxy_port=None) -> CommonClient:
 
     if region is None:
         region = DEFAULT_REGION
-        logging.info("[config] Region not set, fallback to %s", region)
+        logging.info("[config] Region not set; falling back to %s", region)
 
     cred = credential.DefaultCredentialProvider().get_credential()
 

@@ -45,7 +45,7 @@ class SecurityGroup:
         if not self.region_id:
             sg, self.region_id = self._find_security_group_and_cache()
             if not self.region_id or sg is None:
-                echo_err(f"Security group {sg_id} not found in any region")
+            echo_err(f"Security group {sg_id} not found in any region")
                 return
 
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
@@ -62,7 +62,7 @@ class SecurityGroup:
             True on success; False on failure.
         """
         if not self.region_id or not self.client:
-            logging.error("[aliyun] Region_id or client is not set; SecurityGroup was not found during initialization")
+            logging.error("[aliyun] Region ID or client not set; security group not found during initialization")
             return False
         # Build the AuthorizeSecurityGroup request object
         create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(
@@ -95,7 +95,7 @@ class SecurityGroup:
             if sg["SecurityGroupId"] == self.sg_id:
                 echo_ok(f"Found security group {self.sg_id} in {region_id}")
                 return sg
-        logging.info("[aliyun] Security group with ID %s not found in region %s", self.sg_id, region_id)
+        logging.info("[aliyun] Security group %s not found in region %s", self.sg_id, region_id)
         return None
 
     def _find_security_group(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -110,10 +110,10 @@ class SecurityGroup:
                 try:
                     sg = future.result()
                 except Exception as e:
-                    logging.error(f"Exception when searching security group in region {future_to_region[future]}: {e}")
+                    logging.error("[aliyun] Exception when searching security group in region %s: %s", future_to_region[future], e)
                     continue
                 if sg:
-                    logging.info(f"Security group {self.sg_id} found in region {future_to_region[future]}")
+                    logging.info("[aliyun] Security group %s found in region %s", self.sg_id, future_to_region[future])
                     return sg, future_to_region[future]
         return None, None
 
@@ -185,6 +185,6 @@ class SecurityGroup:
                     break
                 page_number += 1
             return all_sgs
-        except Exception:
-            logging.error("[aliyun] Error when describing security groups")
+        except Exception as e:
+            logging.error("[aliyun] Error when describing security groups: %s", e)
             return []
