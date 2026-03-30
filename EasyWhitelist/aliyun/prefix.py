@@ -21,6 +21,7 @@ from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
 from ..util.db import upsert_ip_address
+from .sg import SecurityGroup
 
 
 class PrefixList:
@@ -64,6 +65,66 @@ class Prefix:
             logging.info("[aliyun] Using prefix lists: %s",
                          [pl.__dict__ for pl in self._prefix_list] if self._prefix_list else None)
         return self._prefix_list
+
+    def init_whitelist(self, sg_id: Optional[str]) -> int:
+        """Initialize whitelist by associating a prefix list with a security group.
+
+        Args:
+            sg_id: Security group ID to associate the prefix list with.
+
+        Returns:
+            0 on success, non-zero error code on failure:
+            1 - sg_id not provided
+            2 - failed to look up security group
+            3 - security group not found
+            4 - failed to get/create/update prefix list
+            5 - failed to create security group rule
+        """
+        def _print_init_summary(region: Optional[str], prefix_list_id: Optional[str], ctime: str, addrs: str, name: str) -> None:
+            print_header('Alibaba Cloud Template Init')
+            print_row(idx=1,
+                      region=region or '',
+                      id=prefix_list_id or '',
+                      ctime=ctime,
+                      addrs=addrs,
+                      name=name)
+            print_tail()
+
+        if not sg_id:
+            echo_err("Security group ID is required for initialization")
+            return 1
+
+        # 1. Look up the security group; return on failure
+        try:
+            sg = SecurityGroup(sg_id, self.regions, proxy_port=self.proxy_port)
+        except Exception:
+            logging.exception("[aliyun] Failed to look up security group, sg_id=%s", sg_id)
+            echo_err(f"Failed to look up security group {sg_id}")
+            return 2
+
+        if not sg.region_id:
+            echo_err(f"Security group {sg_id} not found in any region")
+            return 3
+
+        # 2. Get or create the prefix list and update it with the current client IP.
+        # `init_prefix` returns a non-zero value on failure. The second condition
+        # acts as a safety check for the unlikely case where `init_prefix` returns
+        # 0 but `prefix_list_id` remains unset.
+        if self.init_prefix(sg.region_id) or not self.current_prefix_list:
+            echo_err("Failed to create prefix list, cannot proceed with whitelist initialization")
+            return 4
+
+        if not sg.add_prefix_list_rule(self.current_prefix_list.prefix_list_id):
+            echo_err("Failed to create security group rule with prefix list")
+            return 5
+
+        echo_ok("Successfully initialized template-based whitelist")
+        _print_init_summary(sg.region_id,
+                            self.current_prefix_list.prefix_list_id,
+                            self.current_prefix_list.creation_time if self.current_prefix_list.creation_time else '',
+                            "n/a",
+                            self.current_prefix_list.prefix_list_name if self.current_prefix_list.prefix_list_name else '')
+        return 0
 
     def init_prefix(self, region_id: str) -> int:
         """Find or create a prefix list in the given region and populate it with the current client IP.
