@@ -13,7 +13,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.defaults import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS, _GREEN, _RST
 from ..util.cli import echo_ok
-from ..util.cli import print_header, print_row, print_separator, print_tail
+from ..util.cli import print_header, print_row, print_separator, print_tail, print_row_init, print_header_init, print_tail_init
 from ..detector.detectors import get_ip_list
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
@@ -80,14 +80,15 @@ class Prefix:
             5 - failed to create security group rule
         """
         def _print_init_summary(region: Optional[str], prefix_list_id: Optional[str], ctime: str, addrs: str, name: str) -> None:
-            print_header('Alibaba Cloud Template Init')
-            print_row(idx=1,
-                      region=region or '',
-                      id=prefix_list_id or '',
-                      ctime=ctime,
-                      addrs=addrs,
-                      name=name)
-            print_tail()
+            print_header_init('Alibaba Cloud Template Init')
+            print_row_init(idx=1,
+                           region=region or '',
+                           id=prefix_list_id or '',
+                           name=name or '',
+                           ctime=ctime,
+                           addrs=addrs,
+                           )
+            print_tail_init()
 
         if not sg_id:
             logging.error("Security group ID is required for initialization")
@@ -110,7 +111,9 @@ class Prefix:
         # `init_prefix` returns a non-zero value on failure. The second condition
         # acts as a safety check for the unlikely case where `init_prefix` returns
         # 0 but `prefix_list_id` remains unset.
-        if self.init_prefix(sg.region_id) or not self.current_prefix_list:
+
+        ip_list = self.init_prefix(sg.region_id)
+        if not ip_list or not self.current_prefix_list:
             logging.error("Failed to create prefix list, cannot proceed with whitelist initialization")
             return 4
         logging.info("[prefix] Prefix list initialized: %s", self.current_prefix_list.__dict__ if self.current_prefix_list else None)
@@ -123,25 +126,26 @@ class Prefix:
         _print_init_summary(sg.region_id,
                             self.current_prefix_list.prefix_list_id,
                             self.current_prefix_list.creation_time if self.current_prefix_list.creation_time else '',
-                            "n/a",
-                            self.current_prefix_list.prefix_list_name if self.current_prefix_list.prefix_list_name else '')
+                            f"{', '.join(ip_list)}" if ip_list else '',
+                            self.current_prefix_list.prefix_list_name if self.current_prefix_list.prefix_list_name else '',
+                            )
 
         echo_ok("Successfully initialized template-based whitelist\n")
 
         return 0
 
-    def init_prefix(self, region_id: str) -> int:
+    def init_prefix(self, region_id: str) -> list:
         """Find or create a prefix list in the given region and populate it with the current client IP.
 
         Args:
             region_id: Target Alibaba Cloud region, e.g. 'cn-hangzhou'.
 
         Returns:
-            0 on success, non-zero on failure.
+            A list of updated IPs on success; empty list if prerequisites are missing or the API call fails.
         """
         self.current_prefix_list = self._ensure_prefix_list(region_id)
         if not self.current_prefix_list:
-            return 1
+            return []
         return self._update_prefix_list()
 
     def update_prefix(self) -> int:
@@ -239,8 +243,8 @@ class Prefix:
         print_header('Alibaba Cloud Prefix List')
         any_error = self._print_prefix_list_results(results)
 
-        logging.info("[prefix] Prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
         print_tail()
+        logging.info("[prefix] Prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
 
         return 2 if any_error else 0
 
@@ -338,26 +342,25 @@ class Prefix:
         logging.debug(json.dumps(ret_data))
         return PrefixList(ret_data["PrefixListId"], region_id) if "PrefixListId" in ret_data else None
 
-    def _update_prefix_list(self) -> int:
+    def _update_prefix_list(self) -> List[str]:
         """Retrieve the current client IP list, validate and deduplicate the entries, then append them to the prefix list.
 
         Returns:
-            0 on success, 1 if prerequisites are missing or the API call fails.
+            A list of updated IPs on success; empty list if prerequisites are missing or the API call fails.
         """
         if not self.current_prefix_list:
             logging.error("[prefix] Prefix list ID or region ID is not initialized")
-            return 1
+            return []
 
         client_ip_list = get_ip_list(self.proxy_port)
-        source_region = self.current_prefix_list.region_id if self.current_prefix_list else None
-        client_ip_list = self._normalize_ip_list(client_ip_list, source_region)
+        client_ip_list = self._normalize_ip_list(client_ip_list)
 
         if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
             logging.info("[prefix] Prefix list %s updated successfully with %d IP(s)", self.current_prefix_list.prefix_list_id, len(client_ip_list))
-            return 0
+            return client_ip_list
 
         logging.error("[prefix] Failed to update prefix list %s with client IPs", self.current_prefix_list.prefix_list_id)
-        return 1
+        return []
 
     def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:
         """Send a ModifyPrefixList request for a single prefix list.
@@ -429,7 +432,6 @@ class Prefix:
                 if not next_token:
                     break
             logging.debug("[prefix] Retrieved  prefix list(s) in region %s: %s", region_id, all_entries)
-            logging.info("[prefix] Retrieved %d prefix list(s) in region %s", len(all_entries), region_id)
             return all_entries
         except Exception as err:
             logging.error("[prefix] Failed to describe prefix lists in region %s, err=%s", region_id, err)
@@ -448,7 +450,7 @@ class Prefix:
         prefix_list: List[PrefixList] = []
 
         def _search_region(region_id: str) -> List[PrefixList]:
-            logging.info("[prefix] Searching in region %s", region_id)
+            logging.debug("[prefix] Searching in region %s", region_id)
             found: List[PrefixList] = []
             for entry in self._fetch_prefix_lists(region_id):
                 logging.debug(entry)
@@ -494,7 +496,7 @@ class Prefix:
             len(prefix_list), len(self.regions.regions_list))
         return prefix_list
 
-    def _normalize_ip_list(self, ip_list: List[str], source_region: Optional[str] = None) -> List[str]:
+    def _normalize_ip_list(self, ip_list: List[str]) -> List[str]:
         """Validate, normalize to CIDR strings, deduplicate, and limit to DEFAULT_MAX_ENTRIES.
 
         - Each element may be a bare IP address or a CIDR string.
@@ -528,7 +530,7 @@ class Prefix:
             # 记录到 SQLite，用于后续分析
             if self.regions.conn:
                 try:
-                    upsert_ip_address(self.regions.conn, s, cidr, source_region, 'prefix')
+                    upsert_ip_address(self.regions.conn, s, cidr)
                 except Exception as e:
                     logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
 
@@ -558,7 +560,7 @@ class Prefix:
             )
             describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
-            logging.info("[prefix] Prefix list entries: %s", current_entries)
+            logging.debug("[prefix] Prefix list entries: %s", current_entries)
         except Exception:
             logging.exception("[prefix] Failed to describe prefix list attributes for %s", prefix_list_id)
             return None

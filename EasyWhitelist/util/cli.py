@@ -1,15 +1,27 @@
 from .defaults import _BOLD, _CYAN, _GREEN, _RED, _RST
+from typing import Optional, List
 
 COLS = {
     "idx": 5,
     "region": 16,
     "id": 25,
+    "name": 30,
     "ctime": 20,
     "addrs": 35,
-    "name": 30,
 }
+
+COLS_INIT = {
+    "idx": 5,
+    "region": 16,
+    "id": 25,
+    "name": 30,
+    "addrs": 35,
+}
+
 HEADER_WIDTH = sum(COLS.values())
 _COL_WIDTHS = list(COLS.values())
+HEADER_WIDTH_INIT = sum(COLS_INIT.values())
+_COL_WIDTHS_INIT = list(COLS_INIT.values())
 
 
 def echo_ok(msg: str) -> None:
@@ -27,19 +39,35 @@ def echo_info(msg: str) -> None:
     print(f"  {_CYAN}\u203a{_RST}  {msg}")
 
 
-def _build_line(left: str, mid: str, right: str, fill: str = '\u2500') -> str:
-    return left + mid.join(fill * w for w in _COL_WIDTHS) + right
+def _build_line(left: str, mid: str, right: str, fill: str = '\u2500', widths: Optional[List[int]] = None) -> str:
+    """Build a separator line using given column widths.
+
+    If `widths` is None, use the default `_COL_WIDTHS`.
+    """
+    use_widths = _COL_WIDTHS if widths is None else widths
+    return left + mid.join(fill * w for w in use_widths) + right
 
 
 def print_header(title: str) -> None:
     table_width = HEADER_WIDTH + len(COLS) + 1
-    col_names = ['#', 'Region', 'Template ID', 'CreatedTime', 'Addresses', 'Name']
+    col_names = ['#', 'Region', 'Template ID', 'Name', 'CreatedTime', 'Addresses']
     cells = [f"{_BOLD}{n:<{w}}{_RST}" for n, w in zip(col_names, _COL_WIDTHS)]
 
     print(f"\n{_BOLD}{_CYAN}{title:^{table_width}}{_RST}")
-    print(_build_line('\u250c', '\u252c', '\u2510'))
+    print(_build_line('\u250c', '\u252c', '\u2510', widths=_COL_WIDTHS))
     print('\u2502' + '\u2502'.join(cells) + '\u2502')
-    print(_build_line('\u251c', '\u253c', '\u2524'))
+    print(_build_line('\u251c', '\u253c', '\u2524', widths=_COL_WIDTHS))
+
+
+def print_header_init(title: str) -> None:
+    table_width = HEADER_WIDTH_INIT + len(COLS_INIT) + 1
+    col_names = ['#', 'Region', 'PrefixList ID', 'Name', 'Addresses']
+    cells = [f"{_BOLD}{n:<{w}}{_RST}" for n, w in zip(col_names, _COL_WIDTHS_INIT)]
+
+    print(f"\n{_BOLD}{_CYAN}{title:^{table_width}}{_RST}")
+    print(_build_line('\u250c', '\u252c', '\u2510', widths=_COL_WIDTHS_INIT))
+    print('\u2502' + '\u2502'.join(cells) + '\u2502')
+    print(_build_line('\u251c', '\u253c', '\u2524', widths=_COL_WIDTHS_INIT))
 
 
 def print_row(**values) -> None:
@@ -48,13 +76,26 @@ def print_row(**values) -> None:
     print('\u2502' + '\u2502'.join(cells) + '\u2502')
 
 
-def print_separator() -> None:
-    print(_build_line('\u251c', '\u253c', '\u2524', '\u2504'))
+def print_row_init(**values) -> None:
+    """Print a table row for initialization. Pass column values as keyword arguments matching COLS_INIT keys."""
+    cells = [f"{str(values.get(key, '')):<{width}}" for key, width in COLS_INIT.items()]
+    print('\u2502' + '\u2502'.join(cells) + '\u2502')
 
 
-def print_tail() -> None:
-    print(_build_line('\u2514', '\u2534', '\u2518'))
+def print_separator(widths: Optional[List[int]] = None) -> None:
+    """Print a row separator. By default uses main table widths; pass widths to use others."""
+    print(_build_line('\u251c', '\u253c', '\u2524', '\u2504', widths=widths))
+
+
+def print_tail(widths: Optional[List[int]] = None) -> None:
+    """Print table tail/end line. By default uses main table widths; pass widths to use others."""
+    print(_build_line('\u2514', '\u2534', '\u2518', widths=widths))
     print()
+
+
+def print_tail_init() -> None:
+    """Print table tail/end line for initialization. By default uses init table widths; pass widths to use others."""
+    print_tail(widths=_COL_WIDTHS_INIT)
 
 
 def print_update_banner(title: str) -> None:

@@ -47,8 +47,9 @@ def init_db(app_dir: str) -> bool:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     raw_ip TEXT,
                     normalized_cidr TEXT NOT NULL,
-                    source_region TEXT,
-                    source_type TEXT,
+                    resv1 TEXT,
+                    resv2 TEXT,
+                    resv3 TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     UNIQUE(raw_ip)
@@ -151,23 +152,19 @@ def refresh_security_group_update_time(conn: sqlite3.Connection, sg_id: str) -> 
 
 def upsert_ip_address(conn: sqlite3.Connection,
                       raw_ip: Optional[str],
-                      normalized_cidr: str,
-                      source_region: Optional[str] = None,
-                      source_type: Optional[str] = None) -> None:
+                      normalized_cidr: str) -> None:
     try:
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO ip_addresses (raw_ip, normalized_cidr, source_region, source_type, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO ip_addresses (raw_ip, normalized_cidr, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(raw_ip) DO UPDATE SET
                 normalized_cidr=excluded.normalized_cidr,
-                source_region=excluded.source_region,
-                source_type=excluded.source_type,
                 updated_at=excluded.updated_at
             """,
-            (raw_ip, normalized_cidr, source_region, source_type, now_iso, now_iso)
+            (raw_ip, normalized_cidr, now_iso, now_iso)
         )
         conn.commit()
     except Exception as e:
