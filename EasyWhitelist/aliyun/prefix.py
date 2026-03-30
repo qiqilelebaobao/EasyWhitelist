@@ -12,9 +12,8 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.defaults import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS, _GREEN, _RST
-from ..util.cli import echo_ok, echo_err, echo_info  # noqa: F401
+from ..util.cli import echo_ok
 from ..util.cli import print_header, print_row, print_separator, print_tail
-from ..util.cli import print_update_banner, print_ip_list, print_region_result, print_summary  # noqa: F401
 from ..detector.detectors import get_ip_list
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
@@ -91,7 +90,7 @@ class Prefix:
             print_tail()
 
         if not sg_id:
-            echo_err("Security group ID is required for initialization")
+            logging.error("Security group ID is required for initialization")
             return 1
 
         # 1. Look up the security group; return on failure
@@ -100,12 +99,11 @@ class Prefix:
             logging.info("[aliyun] Security group lookup result: sg_id=%s, region_id=%s, sg_name=%s",
                          sg.sg_id, sg.region_id, sg.sg_name)
         except Exception:
-            logging.exception("[aliyun] Failed to look up security group, sg_id=%s", sg_id)
-            echo_err(f"Failed to look up security group {sg_id}")
+            logging.error("Failed to look up security group %s", sg_id)
             return 2
 
         if not sg.region_id:
-            echo_err(f"Security group {sg_id} not found in any region")
+            logging.error("Security group %s not found in any region", sg_id)
             return 3
 
         # 2. Get or create the prefix list and update it with the current client IP.
@@ -113,12 +111,12 @@ class Prefix:
         # acts as a safety check for the unlikely case where `init_prefix` returns
         # 0 but `prefix_list_id` remains unset.
         if self.init_prefix(sg.region_id) or not self.current_prefix_list:
-            echo_err("Failed to create prefix list, cannot proceed with whitelist initialization")
+            logging.error("Failed to create prefix list, cannot proceed with whitelist initialization")
             return 4
         logging.info("[aliyun] Prefix list initialized: %s", self.current_prefix_list.__dict__ if self.current_prefix_list else None)
 
         if not sg.add_prefix_list_rule(self.current_prefix_list.prefix_list_id):
-            echo_err("Failed to create security group rule with prefix list")
+            logging.error("Failed to create security group rule with prefix list")
             return 5
         logging.info("[aliyun] Security group rule with prefix list %s applied to %s", self.current_prefix_list.prefix_list_id, sg.sg_id)
 
@@ -155,7 +153,7 @@ class Prefix:
             0 on success; 1 if the prefix list does not exist or the update fails.
         """
         if not self.prefix_list:
-            echo_err(f'No prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" found in any region — run init first')
+            logging.error('No prefix list with name prefix "%s" found in any region — run init first', TEMPLATE_NAME_PREFIX)
             return 1
 
         client_ip_list = get_ip_list(self.proxy_port)
@@ -193,7 +191,7 @@ class Prefix:
             self._print_prefix_operation('Alibaba Cloud Prefix Update', rows)
             return 0
 
-        echo_err(f"Done: {len(self.prefix_list) - failed}/{len(self.prefix_list)} succeeded, {failed} failed")
+        logging.error("Done: %d/%d succeeded, %d failed", len(self.prefix_list) - failed, len(self.prefix_list), failed)
         return 1
 
     def print_prefix_list(self) -> int:
@@ -305,7 +303,7 @@ class Prefix:
             logging.info("[aliyun] Created prefix list %s in %s", self.current_prefix_list.prefix_list_id, region_id)
             return self.current_prefix_list
 
-        echo_err(f'Failed to find or create a prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" in {region_id}')
+        logging.error('Failed to find or create a prefix list with name prefix "%s" in %s', TEMPLATE_NAME_PREFIX, region_id)
         return None
 
     def _create_prefix_list(self, region_id: str, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[PrefixList]:
