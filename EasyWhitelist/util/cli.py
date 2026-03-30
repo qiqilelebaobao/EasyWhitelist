@@ -15,7 +15,7 @@ COLS_INIT = {
     "region": 16,
     "id": 25,
     "name": 30,
-    "addrs": 35,
+    "addrs": 60,
 }
 
 HEADER_WIDTH = sum(COLS.values())
