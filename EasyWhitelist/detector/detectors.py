@@ -39,7 +39,7 @@ def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy_port=None):
         return None
 
     try:
-        logging.info("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, proxy_port if proxy_port else "n/a")
+        logging.debug("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, proxy_port if proxy_port else "n/a")
 
         if proxy_port:
             response = requests.get(u, headers=headers, timeout=(3, 5),

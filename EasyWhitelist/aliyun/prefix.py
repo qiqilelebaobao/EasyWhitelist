@@ -97,6 +97,8 @@ class Prefix:
         # 1. Look up the security group; return on failure
         try:
             sg = SecurityGroup(sg_id, self.regions, proxy_port=self.proxy_port)
+            logging.info("[aliyun] Security group lookup result: sg_id=%s, region_id=%s, sg_name=%s",
+                         sg.sg_id, sg.region_id, sg.sg_name)
         except Exception:
             logging.exception("[aliyun] Failed to look up security group, sg_id=%s", sg_id)
             echo_err(f"Failed to look up security group {sg_id}")
@@ -113,10 +115,12 @@ class Prefix:
         if self.init_prefix(sg.region_id) or not self.current_prefix_list:
             echo_err("Failed to create prefix list, cannot proceed with whitelist initialization")
             return 4
+        logging.info("[aliyun] Prefix list initialized: %s", self.current_prefix_list.__dict__ if self.current_prefix_list else None)
 
         if not sg.add_prefix_list_rule(self.current_prefix_list.prefix_list_id):
             echo_err("Failed to create security group rule with prefix list")
             return 5
+        logging.info("[aliyun] Security group rule with prefix list %s applied to %s", self.current_prefix_list.prefix_list_id, sg.sg_id)
 
         _print_init_summary(sg.region_id,
                             self.current_prefix_list.prefix_list_id,
@@ -275,7 +279,7 @@ class Prefix:
             for pl in self._prefix_list:
                 if pl.region_id == region_id:
                     self.current_prefix_list = pl
-                    logging.info(f"Reusing prefix list {pl.prefix_list_id} in {region_id}")
+                    logging.info("[aliyun] Reusing prefix list %s in %s", pl.prefix_list_id, region_id)
                     return pl
 
         # 只查目标 region
@@ -289,7 +293,7 @@ class Prefix:
                 self._prefix_list = []
             self._prefix_list.extend([pl for pl in found if pl not in self._prefix_list])
             self.current_prefix_list = found[0]
-            logging.info(f"[aliyun] Reusing prefix list {found[0].prefix_list_id} in {region_id}")
+            logging.info("[aliyun] Reusing prefix list %s in %s", found[0].prefix_list_id, region_id)
             return found[0]
 
         # 没有则创建
@@ -298,7 +302,7 @@ class Prefix:
             if self._prefix_list is None:
                 self._prefix_list = []
             self._prefix_list.append(self.current_prefix_list)
-            logging.info(f"[aliyun] Created prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
+            logging.info("[aliyun] Created prefix list %s in %s", self.current_prefix_list.prefix_list_id, region_id)
             return self.current_prefix_list
 
         echo_err(f'Failed to find or create a prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" in {region_id}')
@@ -350,17 +354,11 @@ class Prefix:
         source_region = self.current_prefix_list.region_id if self.current_prefix_list else None
         client_ip_list = self._normalize_ip_list(client_ip_list, source_region)
 
-        status = "ok" if self._modify_one_prefix_list(
-            self.current_prefix_list.region_id,
-            self.current_prefix_list.prefix_list_id,
-            client_ip_list,
-        ) else "failed"
-
-        if status == 'ok':
-            logging.info(f"[aliyun] Prefix list {self.current_prefix_list.prefix_list_id} updated")
+        if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
+            logging.info("[aliyun] Prefix list %s updated successfully with %d IP(s)", self.current_prefix_list.prefix_list_id, len(client_ip_list))
             return 0
 
-        logging.error(f"[aliyun] Prefix list {self.current_prefix_list.prefix_list_id} update failed")
+        logging.error("[aliyun] Failed to update prefix list %s with client IPs", self.current_prefix_list.prefix_list_id)
         return 1
 
     def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:

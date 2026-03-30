@@ -7,7 +7,6 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.defaults import DEFAULT_CONCURRENT_WORKERS
-from ..util.cli import echo_ok, echo_err
 from ..util.db import load_cached_security_group, upsert_security_group
 
 from .defaults import _runtime, _ecs_api_call
@@ -45,7 +44,7 @@ class SecurityGroup:
         if not self.region_id:
             sg, self.region_id = self._find_security_group_and_cache()
             if not self.region_id or sg is None:
-                echo_err(f"Security group {sg_id} not found in any region")
+                logging.error("[aliyun] Security group %s not found in any region", sg_id)
                 return
 
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
@@ -79,7 +78,7 @@ class SecurityGroup:
         if resp is None:
             return False
         logging.debug(json.dumps(resp.body.to_map()))
-        logging.info(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
+        logging.info("[aliyun] Security group rule with prefix list %s applied to %s", prefix_list_id, self.sg_id)
         return True
 
     def _search_security_group_by_region(self, region_id: str) -> Optional[Dict[str, Any]]:
@@ -93,7 +92,7 @@ class SecurityGroup:
         """
         for sg in self._fetch_security_groups(region_id):
             if sg["SecurityGroupId"] == self.sg_id:
-                logging.info(f"Found security group {self.sg_id} in {region_id}")
+                logging.info("[aliyun] Found security group %s in %s", self.sg_id, region_id)
                 return sg
         logging.info("[aliyun] Security group %s not found in region %s", self.sg_id, region_id)
         return None
