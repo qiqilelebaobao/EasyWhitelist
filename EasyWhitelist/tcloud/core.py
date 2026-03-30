@@ -12,7 +12,7 @@ def t_main(action: str, target: str, target_id: Optional[str], region: Optional[
         ACTION_MAP = {
             "list": lambda: loop_list(common_client, proxy),
             "set": lambda: set_template(common_client, target_id, proxy),
-            "create": lambda: create_template_and_associate(common_client, target_id, proxy),
+            "init": lambda: create_template_and_associate(common_client, target_id, proxy),
         }
 
         if action in ACTION_MAP:
