@@ -131,6 +131,24 @@ def upsert_security_group(conn: sqlite3.Connection,
         conn.rollback()
 
 
+def refresh_security_group_update_time(conn: sqlite3.Connection, sg_id: str) -> None:
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE security_groups
+            SET updated_at = ?
+            WHERE sg_id = ?
+            """,
+            (now_iso, sg_id)
+        )
+        conn.commit()
+    except Exception as e:
+        logging.error("[db] Failed to update security group updated_at: %s", e)
+        conn.rollback()
+
+
 def upsert_ip_address(conn: sqlite3.Connection,
                       raw_ip: Optional[str],
                       normalized_cidr: str,

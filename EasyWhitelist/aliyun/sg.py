@@ -7,7 +7,7 @@ from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
 from ..util.defaults import DEFAULT_CONCURRENT_WORKERS
-from ..util.db import load_cached_security_group, upsert_security_group
+from ..util.db import load_cached_security_group, upsert_security_group, refresh_security_group_update_time
 
 from .defaults import _runtime, _ecs_api_call
 from .region import Regions
@@ -38,13 +38,13 @@ class SecurityGroup:
         if cached:
             self.region_id = cached.get('region_id')
             self.sg_name = self.sg_name or cached.get('region_name', '')
-            logging.info("[db] Security group %s loaded from cache: %s/%s", self.sg_id, self.region_id, self.sg_name)
+            logging.info("[sg] Security group %s loaded from cache: %s/%s", self.sg_id, self.region_id, self.sg_name)
 
         # If not cached, do online lookup and cache result
         if not self.region_id:
             sg, self.region_id = self._find_security_group_and_cache()
             if not self.region_id or sg is None:
-                logging.error("[aliyun] Security group %s not found in any region", sg_id)
+                logging.error("[sg] Security group %s not found in any region", sg_id)
                 return
 
         self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
@@ -61,7 +61,7 @@ class SecurityGroup:
             True on success; False on failure.
         """
         if not self.region_id or not self.client:
-            logging.error("[aliyun] Region ID or client not set; security group not found during initialization")
+            logging.error("[sg] Region ID or client not set; security group not found during initialization")
             return False
         # Build the AuthorizeSecurityGroup request object
         create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(
@@ -77,8 +77,10 @@ class SecurityGroup:
         )
         if resp is None:
             return False
+        if self.conn is not None:
+            refresh_security_group_update_time(self.conn, self.sg_id)
         logging.debug(json.dumps(resp.body.to_map()))
-        logging.info("[aliyun] Security group rule with prefix list %s applied to %s", prefix_list_id, self.sg_id)
+        logging.info("[sg] Security group rule with prefix list %s applied to %s", prefix_list_id, self.sg_id)
         return True
 
     def _search_security_group_by_region(self, region_id: str) -> Optional[Dict[str, Any]]:
@@ -92,9 +94,9 @@ class SecurityGroup:
         """
         for sg in self._fetch_security_groups(region_id):
             if sg["SecurityGroupId"] == self.sg_id:
-                logging.info("[aliyun] Found security group %s in %s", self.sg_id, region_id)
+                logging.info("[sg] Found security group %s in %s", self.sg_id, region_id)
                 return sg
-        logging.info("[aliyun] Security group %s not found in region %s", self.sg_id, region_id)
+        logging.info("[sg] Security group %s not found in region %s", self.sg_id, region_id)
         return None
 
     def _find_security_group(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -109,10 +111,10 @@ class SecurityGroup:
                 try:
                     sg = future.result()
                 except Exception as e:
-                    logging.error("[aliyun] Exception when searching security group in region %s: %s", future_to_region[future], e)
+                    logging.error("[sg] Exception when searching security group in region %s: %s", future_to_region[future], e)
                     continue
                 if sg:
-                    logging.info("[aliyun] Security group %s found in region %s", self.sg_id, future_to_region[future])
+                    logging.info("[sg] Security group %s found in region %s", self.sg_id, future_to_region[future])
                     return sg, future_to_region[future]
         return None, None
 
@@ -137,7 +139,7 @@ class SecurityGroup:
         try:
             return load_cached_security_group(self.conn, self.sg_id)
         except Exception as e:
-            logging.warning("[db] Failed to read cached security group %s: %s", self.sg_id, e)
+            logging.warning("[sg] Failed to read cached security group %s: %s", self.sg_id, e)
             return {}
 
     def _cache_security_group(self, region_id: str, region_name: str = "") -> None:
@@ -147,9 +149,9 @@ class SecurityGroup:
 
         try:
             upsert_security_group(self.conn, self.sg_id, "aliyun", region_id, self.sg_name, self.vpc_id, self.sg_type, self.description)
-            logging.info("[db] Cached security group %s => %s/%s", self.sg_id, region_id, region_name)
+            logging.info("[sg] Cached security group %s => %s/%s", self.sg_id, region_id, region_name)
         except Exception as e:
-            logging.warning("[db] Failed to cache security group %s: %s", self.sg_id, e)
+            logging.warning("[sg] Failed to cache security group %s: %s", self.sg_id, e)
 
     def _fetch_security_groups(self, region_id) -> List[Dict[str, Any]]:
         """Retrieve ALL security groups in the given region using page-based pagination.
@@ -185,5 +187,5 @@ class SecurityGroup:
                 page_number += 1
             return all_sgs
         except Exception as e:
-            logging.error("[aliyun] Error when describing security groups: %s", e)
+            logging.error("[sg] Error when describing security groups: %s", e)
             return []

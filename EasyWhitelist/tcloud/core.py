@@ -18,6 +18,6 @@ def t_main(action: str, target: str, target_id: Optional[str], region: Optional[
         if action in ACTION_MAP:
             ACTION_MAP[action]()
         else:
-            logging.error("[cli] Unsupported action: %s", action)
+            logging.error("[tcloud] Unsupported action: %s", action)
     else:
-        logging.error("[cli] Unsupported target: %s", target)
+        logging.error("[tcloud] Unsupported target: %s", target)

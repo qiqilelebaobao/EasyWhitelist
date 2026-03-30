@@ -61,7 +61,7 @@ class Prefix:
         """Lazily discover prefix lists across all regions on first access."""
         if self._prefix_list is None:
             self._prefix_list = self._discover_prefix_list()
-            logging.info("[aliyun] Using prefix lists: %s",
+            logging.info("[prefix] Using prefix lists: %s",
                          [pl.__dict__ for pl in self._prefix_list] if self._prefix_list else None)
         return self._prefix_list
 
@@ -96,7 +96,7 @@ class Prefix:
         # 1. Look up the security group; return on failure
         try:
             sg = SecurityGroup(sg_id, self.regions, proxy_port=self.proxy_port)
-            logging.info("[aliyun] Security group lookup result: sg_id=%s, region_id=%s, sg_name=%s",
+            logging.info("[prefix] Security group lookup result: sg_id=%s, region_id=%s, sg_name=%s",
                          sg.sg_id, sg.region_id, sg.sg_name)
         except Exception:
             logging.error("Failed to look up security group %s", sg_id)
@@ -113,12 +113,12 @@ class Prefix:
         if self.init_prefix(sg.region_id) or not self.current_prefix_list:
             logging.error("Failed to create prefix list, cannot proceed with whitelist initialization")
             return 4
-        logging.info("[aliyun] Prefix list initialized: %s", self.current_prefix_list.__dict__ if self.current_prefix_list else None)
+        logging.info("[prefix] Prefix list initialized: %s", self.current_prefix_list.__dict__ if self.current_prefix_list else None)
 
         if not sg.add_prefix_list_rule(self.current_prefix_list.prefix_list_id):
             logging.error("Failed to create security group rule with prefix list")
             return 5
-        logging.info("[aliyun] Security group rule with prefix list %s applied to %s", self.current_prefix_list.prefix_list_id, sg.sg_id)
+        logging.info("[prefix] Security group rule with prefix list %s applied to %s", self.current_prefix_list.prefix_list_id, sg.sg_id)
 
         _print_init_summary(sg.region_id,
                             self.current_prefix_list.prefix_list_id,
@@ -201,13 +201,13 @@ class Prefix:
             0 on success; 1 if the client or region is not initialized; 2 if no prefix list data is available.
         """
 
-        logging.info("[aliyun] Printing prefix list.")
+        logging.info("[prefix] Printing prefix list.")
         if not self.prefix_list:
             return 1
 
         any_error = False
 
-        logging.info("[aliyun] Fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
+        logging.info("[prefix] Fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1)) as executor:
             results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]] = [None] * len(self.prefix_list)
@@ -232,14 +232,14 @@ class Prefix:
                         idx, prefix, entries = future.result()
                         results[idx] = (prefix, entries)
                     except Exception:
-                        logging.exception("[aliyun] Error searching prefix list in region %s", futures[future])
+                        logging.exception("[prefix] Error searching prefix list in region %s", futures[future])
                     finally:
                         pbar.update(1)
 
         print_header('Alibaba Cloud Prefix List')
         any_error = self._print_prefix_list_results(results)
 
-        logging.info("[aliyun] Prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
+        logging.info("[prefix] Prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
         print_tail()
 
         return 2 if any_error else 0
@@ -277,7 +277,7 @@ class Prefix:
             for pl in self._prefix_list:
                 if pl.region_id == region_id:
                     self.current_prefix_list = pl
-                    logging.info("[aliyun] Reusing prefix list %s in %s", pl.prefix_list_id, region_id)
+                    logging.info("[prefix] Reusing prefix list %s in %s", pl.prefix_list_id, region_id)
                     return pl
 
         # 只查目标 region
@@ -291,7 +291,7 @@ class Prefix:
                 self._prefix_list = []
             self._prefix_list.extend([pl for pl in found if pl not in self._prefix_list])
             self.current_prefix_list = found[0]
-            logging.info("[aliyun] Reusing prefix list %s in %s", found[0].prefix_list_id, region_id)
+            logging.info("[prefix] Reusing prefix list %s in %s", found[0].prefix_list_id, region_id)
             return found[0]
 
         # 没有则创建
@@ -300,7 +300,7 @@ class Prefix:
             if self._prefix_list is None:
                 self._prefix_list = []
             self._prefix_list.append(self.current_prefix_list)
-            logging.info("[aliyun] Created prefix list %s in %s", self.current_prefix_list.prefix_list_id, region_id)
+            logging.info("[prefix] Created prefix list %s in %s", self.current_prefix_list.prefix_list_id, region_id)
             return self.current_prefix_list
 
         logging.error('Failed to find or create a prefix list with name prefix "%s" in %s', TEMPLATE_NAME_PREFIX, region_id)
@@ -345,7 +345,7 @@ class Prefix:
             0 on success, 1 if prerequisites are missing or the API call fails.
         """
         if not self.current_prefix_list:
-            logging.error("[aliyun] Prefix list ID or region ID is not initialized")
+            logging.error("[prefix] Prefix list ID or region ID is not initialized")
             return 1
 
         client_ip_list = get_ip_list(self.proxy_port)
@@ -353,10 +353,10 @@ class Prefix:
         client_ip_list = self._normalize_ip_list(client_ip_list, source_region)
 
         if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
-            logging.info("[aliyun] Prefix list %s updated successfully with %d IP(s)", self.current_prefix_list.prefix_list_id, len(client_ip_list))
+            logging.info("[prefix] Prefix list %s updated successfully with %d IP(s)", self.current_prefix_list.prefix_list_id, len(client_ip_list))
             return 0
 
-        logging.error("[aliyun] Failed to update prefix list %s with client IPs", self.current_prefix_list.prefix_list_id)
+        logging.error("[prefix] Failed to update prefix list %s with client IPs", self.current_prefix_list.prefix_list_id)
         return 1
 
     def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:
@@ -409,7 +409,7 @@ class Prefix:
             A list of prefix list dicts; empty list on network or API error.
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
-        logging.debug("[aliyun] Retrieving prefix lists in region %s...", region_id)
+        logging.debug("[prefix] Retrieving prefix lists in region %s...", region_id)
         runtime = _runtime(self.proxy_port is not None)
         all_entries: list = []
         next_token: Optional[str] = None
@@ -422,15 +422,17 @@ class Prefix:
                 describe_prefix_lists_request = ecs_20140526_models.DescribePrefixListsRequest(**req_kwargs)
                 describe_prefix_lists_response = client.describe_prefix_lists_with_options(describe_prefix_lists_request, runtime)  # type: ignore
                 body_map = describe_prefix_lists_response.body.to_map()
-                logging.debug("[aliyun] API response, detail=%s", json.dumps(body_map))
+                logging.debug("[prefix] API response, detail=%s", json.dumps(body_map))
                 page_entries = (body_map.get("PrefixLists") or {}).get("PrefixList") or []
                 all_entries.extend(page_entries)
                 next_token = body_map.get("NextToken") or None
                 if not next_token:
                     break
+            logging.debug("[prefix] Retrieved  prefix list(s) in region %s: %s", region_id, all_entries)
+            logging.info("[prefix] Retrieved %d prefix list(s) in region %s", len(all_entries), region_id)
             return all_entries
         except Exception as err:
-            logging.error("[aliyun] Failed to describe prefix lists in region %s, err=%s", region_id, err)
+            logging.error("[prefix] Failed to describe prefix lists in region %s, err=%s", region_id, err)
             return []
 
     def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> List[PrefixList]:
@@ -442,16 +444,16 @@ class Prefix:
         Returns:
             A list of PrefixList objects if found; empty list if not found.
         """
-        logging.info("[aliyun] Searching for a prefix list across all regions, prefix_name=%s", prefix_name)
+        logging.info("[prefix] Searching for a prefix list across all regions, prefix_name=%s", prefix_name)
         prefix_list: List[PrefixList] = []
 
         def _search_region(region_id: str) -> List[PrefixList]:
-            logging.info("[aliyun] Searching in region %s", region_id)
+            logging.info("[prefix] Searching in region %s", region_id)
             found: List[PrefixList] = []
             for entry in self._fetch_prefix_lists(region_id):
                 logging.debug(entry)
                 if entry['PrefixListName'].startswith(prefix_name):
-                    logging.info("[aliyun] Found prefix list: name=%s, id=%s", entry['PrefixListName'], entry['PrefixListId'])
+                    logging.info("[prefix] Found prefix list: name=%s, id=%s", entry['PrefixListName'], entry['PrefixListId'])
                     found.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
             return found
 
@@ -459,11 +461,11 @@ class Prefix:
             try:
                 return _search_region(region_id)
             except Exception as err:
-                logging.error("[aliyun] Error searching prefix list in region %s, err=%s", region_id, err)
+                logging.error("[prefix] Error searching prefix list in region %s, err=%s", region_id, err)
                 return []
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1)) as executor:
-            logging.info("[aliyun] Submitting search tasks for (%d), total %d regions ...",
+            logging.info("[prefix] Submitting search tasks for (%d), total %d regions ...",
                          min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1), len(self.regions.regions_list))
             futures = {executor.submit(_search_region_safe, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             with tqdm(
@@ -480,15 +482,15 @@ class Prefix:
                     region_id = futures[future]
                     try:
                         result = future.result()
-                        logging.debug("[aliyun] Completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
+                        logging.debug("[prefix] Completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
                         prefix_list.extend(result)
                     except Exception:
-                        logging.exception("[aliyun] Error searching prefix list in region %s", region_id)
+                        logging.exception("[prefix] Error searching prefix list in region %s", region_id)
                     finally:
                         pbar.update(1)
 
         logging.info(
-            "[aliyun] Completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
+            "[prefix] Completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
             len(prefix_list), len(self.regions.regions_list))
         return prefix_list
 
@@ -516,7 +518,7 @@ class Prefix:
                 net = ipaddress.ip_network(s, strict=False)
                 cidr = str(net)
             except ValueError:
-                logging.warning("[aliyun] Invalid IP/CIDR skipped: %s", s)
+                logging.warning("[prefix] Invalid IP/CIDR skipped: %s", s)
                 continue
             if cidr in seen:
                 continue
@@ -531,7 +533,7 @@ class Prefix:
                     logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
 
             if len(normalized) >= DEFAULT_MAX_ENTRIES:
-                logging.warning("[aliyun] Truncating IP list to %d entries (DEFAULT_MAX_ENTRIES)", DEFAULT_MAX_ENTRIES)
+                logging.warning("[prefix] Truncating IP list to %d entries (DEFAULT_MAX_ENTRIES)", DEFAULT_MAX_ENTRIES)
                 break
 
         return normalized
@@ -547,7 +549,7 @@ class Prefix:
             A list of entry dicts (each containing 'Cidr' and 'Description'); None on error.
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
-        logging.info("[aliyun] Fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
+        logging.info("[prefix] Fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
         runtime = _runtime(self.proxy_port is not None)
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
@@ -556,9 +558,9 @@ class Prefix:
             )
             describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
-            logging.info("[aliyun] Prefix list entries: %s", current_entries)
+            logging.info("[prefix] Prefix list entries: %s", current_entries)
         except Exception:
-            logging.exception("[aliyun] Failed to describe prefix list attributes for %s", prefix_list_id)
+            logging.exception("[prefix] Failed to describe prefix list attributes for %s", prefix_list_id)
             return None
         return current_entries
 

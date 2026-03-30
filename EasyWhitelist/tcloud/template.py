@@ -273,7 +273,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         handler()
         return action
     else:
-        logging.warning("[cli] Invalid command: %s (hint: l/c/q)", user_input)
+        logging.warning("[template] Invalid command: %s (hint: l/c/q)", user_input)
         return CommandAction.CONTINUE
 
 
@@ -303,16 +303,16 @@ def loop_list(common_client, proxy: Optional[int] = None) -> None:
                     break
 
         except KeyboardInterrupt:
-            logging.warning("[cli] Operation cancelled by user")
+            logging.warning("[template] Operation cancelled by user")
             break
 
         except ValueError as e:
-            logging.warning("[cli] Input failed: value error: %s", e)
+            logging.warning("[template] Input failed: value error: %s", e)
 
         except ConnectionError as e:
-            logging.error("[http] Connection failed: %s", e)
+            logging.error("[template] Connection failed: %s", e)
             break
 
         except Exception as e:
-            logging.error("[http] Request failed: %s", e)
+            logging.error("[template] Request failed: %s", e)
             break
