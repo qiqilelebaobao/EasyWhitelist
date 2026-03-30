@@ -18,6 +18,6 @@ def t_main(action: str, target: str, target_id: Optional[str], region: Optional[
         if action in ACTION_MAP:
             ACTION_MAP[action]()
         else:
-            logging.error("[cli] unsupported operation, reason=unknown action, detail=%s", action)
+            logging.error("[cli] Unsupported operation, reason=unknown action, detail=%s", action)
     else:
-        logging.error("[cli] unsupported target, reason=not implemented, detail=%s", target)
+        logging.error("[cli] Unsupported target, reason=not implemented, detail=%s", target)

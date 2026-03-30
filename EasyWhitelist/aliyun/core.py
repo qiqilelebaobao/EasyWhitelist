@@ -44,7 +44,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
     try:
         sg = SecurityGroup(sg_id, regions, proxy_port=proxy_port)
     except Exception:
-        logging.exception("[aliyun] failed to look up security group, sg_id=%s", sg_id)
+        logging.exception("[aliyun] Failed to look up security group, sg_id=%s", sg_id)
         echo_err(f"Failed to look up security group {sg_id}")
         return 2
 
@@ -52,9 +52,10 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
         echo_err(f"Security group {sg_id} not found in any region")
         return 3
 
-    # 2. Get or create the prefix list and update it with the current client IP
-    # init_prefix returns non-zero on failure; the second condition is a safety net for
-    # the unlikely case where it returns 0 but prefix_list_id is still unset
+    # 2. Get or create the prefix list and update it with the current client IP.
+    # `init_prefix` returns a non-zero value on failure. The second condition
+    # acts as a safety check for the unlikely case where `init_prefix` returns
+    # 0 but `prefix_list_id` remains unset.
     if prefix.init_prefix(sg.region_id) or not prefix.current_prefix_list:
         echo_err("Failed to create prefix list, cannot proceed with whitelist initialization")
         return 4
@@ -72,7 +73,7 @@ def init_whitelist(prefix: Prefix, regions: Regions, proxy_port: Optional[int], 
     return 0
 
 
-def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: Optional[int] = None) -> int:
+def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: Optional[int] = None, app_dir: Optional[str] = None) -> int:
     """Entry point for aliyun operations used by the CLI.
 
     Args:
@@ -80,15 +81,16 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         target: Target resource type, e.g. 'template'.
         target_id: ID of the target resource (optional).
         proxy_port: Proxy port (1–65535); None if no proxy is used.
+        app_dir: Application directory (optional).
     """
-    logging.info("[aliyun] entering aliyun handler (action=%s, target=%s, target_id=%s, proxy=%s)",
-                 action, target, target_id, proxy_port)
+    logging.info("[aliyun] Entering aliyun handler (action=%s, target=%s, target_id=%s, proxy=%s, app_dir=%s)",
+                 action, target, target_id, proxy_port, app_dir)
 
     if target == "template":
-        regions = Regions(proxy_port, app_dir=generate_app_directory())
-        logging.debug("[aliyun] fetched regions: %s", regions.regions_list)
+        regions = Regions(proxy_port, app_dir=app_dir)
+        logging.debug("[aliyun] Fetched regions: %s", regions.regions_list)
         prefix = Prefix(regions)
-        logging.info("[aliyun] initialized Regions and Prefix instances for template operations")
+        logging.info("[aliyun] Initialized Regions and Prefix instances for template operations")
 
         action_map = {
             "init": lambda: init_whitelist(prefix, regions, proxy_port, target_id),
@@ -98,10 +100,10 @@ def aliyun_main(action: str, target: str, target_id: Optional[str], proxy_port: 
         if action in action_map:
             return action_map[action]()
 
-        logging.error("[aliyun] unsupported operation, reason=unknown action, detail=%s", action)
+        logging.error("[aliyun] Unsupported operation, reason=unknown action, detail=%s", action)
         echo_err(f"Unsupported action: '{action}'. Valid actions: {list(action_map.keys())}")
         return 1
 
-    logging.error("[aliyun] unsupported target, reason=not implemented, detail=%s", target)
+    logging.error("[aliyun] Unsupported target, reason=not implemented, detail=%s", target)
     echo_err(f"Unsupported target: '{target}'. Currently supported: 'template'")
     return 1

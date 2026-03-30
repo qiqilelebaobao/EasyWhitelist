@@ -62,7 +62,7 @@ class SecurityGroup:
             True on success; False on failure.
         """
         if not self.region_id or not self.client:
-            logging.error("[aliyun] region_id or client is not set; SecurityGroup was not found during initialization")
+            logging.error("[aliyun] Region_id or client is not set; SecurityGroup was not found during initialization")
             return False
         # Build the AuthorizeSecurityGroup request object
         create_sg_rule_with_prefix_request = ecs_20140526_models.AuthorizeSecurityGroupRequest(

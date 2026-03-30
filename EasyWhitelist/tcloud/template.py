@@ -21,7 +21,8 @@ class CreateResult(Enum):
 
 def _get_template(common_client) -> Optional[dict]:
     try:
-        # templates = common_client.call_json("DescribeAddressTemplates", params, options = {"SkipSign": True}) # keep
+        # Keep prior variant (commented) for reference; current implementation
+        # invokes the API without extra options.
         return common_client.call_json("DescribeAddressTemplates", {})
 
     except TencentCloudSDKException as e:
@@ -67,12 +68,12 @@ def _modify_template_address(common_client, target_id, client_ips):
         if (TemplateSet := respon["Response"]["AddressTemplateSet"]) and TemplateSet[0]["AddressTemplateName"].startswith(TEMPLATE_NAME_PREFIX):
             pass
         else:
-            logging.error("[template] this is not a template generated from this tool. Shall not be modified.")
+            logging.error("[template] This is not a template generated from this tool. Shall not be modified.")
             return False
     except (TencentCloudSDKException, IndexError) as err:
-        # IndexError catch when there is no match target.Example: "AddressTemplateSet": []
-        logging.error("[template] api call failed, reason=exception, detail=%s", err)
-        raise RuntimeError(f"[template] api call failed: {err}") from err
+        # Catch IndexError when there is no matching target (e.g. "AddressTemplateSet": []).
+        logging.error("[template] API call failed, reason=exception, detail=%s", err)
+        raise RuntimeError(f"[template] API call failed: {err}") from err
 
     params = {"AddressTemplateId": target_id,
               "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in client_ips]
@@ -83,7 +84,7 @@ def _modify_template_address(common_client, target_id, client_ips):
             "ModifyAddressTemplateAttribute", params)
 
     except TencentCloudSDKException as err:
-        logging.error("[template] api call failed, reason=exception, detail=%s", err)
+        logging.error("[template] API call failed, reason=exception, detail=%s", err)
         return False
 
     return True
@@ -92,11 +93,11 @@ def _modify_template_address(common_client, target_id, client_ips):
 def set_template(common_client, target_id, proxy: Optional[int] = None):
     """更新模板 IP，返回是否成功"""
     if not target_id:
-        logging.error("[template] missing template_id, reason=empty input")
+        logging.error("[template] Missing template_id, reason=empty input")
         return False
 
     if not target_id.startswith(TEMPLATE_ID_PREFIX):
-        logging.warning("[template] set failed, reason=wrong template id, hint=check prefix")
+        logging.warning("[template] Set failed, reason=wrong template id, hint=check prefix")
         return False
 
     client_iplist = get_ip_list(proxy)
@@ -106,7 +107,7 @@ def set_template(common_client, target_id, proxy: Optional[int] = None):
         return True
     else:
         # 底层修改失败
-        logging.error("[template] failed to update template %s", target_id)
+        logging.error("[template] Failed to update template %s", target_id)
         print(f"❌ [失败] 模板 {target_id} 更新失败（请检查网络或模板状态）")
         return False
 
@@ -114,7 +115,7 @@ def set_template(common_client, target_id, proxy: Optional[int] = None):
 def create_template_and_associate(common_client, rule_id, proxy: Optional[int] = None):
 
     if not rule_id:
-        logging.error("[template] security group ID required but missing")
+        logging.error("[template] Security group ID required but missing")
         return False
 
     template_id, ret_val = create_template(common_client, proxy)
@@ -140,7 +141,7 @@ def create_template(common_client, proxy=None):
             template_id = existing_template["AddressTemplateId"]
             template_name = existing_template["AddressTemplateName"]
 
-            logging.info("[template] already have template without creation: %s", template_id)
+            logging.info("[template] Already have template without creation: %s", template_id)
 
             print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
 
@@ -200,7 +201,7 @@ def associate_template_2_rule(common_client, template_id, rule_id):
         return True
 
     except TencentCloudSDKException as err:
-        logging.error("[template] api failed, reason=exception, detail=%s", err)
+        logging.error("[template] API failed, reason=exception, detail=%s", err)
         return False
 
 
@@ -229,7 +230,7 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
     """
 
     if not template_ids:
-        logging.warning("[template] no template available, reason=no template, hint=create one first")
+        logging.warning("[template] No template available, reason=no template, hint=create one first")
         return
 
     try:
@@ -237,9 +238,9 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
         if 1 <= index <= len(template_ids):
             set_template(common_client, template_ids[index - 1], proxy)
         else:
-            logging.warning("[template] select failed, reason=index out of range, hint=available 1~%d", len(template_ids))
+            logging.warning("[template] Select failed, reason=index out of range, hint=available 1~%d", len(template_ids))
     except ValueError:
-        logging.warning("[template] select failed, reason=invalid number, input=%s hint=1~%d", user_input, len(template_ids))
+        logging.warning("[template] Select failed, reason=invalid number, input=%s hint=1~%d", user_input, len(template_ids))
 
 
 def _handle_command_input(user_input: str, common_client, template_ids: list, proxy: Optional[str]) -> CommandAction:
@@ -260,7 +261,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         CMD_EMPTY: (lambda: None, CommandAction.CONTINUE),
         CMD_LIST: (lambda: None, CommandAction.CONTINUE),  # list refresh handled by caller; prevents invalid-command fallthrough
         CMD_CREATE: (
-            lambda: logging.warning("[template] create command not yet implemented, hint=use 'ew template create <sg_id>'"),
+            lambda: logging.warning("[template] Create command not yet implemented, hint=use 'ew template create <sg_id>'"),
             CommandAction.CONTINUE,
         ),
         CMD_EXIT: (lambda: None, CommandAction.BREAK),
@@ -272,7 +273,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         handler()
         return action
     else:
-        logging.warning("[cli] command failed, reason=invalid command %s, hint=l/c/q", user_input)
+        logging.warning("[cli] Command failed, reason=invalid command %s, hint=l/c/q", user_input)
         return CommandAction.CONTINUE
 
 
@@ -302,16 +303,16 @@ def loop_list(common_client, proxy: Optional[int] = None) -> None:
                     break
 
         except KeyboardInterrupt:
-            logging.warning("[cli] operation cancelled, reason=user interrupt, hint=none")
+            logging.warning("[cli] Operation cancelled, reason=user interrupt, hint=none")
             break
 
         except ValueError as e:
-            logging.warning("[cli] input failed, reason=value error %s, hint=retry", e)
+            logging.warning("[cli] Input failed, reason=value error %s, hint=retry", e)
 
         except ConnectionError as e:
-            logging.error("[http] connection failed, reason=connection error, detail=%s", e)
+            logging.error("[http] Connection failed, reason=connection error, detail=%s", e)
             break
 
         except Exception as e:
-            logging.error("[http] request failed, reason=unexpected, detail=%s", e)
+            logging.error("[http] Request failed, reason=unexpected, detail=%s", e)
             break

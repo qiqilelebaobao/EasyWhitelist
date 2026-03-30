@@ -218,7 +218,7 @@ def is_cache_fresh(conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
         if last_dt.tzinfo is None:
             last_dt = last_dt.replace(tzinfo=timezone.utc)
     except ValueError:
-        logging.warning("[db] unparseable updated_at: %s", val)
+        logging.warning("[db] Unparseable updated_at: %s", val)
         return False
 
     local_today = datetime.now(timezone.utc).astimezone().date()

@@ -61,7 +61,7 @@ class Prefix:
         """Lazily discover prefix lists across all regions on first access."""
         if self._prefix_list is None:
             self._prefix_list = self._discover_prefix_list()
-            logging.info("[aliyun] using prefix list %s",
+            logging.info("[aliyun] Using prefix list %s",
                          [pl.__dict__ for pl in self._prefix_list] if self._prefix_list else None)
         return self._prefix_list
 
@@ -136,13 +136,13 @@ class Prefix:
             0 on success; 1 if the client or region is not initialized; 2 if no prefix list data is available.
         """
 
-        logging.info("[aliyun] printing prefix list.")
+        logging.info("[aliyun] Printing prefix list.")
         if not self.prefix_list:
             return 1
 
         any_error = False
 
-        logging.info("[aliyun] fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
+        logging.info("[aliyun] Fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1)) as executor:
             results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]] = [None] * len(self.prefix_list)
@@ -174,7 +174,7 @@ class Prefix:
         print_header('Alibaba Cloud Prefix List')
         any_error = self._print_prefix_list_results(results)
 
-        logging.info("[aliyun] prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
+        logging.info("[aliyun] Prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
         print_tail()
 
         return 2 if any_error else 0
@@ -383,16 +383,16 @@ class Prefix:
         Returns:
             A list of PrefixList objects if found; empty list if not found.
         """
-        logging.info("[aliyun] searching for a prefix list across all regions, prefix_name=%s", prefix_name)
+        logging.info("[aliyun] Searching for a prefix list across all regions, prefix_name=%s", prefix_name)
         prefix_list: List[PrefixList] = []
 
         def _search_region(region_id: str) -> List[PrefixList]:
-            logging.info("[aliyun] searching in region %s", region_id)
+            logging.info("[aliyun] Searching in region %s", region_id)
             found: List[PrefixList] = []
             for entry in self._fetch_prefix_lists(region_id):
                 logging.debug(entry)
                 if entry['PrefixListName'].startswith(prefix_name):
-                    logging.info("[aliyun] found prefix list: name=%s, id=%s", entry['PrefixListName'], entry['PrefixListId'])
+                    logging.info("[aliyun] Found prefix list: name=%s, id=%s", entry['PrefixListName'], entry['PrefixListId'])
                     found.append(PrefixList(entry['PrefixListId'], region_id, entry['CreationTime'], entry['PrefixListName']))
             return found
 
@@ -404,7 +404,7 @@ class Prefix:
                 return []
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1)) as executor:
-            logging.info("[aliyun] submitting search tasks for (%d), total %d regions ...",
+            logging.info("[aliyun] Submitting search tasks for (%d), total %d regions ...",
                          min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1), len(self.regions.regions_list))
             futures = {executor.submit(_search_region_safe, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             with tqdm(
@@ -421,7 +421,7 @@ class Prefix:
                     region_id = futures[future]
                     try:
                         result = future.result()
-                        logging.debug("[aliyun] completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
+                        logging.debug("[aliyun] Completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
                         prefix_list.extend(result)
                     except Exception:
                         logging.exception("[aliyun] Error searching prefix list in region %s", region_id)
@@ -429,7 +429,7 @@ class Prefix:
                         pbar.update(1)
 
         logging.info(
-            "[aliyun] completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
+            "[aliyun] Completed searching for prefix lists. Found %d matching prefix list(s) across %d regions.",
             len(prefix_list), len(self.regions.regions_list))
         return prefix_list
 
@@ -488,7 +488,7 @@ class Prefix:
             A list of entry dicts (each containing 'Cidr' and 'Description'); None on error.
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
-        logging.info("[aliyun] fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
+        logging.info("[aliyun] Fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
         runtime = _runtime(self.proxy_port is not None)
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
@@ -497,7 +497,7 @@ class Prefix:
             )
             describe_resp = client.describe_prefix_list_attributes_with_options(describe_req, runtime)  # type: ignore
             current_entries = describe_resp.body.to_map().get('Entries', {}).get('Entry', []) or []
-            logging.info("[aliyun] prefix list entries: %s", current_entries)
+            logging.info("[aliyun] Prefix list entries: %s", current_entries)
         except Exception:
             logging.exception("[aliyun] Failed to describe prefix list attributes for %s", prefix_list_id)
             return None
@@ -505,13 +505,13 @@ class Prefix:
 
     # def _auto_search_prefix_by_name(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[str]:
     #     '''Search for a prefix list by name prefix. Returns the prefix list ID if found, or None if not found.'''
-    #     logging.info("[prefix] search prefix list, region=%s, prefix_name=%s ", self.region, prefix_name)
+    #     logging.info("[prefix] Search prefix list, region=%s, prefix_name=%s ", self.region, prefix_name)
     #     prefix_lists = self.get_prefix_list(self.client)
     #     logging.debug(prefix_lists)
     #     if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
     #         for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
     #             logging.debug(prefix)
     #             if prefix['PrefixListName'].startswith(prefix_name):
-    #                 logging.info("[prefix] found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
+    #                 logging.info("[prefix] Found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
     #                 return prefix["PrefixListId"]
     #     return None
