@@ -118,12 +118,14 @@ class Prefix:
             echo_err("Failed to create security group rule with prefix list")
             return 5
 
-        echo_ok("Successfully initialized template-based whitelist")
         _print_init_summary(sg.region_id,
                             self.current_prefix_list.prefix_list_id,
                             self.current_prefix_list.creation_time if self.current_prefix_list.creation_time else '',
                             "n/a",
                             self.current_prefix_list.prefix_list_name if self.current_prefix_list.prefix_list_name else '')
+
+        echo_ok("Successfully initialized template-based whitelist\n")
+
         return 0
 
     def init_prefix(self, region_id: str) -> int:
@@ -273,7 +275,7 @@ class Prefix:
             for pl in self._prefix_list:
                 if pl.region_id == region_id:
                     self.current_prefix_list = pl
-                    echo_ok(f"Reusing prefix list {pl.prefix_list_id} in {region_id}")
+                    logging.info(f"Reusing prefix list {pl.prefix_list_id} in {region_id}")
                     return pl
 
         # 只查目标 region
@@ -287,7 +289,7 @@ class Prefix:
                 self._prefix_list = []
             self._prefix_list.extend([pl for pl in found if pl not in self._prefix_list])
             self.current_prefix_list = found[0]
-            echo_ok(f"Reusing prefix list {found[0].prefix_list_id} in {region_id}")
+            logging.info(f"[aliyun] Reusing prefix list {found[0].prefix_list_id} in {region_id}")
             return found[0]
 
         # 没有则创建
@@ -296,7 +298,7 @@ class Prefix:
             if self._prefix_list is None:
                 self._prefix_list = []
             self._prefix_list.append(self.current_prefix_list)
-            echo_ok(f"Created prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
+            logging.info(f"[aliyun] Created prefix list {self.current_prefix_list.prefix_list_id} in {region_id}")
             return self.current_prefix_list
 
         echo_err(f'Failed to find or create a prefix list with name prefix "{TEMPLATE_NAME_PREFIX}" in {region_id}')
@@ -355,10 +357,10 @@ class Prefix:
         ) else "failed"
 
         if status == 'ok':
-            echo_ok(f"Prefix list {self.current_prefix_list.prefix_list_id} updated")
+            logging.info(f"[aliyun] Prefix list {self.current_prefix_list.prefix_list_id} updated")
             return 0
 
-        echo_err(f"Prefix list {self.current_prefix_list.prefix_list_id} update failed")
+        logging.error(f"[aliyun] Prefix list {self.current_prefix_list.prefix_list_id} update failed")
         return 1
 
     def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:

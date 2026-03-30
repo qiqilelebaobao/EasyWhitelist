@@ -79,7 +79,7 @@ class SecurityGroup:
         if resp is None:
             return False
         logging.debug(json.dumps(resp.body.to_map()))
-        echo_ok(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
+        logging.info(f"Security group rule with prefix list {prefix_list_id} applied to {self.sg_id}")
         return True
 
     def _search_security_group_by_region(self, region_id: str) -> Optional[Dict[str, Any]]:
@@ -93,7 +93,7 @@ class SecurityGroup:
         """
         for sg in self._fetch_security_groups(region_id):
             if sg["SecurityGroupId"] == self.sg_id:
-                echo_ok(f"Found security group {self.sg_id} in {region_id}")
+                logging.info(f"Found security group {self.sg_id} in {region_id}")
                 return sg
         logging.info("[aliyun] Security group %s not found in region %s", self.sg_id, region_id)
         return None
