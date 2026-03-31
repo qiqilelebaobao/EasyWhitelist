@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 from . import client
-from .template import set_template, create_template_and_associate, loop_list
+from .template import set_template, initialize_and_bind_template, loop_list
 
 
 def t_main(action: str,
@@ -20,7 +20,7 @@ def t_main(action: str,
     ACTION_MAP = {
         "list": lambda: loop_list(common_client, proxy),
         "set": lambda: set_template(common_client, target_id, proxy),
-        "init": lambda: create_template_and_associate(common_client, target_id, proxy),
+        "init": lambda: initialize_and_bind_template(common_client, target_id, proxy),
     }
 
     if action in ACTION_MAP:

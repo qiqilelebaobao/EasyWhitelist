@@ -112,9 +112,9 @@ def set_template(common_client, target_id, proxy: Optional[int] = None):
         return False
 
 
-def create_template_and_associate(common_client, rule_id, proxy: Optional[int] = None):
+def initialize_and_bind_template(common_client, template_id, proxy: Optional[int] = None):
 
-    if not rule_id:
+    if not template_id:
         logging.error("[template] Security group ID required but missing")
         return False
 
@@ -123,7 +123,7 @@ def create_template_and_associate(common_client, rule_id, proxy: Optional[int] =
     if ret_val == CreateResult.UPDATED_EXISTING:
         return True
     elif ret_val == CreateResult.CREATED_NEW:
-        return associate_template_2_rule(common_client, template_id, rule_id)
+        return associate_template_2_rule(common_client, template_id, template_id)
     else:
         return False
 
