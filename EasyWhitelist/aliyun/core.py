@@ -17,8 +17,8 @@ def aliyun_main(action: str, target_id: Optional[str], proxy_port: Optional[int]
         proxy_port: Proxy port (1–65535); None if no proxy is used.
         app_dir: Application directory (optional).
     """
-    logging.info("[aliyun] Entering handler: action=%s, target=%s, target_id=%s, proxy=%s, app_dir=%s",
-                 action, target, target_id, proxy_port, app_dir)
+    logging.info("[aliyun] Entering handler: action=%s, target_id=%s, proxy=%s, app_dir=%s",
+                 action, target_id, proxy_port, app_dir)
 
     regions = Regions(proxy_port, app_dir=app_dir)
     logging.info("[aliyun] %d Regions fetched.", len(regions.regions_list) if regions.regions_list else 0)
