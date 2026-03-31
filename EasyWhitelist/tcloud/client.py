@@ -17,7 +17,7 @@ DEFAULT_REGION = "ap-guangzhou"
 region_list: List[dict] = []
 
 
-def get_regions(proxy_port: str = '') -> List[dict]:
+def _fetch_regions(proxy_port: str = '') -> List[dict]:
     """Fetch regions from Tencent Cloud API and return the RegionSet list.
 
     Returns an empty list on error.
@@ -30,9 +30,9 @@ def get_regions(proxy_port: str = '') -> List[dict]:
         client_profile = ClientProfile()
         client_profile.httpProfile = http_profile
 
-        prarams = "{}"
+        params = "{}"
         common_client = CommonClient("cvm", "2017-03-12", cred, "", profile=client_profile)
-        regions = common_client.call_json("DescribeRegions", json.loads(prarams)).get("Response", {}).get("RegionSet", [])
+        regions = common_client.call_json("DescribeRegions", json.loads(params)).get("Response", {}).get("RegionSet", [])
         logging.info("[tencentcloud] Fetched %d regions from Tencent Cloud API", len(regions))
         return regions
     except Exception as e:
@@ -57,19 +57,19 @@ def obtain_region_set(app_dir: Optional[str] = None, proxy_port: str = '') -> Op
 
     if conn is None:
         logging.info("[tencentcloud] No DB connection available; will fetch regions from network without caching")
-        return get_regions(proxy_port)
+        return _fetch_regions(proxy_port)
 
     try:
         if is_cache_fresh(conn=conn, cloud_provider='tencentcloud'):
             logging.info("[tencentcloud] Loaded regions from DB cache")
             return load_cached_regions(conn=conn)
         # stale or empty cache: fetch from network
-        regions = get_regions(proxy_port)
+        regions = _fetch_regions(proxy_port)
         upsert_regions(conn, regions, cloud_provider='tencentcloud')
         return regions
     except Exception as e:
         logging.warning("[tencentcloud] Cache check failed; fetching regions from network: %s", e)
-        return get_regions(proxy_port)
+        return _fetch_regions(proxy_port)
 
 
 def get_region_set() -> Optional[List[dict]]:
