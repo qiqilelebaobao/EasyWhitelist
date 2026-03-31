@@ -68,13 +68,14 @@ def _db_path(app_dir: str) -> str:
 
 
 def upsert_regions(conn: sqlite3.Connection,
-                   regions: List[Dict], cloud_provider: str = 'aliyun',
+                   regions: List[Dict], cloud_provider: str,
                    ) -> None:
     try:
+        logging.info("[db] Upserting %d regions for cloud provider %s", len(regions), cloud_provider)
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         for region in regions:
-            region_id = region.get('RegionId', '')
+            region_id = region.get('Region', '')
             if not region_id:
                 continue
             cursor.execute(
@@ -88,7 +89,7 @@ def upsert_regions(conn: sqlite3.Connection,
                     updated_at=excluded.updated_at
                 """,
                 (region_id,
-                 region.get('LocalName', ''),
+                 region.get('RegionName', ''),
                  region.get('RegionEndpoint', ''),
                  cloud_provider,
                  now_iso,
@@ -213,13 +214,13 @@ def load_cached_security_group(conn: sqlite3.Connection, sg_id: str) -> Dict[str
         return {}
 
 
-def is_cache_fresh(conn: sqlite3.Connection, max_age_days: int = 1) -> bool:
+def is_cache_fresh(conn: sqlite3.Connection, cloud_provider: str, max_age_days: int = 1) -> bool:
     if max_age_days < 0:
         return False
 
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT MIN(updated_at) FROM regions")
+        cursor.execute("SELECT MIN(updated_at) FROM regions WHERE cloud_provider = ?", (cloud_provider,))
         row = cursor.fetchone()
         logging.debug("[db] Cache freshness check - latest updated_at: %s", row[0] if row else "None")
     except Exception as e:

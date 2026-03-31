@@ -36,7 +36,7 @@ class Regions:
             return self._fetch_regions_from_network(proxy_port)
 
         try:
-            if is_cache_fresh(conn=self.conn):
+            if is_cache_fresh(conn=self.conn, cloud_provider='aliyun'):
                 logging.info("[region] Loaded regions from cache")
                 return load_cached_regions(conn=self.conn)
             else:

@@ -19,7 +19,7 @@ class CreateResult(Enum):
     FAILED = auto()             # 异常失败
 
 
-def _get_template(common_client) -> Optional[dict]:
+def _get_template(common_client) -> dict:
     try:
         # Keep prior variant (commented) for reference; current implementation
         # invokes the API without extra options.
@@ -27,7 +27,7 @@ def _get_template(common_client) -> Optional[dict]:
 
     except TencentCloudSDKException as e:
         logging.error("[template] DescribeAddressTemplates failed: %s", e)
-        return None
+        return {}
 
 
 def print_template(common_client) -> List[str]:
