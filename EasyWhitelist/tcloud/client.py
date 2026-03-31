@@ -11,8 +11,6 @@ from tencentcloud.common.common_client import CommonClient
 
 from ..util.db import is_cache_fresh, load_cached_regions, upsert_regions
 
-DEFAULT_REGION = "ap-guangzhou"
-
 # module-level cache (process-local). Prefer using DB cache via obtain_region_set().
 region_list: List[dict] = []
 
@@ -76,15 +74,9 @@ def get_region_set() -> Optional[List[dict]]:
     return region_list
 
 
-def get_common_client(region, proxy_port=None) -> CommonClient:
-    # cred = credential.Credential(
-    #     os.environ.get("TENCENTCLOUD_SECRET_ID"),
-    #     os.environ.get("TENCENTCLOUD_SECRET_KEY"))
-    if region is None:
-        region = DEFAULT_REGION
-        logging.info("[config] Region not set; falling back to %s", region)
-    try:
+def get_common_client(region: str, proxy_port: Optional[int] = None) -> CommonClient:
 
+    try:
         cred = credential.DefaultCredentialProvider().get_credential()
 
         http_profile = HttpProfile()
