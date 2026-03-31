@@ -36,9 +36,9 @@ def main() -> None:
     logging.info("[core] Cloud provider selected: %s", cloud_provider.upper())
 
     if cloud_provider == "tencent":
-        sys.exit(t_main(args.action, args.target, args.target_id, args.region, args.proxy, app_dir=app_dir))
+        sys.exit(t_main(args.action, args.target_id, args.proxy, app_dir=app_dir))
     elif cloud_provider == "alibaba":
-        sys.exit(aliyun_main(args.action, args.target, args.target_id, args.proxy, app_dir=app_dir))
+        sys.exit(aliyun_main(args.action, args.target_id, args.proxy, app_dir=app_dir))
     else:
         logging.error("[core] Unsupported cloud provider: %s", cloud_provider)
         sys.exit(1)

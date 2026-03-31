@@ -218,7 +218,7 @@ CMD_EXIT = "q"
 INPUT_PROMPT = "Please choose # template to set (or [L]ist, [C]reate, [Q]uit, Enter\u00d72 to exit): "
 
 
-def _handle_digit_input(user_input: str, common_client, template_ids: list, proxy: Optional[str]) -> None:
+def _handle_digit_input(user_input: str, common_client, template_ids: list, proxy_port: Optional[int]) -> None:
     """
     处理数字输入，选择模板索引
 
@@ -226,7 +226,7 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
         user_input: 用户输入的数字字符串
         common_client: 云服务客户端
         template_ids: 模板ID列表
-        proxy: 代理设置，可选
+        proxy_port: 代理端口，可选
     """
 
     if not template_ids:
@@ -236,14 +236,14 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
     try:
         index = int(user_input)
         if 1 <= index <= len(template_ids):
-            set_template(common_client, template_ids[index - 1], proxy)
+            set_template(common_client, template_ids[index - 1], proxy_port)
         else:
             logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
     except ValueError:
         logging.warning("[template] Selection failed: invalid number '%s' (expected 1~%d)", user_input, len(template_ids))
 
 
-def _handle_command_input(user_input: str, common_client, template_ids: list, proxy: Optional[str]) -> CommandAction:
+def _handle_command_input(user_input: str, common_client, template_ids: list, proxy_port: Optional[int]) -> CommandAction:
     """
     处理命令输入，执行相应操作
 
@@ -251,7 +251,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         user_input: 用户输入的命令
         common_client: 云服务客户端
         template_ids: 模板ID列表
-        proxy: 代理设置，可选
+        proxy_port: 代理端口，可选
 
     Returns:
         CommandAction: 指示后续操作的动作
@@ -277,7 +277,7 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         return CommandAction.CONTINUE
 
 
-def loop_list(common_client, proxy: Optional[int] = None) -> None:
+def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
     template_ids = print_template(common_client)
     last_input = None
 
@@ -293,12 +293,12 @@ def loop_list(common_client, proxy: Optional[int] = None) -> None:
 
             if user_input.isdigit():
                 _handle_digit_input(
-                    user_input, common_client, template_ids, proxy)
+                    user_input, common_client, template_ids, proxy_port)
             elif user_input == CMD_LIST:
                 # 重新拉取列表并刷新本地 template_ids
                 template_ids = print_template(common_client)
             else:
-                action = _handle_command_input(user_input, common_client, template_ids, proxy)
+                action = _handle_command_input(user_input, common_client, template_ids, proxy_port)
                 if action == CommandAction.BREAK:
                     break
 
