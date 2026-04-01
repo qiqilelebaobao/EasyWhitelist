@@ -15,7 +15,7 @@ from ..util.db import is_cache_fresh, load_cached_regions, upsert_regions
 region_list: List[dict] = []
 
 
-def _fetch_regions(proxy_port: str = '') -> List[dict]:
+def _fetch_regions(proxy_port: Optional[int] = None) -> List[dict]:
     """Fetch regions from Tencent Cloud API and return the RegionSet list.
 
     Returns an empty list on error.
@@ -25,6 +25,8 @@ def _fetch_regions(proxy_port: str = '') -> List[dict]:
         http_profile = HttpProfile()
         http_profile.proxy = f"127.0.0.1:{proxy_port}" if proxy_port else None
         http_profile.endpoint = "cvm.tencentcloudapi.com"
+        if proxy_port:
+            http_profile.certification = False
         client_profile = ClientProfile()
         client_profile.httpProfile = http_profile
 
@@ -38,7 +40,7 @@ def _fetch_regions(proxy_port: str = '') -> List[dict]:
         return []
 
 
-def obtain_region_set(app_dir: Optional[str] = None, proxy_port: str = '') -> Optional[List]:
+def obtain_region_set(app_dir: Optional[str] = None, proxy_port: Optional[int] = None) -> Optional[List]:
     """Return regions, prefer cached DB value when fresh; otherwise fetch and cache.
 
     If `app_dir` is provided this will open `whitelist.db` under that dir and
@@ -82,13 +84,14 @@ def get_common_client(region: str, proxy_port: Optional[int] = None) -> CommonCl
         http_profile = HttpProfile()
         http_profile.endpoint = "vpc.tencentcloudapi.com"
         http_profile.proxy = f"127.0.0.1:{proxy_port}" if proxy_port is not None else None
+        if proxy_port:
+            http_profile.certification = False
 
         client_profile = ClientProfile()
         client_profile.httpProfile = http_profile
         # clientProfile.signMethod = "HmacSHA256"
 
-        common_client = CommonClient(
-            "vpc", "2017-03-12", cred, region, profile=client_profile)
+        common_client = CommonClient("vpc", "2017-03-12", cred, region, profile=client_profile)
         return common_client
 
     except Exception as e:

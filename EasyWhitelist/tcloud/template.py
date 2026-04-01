@@ -19,6 +19,22 @@ class CreateResult(Enum):
     FAILED = auto()             # 异常失败
 
 
+def initialize_and_bind_template(common_client, template_id, proxy: Optional[int] = None):
+
+    if not template_id:
+        logging.error("[template] Security group ID required but missing")
+        return False
+
+    template_id, ret_val = create_template(common_client, proxy)
+
+    if ret_val == CreateResult.UPDATED_EXISTING:
+        return True
+    elif ret_val == CreateResult.CREATED_NEW:
+        return associate_template_2_rule(common_client, template_id, template_id)
+    else:
+        return False
+
+
 def _get_template(common_client) -> dict:
     try:
         # Keep prior variant (commented) for reference; current implementation
@@ -112,23 +128,7 @@ def set_template(common_client, target_id, proxy: Optional[int] = None):
         return False
 
 
-def initialize_and_bind_template(common_client, template_id, proxy: Optional[int] = None):
-
-    if not template_id:
-        logging.error("[template] Security group ID required but missing")
-        return False
-
-    template_id, ret_val = create_template(common_client, proxy)
-
-    if ret_val == CreateResult.UPDATED_EXISTING:
-        return True
-    elif ret_val == CreateResult.CREATED_NEW:
-        return associate_template_2_rule(common_client, template_id, template_id)
-    else:
-        return False
-
-
-def create_template(common_client, proxy=None):
+def create_template(common_client, proxy_port=None):
     try:
         params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
         respon = common_client.call_json("DescribeAddressTemplates", params)
@@ -148,7 +148,7 @@ def create_template(common_client, proxy=None):
             set_template(common_client, template_id)
             return template_id, CreateResult.UPDATED_EXISTING
 
-        ip_list = get_ip_list(proxy)
+        ip_list = get_ip_list(proxy_port)
         random_suffix = random.randint(1, 9999)
         template_name = f"{TEMPLATE_NAME_PREFIX}{random_suffix:04d}"
         params = {

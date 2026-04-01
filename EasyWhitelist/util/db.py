@@ -75,7 +75,8 @@ def upsert_regions(conn: sqlite3.Connection,
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         for region in regions:
-            region_id = region.get('Region', '')
+            print(region)
+            region_id = region.get('Region', '') or region.get('RegionId', '')
             if not region_id:
                 continue
             cursor.execute(

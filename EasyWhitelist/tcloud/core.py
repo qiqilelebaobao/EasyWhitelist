@@ -7,20 +7,21 @@ from .template import set_template, initialize_and_bind_template, loop_list
 
 def t_main(action: str,
            target_id: Optional[str],
-           proxy: Optional[int] = None,
+           proxy_port: Optional[int] = None,
            app_dir: Optional[str] = None) -> int:
-    regions = client.obtain_region_set(app_dir=app_dir)
+
+    regions = client.obtain_region_set(app_dir=app_dir, proxy_port=proxy_port)
     if regions is None or len(regions) == 0:
         logging.error("[tencentcloud] No regions available to proceed with template action")
         return 1
 
     logging.info("[tencentcloud] Using region '%s' for template operations", regions[0].get("RegionId"))
-    common_client = client.get_common_client(regions[0].get("RegionId"), proxy)
+    common_client = client.get_common_client(regions[0].get("RegionId"), proxy_port=proxy_port)
 
     ACTION_MAP = {
-        "list": lambda: loop_list(common_client, proxy),
-        "set": lambda: set_template(common_client, target_id, proxy),
-        "init": lambda: initialize_and_bind_template(common_client, target_id, proxy),
+        "init": lambda: initialize_and_bind_template(common_client, target_id, proxy_port),
+        "list": lambda: loop_list(common_client, proxy_port),
+        "set": lambda: set_template(common_client, target_id, proxy_port),
     }
 
     if action in ACTION_MAP:
