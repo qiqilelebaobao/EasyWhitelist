@@ -20,7 +20,7 @@ def t_main(action: str,
 
     if action == 'init' and security_rule_id:
         logging.info("[tencentcloud] Target security rule ID: %s", security_rule_id)
-        region_id = discover_regions_from_api_with_cache(conn, regions, security_rule_id)
+        region_id = discover_regions_from_api_with_cache(conn, regions, security_rule_id, proxy_port=proxy_port)
         if not region_id:
             logging.warning("[tencentcloud] Failed to discover region for security group '%s'; defaulting to first region in list", security_rule_id)
             return 2
@@ -40,5 +40,3 @@ def t_main(action: str,
     else:
         logging.error("[tencentcloud] Unsupported action: %s", action)
         return 3
-
-    return 0

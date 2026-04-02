@@ -58,14 +58,15 @@ def _update_template(common_client, template_id, proxy_port: Optional[int] = Non
         return False
 
 
-def update_all_templates(common_client, proxy_port: Optional[int] = None):
+def update_all_templates(common_client, proxy_port: Optional[int] = None) -> int:
 
     if not (address_template_set := _retrieve_template_info_with_filter(common_client)):
-        return []
+        return 1
 
     for i, template in enumerate(address_template_set, 1):
         _update_template(common_client, template["AddressTemplateId"], proxy_port)
         logging.info("[template] Updated template %d/%d: %s", i, len(address_template_set), template["AddressTemplateId"])
+    return 0
 
 
 def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
@@ -109,7 +110,9 @@ def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
             break
 
 
-def _retrieve_template_info(common_client, params: dict = {}) -> list:
+def _retrieve_template_info(common_client, params: Optional[dict] = None) -> list:
+    if params is None:
+        params = {}
     try:
         respon = common_client.call_json("DescribeAddressTemplates", params)
 
@@ -175,7 +178,7 @@ def _modify_template_address(common_client, template_id, client_ips):
 
 
 def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[str, CreateResult]:
-    """创建模板并返回模板ID，失败返回None"""
+    """创建模板并返回模板ID，失败返回 ('', CreateResult.FAILED)。"""
 
     ip_list = retrieve_unique_ip_addresses(proxy_port)
     template_name = f"{RESOURCE_NAME_PREFIX}{int(datetime.now().timestamp())}"
@@ -190,7 +193,7 @@ def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[s
         template_id = respon["Response"]["AddressTemplate"]["AddressTemplateId"]
         print(f"🔄 [进行中] 模板 {template_id} 已创建")
         return template_id, CreateResult.CREATED_NEW
-    except TencentCloudSDKException as err:
+    except (TencentCloudSDKException, KeyError) as err:
         logging.error("[template] API failed: %s", err)
         return '', CreateResult.FAILED
 
@@ -223,7 +226,7 @@ def _associate_template_2_rule(common_client, template_id, rule_id):
         }
         respon = common_client.call_json("DescribeSecurityGroupPolicies", params)
 
-        if respon["Response"]["SecurityGroupPolicySet"]["Ingress"]:
+        if respon.get("Response", {}).get("SecurityGroupPolicySet", {}).get("Ingress"):
             logging.info("[template] %s already associated with %s", template_id, rule_id)
             print(f"❗ [中止] 已有属于程序创建的模板 {template_id} 关联到 {rule_id}，仅允许关联一次")
             return False

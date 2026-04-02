@@ -1,5 +1,4 @@
 import logging
-import json
 import sqlite3
 
 from typing import Optional, List
@@ -9,9 +8,6 @@ from tencentcloud.common.profile.client_profile import ClientProfile
 from tencentcloud.common.common_client import CommonClient
 
 from ..util.db import is_cache_fresh, load_cached_regions, upsert_regions
-
-# module-level cache (process-local). Prefer using DB cache via obtain_region_set().
-region_list: List[dict] = []
 
 
 def _fetch_regions(proxy_port: Optional[int] = None) -> List[dict]:
@@ -29,9 +25,8 @@ def _fetch_regions(proxy_port: Optional[int] = None) -> List[dict]:
         client_profile = ClientProfile()
         client_profile.httpProfile = http_profile
 
-        params = "{}"
         common_client = CommonClient("cvm", "2017-03-12", cred, "", profile=client_profile)
-        regions = common_client.call_json("DescribeRegions", json.loads(params)).get("Response", {}).get("RegionSet", [])
+        regions = common_client.call_json("DescribeRegions", {}).get("Response", {}).get("RegionSet", [])
         logging.info("[tencentcloud] Fetched %d regions from Tencent Cloud API", len(regions))
         return regions
     except Exception as e:
@@ -61,10 +56,6 @@ def obtain_region_set(conn: Optional[sqlite3.Connection] = None, proxy_port: Opt
     except Exception as e:
         logging.warning("[tencentcloud] Cache check failed; fetching regions from network: %s", e)
         return _fetch_regions(proxy_port)
-
-
-def get_region_set() -> Optional[List[dict]]:
-    return region_list
 
 
 def get_common_client(region: str, proxy_port: Optional[int] = None) -> CommonClient:
