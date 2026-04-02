@@ -9,7 +9,7 @@ edge_user_agent = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0"]
 curl_user_agent = ["curl/8.6.0", "curl/7.29.0", "curl/8.7.1"]
 
-# 使用更具体的 IP 正则，避免匹配到错误页等非 IP 内容
+# Use a more specific IP regex to avoid matching non-IP content such as error pages
 IFCONFIG_ME_PATTERN = r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
 CIP_CC_PATTERN = r"URL\s+?:\s+?http://www\.cip\.cc/(.+)"
 TOOL_LU_PATTERN = r"<p>你的外网IP地址是：\s*?(.+)</p>"

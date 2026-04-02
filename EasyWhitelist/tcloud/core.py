@@ -20,10 +20,10 @@ def t_main(action: str,
     logging.info("[tencentcloud] Using region '%s' for template operations", regions[0].get("RegionId"))
     if action == 'init' and security_rule_id:
         logging.info("[tencentcloud] Target security rule ID: %s", security_rule_id)
-        region_id = discover_regions_from_api_with_cache(conn, regions, security_rule_id)  # 先尝试从API发现安全组所在的region（如果之前没有缓存过），以便后续操作能更准确地定位到目标安全组
+        region_id = discover_regions_from_api_with_cache(conn, regions, security_rule_id)  # Discover the region of the security group via API (if not cached), so subsequent operations can accurately target it
         if not region_id:
             logging.warning("[tencentcloud] Failed to discover region for security group '%s'; defaulting to first region in list", security_rule_id)
-            return 1
+            return 2
         common_client = client.get_common_client(region_id, proxy_port=proxy_port)
     else:
         common_client = client.get_common_client(regions[0].get("RegionId"), proxy_port=proxy_port)
@@ -38,6 +38,6 @@ def t_main(action: str,
         return ACTION_MAP[action]()
     else:
         logging.error("[tencentcloud] Unsupported action: %s", action)
-        return 10
+        return 3
 
     return 0
