@@ -19,13 +19,13 @@ class CreateResult(Enum):
     FAILED = auto()             # 异常失败
 
 
-def initialize_and_bind_template(common_client, security_rule_id, proxy: Optional[int] = None):
+def initialize_and_bind_template(common_client, security_rule_id, proxy_port: Optional[int] = None):
 
     if not security_rule_id:
         logging.error("[template] Security group ID required but missing")
         return False
 
-    target_id, ret_val = _ensure_address_template(common_client, proxy)
+    ret_val = _ensure_address_template(common_client, proxy_port=proxy_port)
 
     if ret_val == CreateResult.UPDATED_EXISTING:
         return 0
@@ -35,25 +35,25 @@ def initialize_and_bind_template(common_client, security_rule_id, proxy: Optiona
         return 1
 
 
-def update_template(common_client, target_id, proxy: Optional[int] = None):
+def update_template(common_client, template_id, proxy_port: Optional[int] = None):
     """更新模板 IP，返回是否成功"""
-    if not target_id:
+    if not template_id:
         logging.error("[template] Missing template ID")
         return False
 
-    if not target_id.startswith(TEMPLATE_ID_PREFIX):
+    if not template_id.startswith(TEMPLATE_ID_PREFIX):
         logging.warning("[template] Set failed: invalid template ID (check prefix)")
         return False
 
-    client_iplist = get_ip_list(proxy)
+    client_iplist = get_ip_list(proxy_port)
 
-    if _modify_template_address(common_client, target_id, client_iplist):
-        print(f"✅ [成功] 模板 {target_id} 已更新 -> {client_iplist}")
+    if _modify_template_address(common_client, template_id, client_iplist):
+        print(f"✅ [成功] 模板 {template_id} 已更新 -> {client_iplist}")
         return True
     else:
         # 底层修改失败
-        logging.error("[template] Failed to update template %s", target_id)
-        print(f"❌ [失败] 模板 {target_id} 更新失败（请检查网络或模板状态）")
+        logging.error("[template] Failed to update template %s", template_id)
+        print(f"❌ [失败] 模板 {template_id} 更新失败（请检查网络或模板状态）")
         return False
 
 
@@ -143,14 +143,14 @@ def _display_template_list(common_client) -> List[str]:
     return template_ids
 
 
-def _modify_template_address(common_client, target_id, client_ips):
+def _modify_template_address(common_client, template_id, client_ips):
 
-    if not target_id:
+    if not template_id:
         return False
 
     # 增加描述校验，避免更改错误
     params = {"Filters": [
-        {"Name": "address-template-id", "Values": [target_id]}]}
+        {"Name": "address-template-id", "Values": [template_id]}]}
     try:
         respon = common_client.call_json("DescribeAddressTemplates", params)
         if (TemplateSet := respon["Response"]["AddressTemplateSet"]) and TemplateSet[0]["AddressTemplateName"].startswith(TEMPLATE_NAME_PREFIX):
@@ -163,7 +163,7 @@ def _modify_template_address(common_client, target_id, client_ips):
         logging.error("[template] API call failed: %s", err)
         raise RuntimeError(f"[template] API call failed: {err}") from err
 
-    params = {"AddressTemplateId": target_id,
+    params = {"AddressTemplateId": template_id,
               "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in client_ips]
               }
 
@@ -178,10 +178,10 @@ def _modify_template_address(common_client, target_id, client_ips):
     return True
 
 
-def _create_template(common_client, proxy: Optional[int] = None) -> Tuple[str, CreateResult]:
+def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[str, CreateResult]:
     """创建模板并返回模板ID，失败返回None"""
 
-    ip_list = get_ip_list(proxy)
+    ip_list = get_ip_list(proxy_port)
     random_suffix = random.randint(1, 9999)
     template_name = f"{TEMPLATE_NAME_PREFIX}{random_suffix:04d}"
     params = {
@@ -200,7 +200,7 @@ def _create_template(common_client, proxy: Optional[int] = None) -> Tuple[str, C
         return '', CreateResult.FAILED
 
 
-def _ensure_address_template(common_client, proxy_port=None):
+def _ensure_address_template(common_client, proxy_port: Optional[int] = None):
 
     address_template_set = _retrieve_template_info(common_client, {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]})  # 先查询一轮，看看是否已有符合条件的模板（避免重复创建）
 
@@ -209,12 +209,12 @@ def _ensure_address_template(common_client, proxy_port=None):
 
     # 找到第一个符合的模板就设置
     existing_template = address_template_set[0]
-    template_id = existing_template["AddressTemplateId"]
-    template_name = existing_template["AddressTemplateName"]
+    template_id = existing_template.get("AddressTemplateId")
+    template_name = existing_template.get("AddressTemplateName")
     logging.info("[template] Existing template found: %s", template_id)
 
     print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
-    update_template(common_client, template_id)
+    update_template(common_client, template_id, proxy_port)
 
     return template_id, CreateResult.UPDATED_EXISTING
 
