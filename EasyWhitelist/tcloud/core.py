@@ -4,6 +4,7 @@ from typing import Optional
 
 from . import client
 from .template import update_template, initialize_and_bind_template, loop_list
+from .sg import discover_regions_from_api_with_cache
 
 
 def t_main(action: str,
@@ -17,7 +18,15 @@ def t_main(action: str,
         return 1
 
     logging.info("[tencentcloud] Using region '%s' for template operations", regions[0].get("RegionId"))
-    common_client = client.get_common_client(regions[0].get("RegionId"), proxy_port=proxy_port)
+    if action == 'init' and security_rule_id:
+        logging.info("[tencentcloud] Target security rule ID: %s", security_rule_id)
+        region_id = discover_regions_from_api_with_cache(conn, regions, security_rule_id)  # 先尝试从API发现安全组所在的region（如果之前没有缓存过），以便后续操作能更准确地定位到目标安全组
+        if not region_id:
+            logging.warning("[tencentcloud] Failed to discover region for security group '%s'; defaulting to first region in list", security_rule_id)
+            return 1
+        common_client = client.get_common_client(region_id, proxy_port=proxy_port)
+    else:
+        common_client = client.get_common_client(regions[0].get("RegionId"), proxy_port=proxy_port)
 
     ACTION_MAP = {
         "init": lambda: initialize_and_bind_template(common_client, security_rule_id, proxy_port),

@@ -1,5 +1,4 @@
 import json
-import random
 import logging
 from typing import List, Optional, Tuple
 from enum import Enum, auto
@@ -26,12 +25,12 @@ def initialize_and_bind_template(common_client, security_rule_id, proxy_port: Op
         logging.error("[template] Security group ID required but missing")
         return False
 
-    ret_val = _ensure_address_template(common_client, proxy_port=proxy_port)
+    template_id, ret_val = _ensure_address_template(common_client, proxy_port=proxy_port)
 
     if ret_val == CreateResult.UPDATED_EXISTING:
         return 0
     elif ret_val == CreateResult.CREATED_NEW:
-        return _associate_template_2_rule(common_client, security_rule_id, security_rule_id)
+        return _associate_template_2_rule(common_client, template_id, security_rule_id)
     else:
         return 1
 
