@@ -9,7 +9,7 @@ from ..util.defaults import _IGNORE_SSL, DEFAULT_CONCURRENT_WORKERS
 from . import utils
 
 
-def get_ip_list(proxy_port=None):
+def retrieve_unique_ip_addresses(proxy_port=None):
 
     client_ip_list: List[str] = _get_local_ips(proxy_port)
     # 用 dict.fromkeys 去重，同时保留顺序（set() 会破坏顺序）
@@ -85,5 +85,5 @@ def _get_local_ips(proxy_port=None):
                     ip_list.append(l_ip)
             except Exception as e:
                 logging.error("[ip.detect] Failed to parse response from %s, error=%s", url, e)
-    logging.info("[ip.detect] Detected local IPs: %s", ip_list)
+    logging.info("[ip.detect] Detected local IPs: \"%s\"", ", ".join(ip_list) if ip_list else "")
     return ip_list

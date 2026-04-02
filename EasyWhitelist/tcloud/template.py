@@ -3,11 +3,12 @@ import random
 import logging
 from typing import List, Optional, Tuple
 from enum import Enum, auto
+from datetime import datetime
 
 
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
-from ..detector.detectors import get_ip_list
+from ..detector.detectors import retrieve_unique_ip_addresses
 from ..util.defaults import TEMPLATE_NAME_PREFIX, TEMPLATE_ID_PREFIX
 from ..util.cli import print_header, print_row, print_tail
 
@@ -45,10 +46,11 @@ def update_template(common_client, template_id, proxy_port: Optional[int] = None
         logging.warning("[template] Set failed: invalid template ID (check prefix)")
         return False
 
-    client_iplist = get_ip_list(proxy_port)
+    unique_client_ips = retrieve_unique_ip_addresses(proxy_port)
 
-    if _modify_template_address(common_client, template_id, client_iplist):
-        print(f"✅ [成功] 模板 {template_id} 已更新 -> {client_iplist}")
+    if _modify_template_address(common_client, template_id, unique_client_ips):
+        logging.info("[template] Template %s updated with IPs: %s", template_id, ", ".join(unique_client_ips) if unique_client_ips else "")
+        print(f"✅ [成功] 模板 {template_id} 已更新 -> {unique_client_ips}")
         return True
     else:
         # 底层修改失败
@@ -118,9 +120,14 @@ def _retrieve_template_info(common_client, params: dict = {}) -> list:
         return []
 
 
+def _retrieve_template_info_with_filter(common_client) -> list:
+    params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
+    return _retrieve_template_info(common_client, params)
+
+
 def _display_template_list(common_client) -> List[str]:
 
-    if not (address_template_set := _retrieve_template_info(common_client)):
+    if not (address_template_set := _retrieve_template_info_with_filter(common_client)):
         return []
 
     template_ids = []
@@ -181,9 +188,8 @@ def _modify_template_address(common_client, template_id, client_ips):
 def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[str, CreateResult]:
     """创建模板并返回模板ID，失败返回None"""
 
-    ip_list = get_ip_list(proxy_port)
-    random_suffix = random.randint(1, 9999)
-    template_name = f"{TEMPLATE_NAME_PREFIX}{random_suffix:04d}"
+    ip_list = retrieve_unique_ip_addresses(proxy_port)
+    template_name = f"{TEMPLATE_NAME_PREFIX}{int(datetime.now().timestamp())}"
     params = {
         "AddressTemplateName": template_name,
         "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in ip_list]
@@ -202,8 +208,7 @@ def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[s
 
 def _ensure_address_template(common_client, proxy_port: Optional[int] = None):
 
-    address_template_set = _retrieve_template_info(common_client, {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]})  # 先查询一轮，看看是否已有符合条件的模板（避免重复创建）
-
+    address_template_set = _retrieve_template_info_with_filter(common_client)
     if not address_template_set:
         return _create_template(common_client, proxy_port)
 

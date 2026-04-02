@@ -14,7 +14,7 @@ from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from ..util.defaults import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS, _GREEN, _RST
 from ..util.cli import echo_ok
 from ..util.cli import print_header, print_row, print_separator, print_tail, print_row_init, print_header_init, print_tail_init
-from ..detector.detectors import get_ip_list
+from ..detector.detectors import retrieve_unique_ip_addresses
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
 from .region import Regions
@@ -160,7 +160,7 @@ class Prefix:
             logging.error('No prefix list with name prefix "%s" found in any region — run init first', TEMPLATE_NAME_PREFIX)
             return 1
 
-        client_ip_list = get_ip_list(self.proxy_port)
+        client_ip_list = retrieve_unique_ip_addresses(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
         rows = []
@@ -352,7 +352,7 @@ class Prefix:
             logging.error("[prefix] Prefix list ID or region ID is not initialized")
             return []
 
-        client_ip_list = get_ip_list(self.proxy_port)
+        client_ip_list = retrieve_unique_ip_addresses(self.proxy_port)
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
         if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
