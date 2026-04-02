@@ -183,11 +183,11 @@ def upsert_ip_address(conn: sqlite3.Connection,
         conn.rollback()
 
 
-def load_cached_regions(conn: sqlite3.Connection) -> List[Dict]:
+def load_cached_regions(conn: sqlite3.Connection, cloud_provider: str) -> List[Dict]:
 
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT region_id, name, region_endpoint, cloud_provider FROM regions")
+        cursor.execute("SELECT region_id, name, region_endpoint, cloud_provider FROM regions WHERE cloud_provider = ?", (cloud_provider,))
         rows = cursor.fetchall()
         return [
             {

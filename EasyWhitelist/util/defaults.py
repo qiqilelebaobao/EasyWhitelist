@@ -7,8 +7,8 @@ _RED = "\033[31m"
 _CYAN = "\033[36m"
 
 # ---------- 常量 ----------
-# Prefix for prefix list names created by EasyWhitelist in Alibaba Cloud ECS.
-TEMPLATE_NAME_PREFIX = "Terminal-IPs-"
+# Prefix for resource names (prefix lists / address templates) created by EasyWhitelist.
+RESOURCE_NAME_PREFIX = "ClientIPs-"
 # Prefix for internal resource IDs (template IDs) used when creating prefix lists.
 TEMPLATE_ID_PREFIX = "ipm-"
 

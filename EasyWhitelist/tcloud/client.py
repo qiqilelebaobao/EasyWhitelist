@@ -53,7 +53,7 @@ def obtain_region_set(conn: Optional[sqlite3.Connection] = None, proxy_port: Opt
     try:
         if is_cache_fresh(conn=conn, cloud_provider='tencentcloud'):
             logging.info("[tencentcloud] Loaded regions from DB cache")
-            return load_cached_regions(conn=conn)
+            return load_cached_regions(conn=conn, cloud_provider='tencentcloud')
         # stale or empty cache: fetch from network
         regions = _fetch_regions(proxy_port)
         upsert_regions(conn, regions, cloud_provider='tencentcloud')

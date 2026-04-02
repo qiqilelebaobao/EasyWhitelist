@@ -8,7 +8,7 @@ from datetime import datetime
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
 from ..detector.detectors import retrieve_unique_ip_addresses
-from ..util.defaults import TEMPLATE_NAME_PREFIX, TEMPLATE_ID_PREFIX
+from ..util.defaults import RESOURCE_NAME_PREFIX, TEMPLATE_ID_PREFIX
 from ..util.cli import print_header, print_row, print_tail
 
 
@@ -35,14 +35,14 @@ def initialize_and_bind_template(common_client, security_rule_id, proxy_port: Op
         return 1
 
 
-def update_template(common_client, template_id, proxy_port: Optional[int] = None):
+def _update_template(common_client, template_id, proxy_port: Optional[int] = None):
     """更新模板 IP，返回是否成功"""
     if not template_id:
         logging.error("[template] Missing template ID")
         return False
 
     if not template_id.startswith(TEMPLATE_ID_PREFIX):
-        logging.warning("[template] Set failed: invalid template ID (check prefix)")
+        logging.error("[template] Set failed: invalid template ID (check prefix)")
         return False
 
     unique_client_ips = retrieve_unique_ip_addresses(proxy_port)
@@ -56,6 +56,16 @@ def update_template(common_client, template_id, proxy_port: Optional[int] = None
         logging.error("[template] Failed to update template %s", template_id)
         print(f"❌ [失败] 模板 {template_id} 更新失败（请检查网络或模板状态）")
         return False
+
+
+def update_all_templates(common_client, proxy_port: Optional[int] = None):
+
+    if not (address_template_set := _retrieve_template_info_with_filter(common_client)):
+        return []
+
+    for i, template in enumerate(address_template_set, 1):
+        _update_template(common_client, template["AddressTemplateId"], proxy_port)
+        logging.info("[template] Updated template %d/%d: %s", i, len(address_template_set), template["AddressTemplateId"])
 
 
 def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
@@ -101,7 +111,6 @@ def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
 
 def _retrieve_template_info(common_client, params: dict = {}) -> list:
     try:
-        # params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
         respon = common_client.call_json("DescribeAddressTemplates", params)
 
         logging.debug("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
@@ -111,7 +120,7 @@ def _retrieve_template_info(common_client, params: dict = {}) -> list:
             logging.info("[template] Found %d templates in API response", len(address_template_set))
             return address_template_set
         else:
-            logging.info("[template] No existing templates found with prefix '%s'", TEMPLATE_NAME_PREFIX)
+            logging.info("[template] No existing templates found with prefix '%s'", RESOURCE_NAME_PREFIX)
             return []
 
     except TencentCloudSDKException as e:
@@ -120,7 +129,7 @@ def _retrieve_template_info(common_client, params: dict = {}) -> list:
 
 
 def _retrieve_template_info_with_filter(common_client) -> list:
-    params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
+    params = {"Filters": [{"Name": "address-template-name", "Values": [RESOURCE_NAME_PREFIX]}]}
     return _retrieve_template_info(common_client, params)
 
 
@@ -142,7 +151,7 @@ def _display_template_list(common_client) -> List[str]:
         t_id = template["AddressTemplateId"]
         t_time = template["CreatedTime"]
         t_name = template["AddressTemplateName"]
-        print_row(idx=i, id=t_id, ctime=t_time, addrs=addreset, name=t_name)
+        print_row(idx=i, region=common_client.region, id=t_id, ctime=t_time, addrs=addreset, name=t_name)
 
     print_tail()
 
@@ -154,29 +163,10 @@ def _modify_template_address(common_client, template_id, client_ips):
     if not template_id:
         return False
 
-    # 增加描述校验，避免更改错误
-    params = {"Filters": [
-        {"Name": "address-template-id", "Values": [template_id]}]}
+    params = {"AddressTemplateId": template_id, "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in client_ips]}
     try:
-        respon = common_client.call_json("DescribeAddressTemplates", params)
-        if (TemplateSet := respon["Response"]["AddressTemplateSet"]) and TemplateSet[0]["AddressTemplateName"].startswith(TEMPLATE_NAME_PREFIX):
-            pass
-        else:
-            logging.error("[template] Template does not appear to have been created by this tool; aborting modification.")
-            return False
-    except (TencentCloudSDKException, IndexError) as err:
-        # Catch IndexError when there is no matching target (e.g. "AddressTemplateSet": []).
-        logging.error("[template] API call failed: %s", err)
-        raise RuntimeError(f"[template] API call failed: {err}") from err
-
-    params = {"AddressTemplateId": template_id,
-              "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in client_ips]
-              }
-
-    try:
-        respon = common_client.call_json(
-            "ModifyAddressTemplateAttribute", params)
-
+        respon = common_client.call_json("ModifyAddressTemplateAttribute", params)
+        logging.debug("[template] ModifyAddressTemplateAttribute response: %s", json.dumps(respon, ensure_ascii=False))
     except TencentCloudSDKException as err:
         logging.error("[template] API call failed: %s", err)
         return False
@@ -188,7 +178,7 @@ def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[s
     """创建模板并返回模板ID，失败返回None"""
 
     ip_list = retrieve_unique_ip_addresses(proxy_port)
-    template_name = f"{TEMPLATE_NAME_PREFIX}{int(datetime.now().timestamp())}"
+    template_name = f"{RESOURCE_NAME_PREFIX}{int(datetime.now().timestamp())}"
     params = {
         "AddressTemplateName": template_name,
         "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in ip_list]
@@ -218,7 +208,7 @@ def _ensure_address_template(common_client, proxy_port: Optional[int] = None):
     logging.info("[template] Existing template found: %s", template_id)
 
     print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
-    update_template(common_client, template_id, proxy_port)
+    _update_template(common_client, template_id, proxy_port)
 
     return template_id, CreateResult.UPDATED_EXISTING
 
@@ -289,7 +279,7 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
     try:
         index = int(user_input)
         if 1 <= index <= len(template_ids):
-            update_template(common_client, template_ids[index - 1], proxy_port)
+            _update_template(common_client, template_ids[index - 1], proxy_port)
         else:
             logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
     except ValueError:

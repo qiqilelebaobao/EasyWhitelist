@@ -11,7 +11,7 @@ from tqdm import tqdm
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-from ..util.defaults import TEMPLATE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS, _GREEN, _RST
+from ..util.defaults import RESOURCE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS, _GREEN, _RST
 from ..util.cli import echo_ok
 from ..util.cli import print_header, print_row, print_separator, print_tail, print_row_init, print_header_init, print_tail_init
 from ..detector.detectors import retrieve_unique_ip_addresses
@@ -157,7 +157,7 @@ class Prefix:
             0 on success; 1 if the prefix list does not exist or the update fails.
         """
         if not self.prefix_list:
-            logging.error('No prefix list with name prefix "%s" found in any region — run init first', TEMPLATE_NAME_PREFIX)
+            logging.error('No prefix list with name prefix "%s" found in any region — run init first', RESOURCE_NAME_PREFIX)
             return 1
 
         client_ip_list = retrieve_unique_ip_addresses(self.proxy_port)
@@ -287,7 +287,7 @@ class Prefix:
         # 只查目标 region
         found = []
         for entry in self._fetch_prefix_lists(region_id):
-            if entry['PrefixListName'].startswith(TEMPLATE_NAME_PREFIX):
+            if entry['PrefixListName'].startswith(RESOURCE_NAME_PREFIX):
                 found.append(PrefixList(entry['PrefixListId'], region_id, entry.get('CreationTime'), entry.get('PrefixListName')))
         if found:
             # 更新缓存
@@ -307,10 +307,10 @@ class Prefix:
             logging.info("[prefix] Created prefix list %s in %s", self.current_prefix_list.prefix_list_id, region_id)
             return self.current_prefix_list
 
-        logging.error('Failed to find or create a prefix list with name prefix "%s" in %s', TEMPLATE_NAME_PREFIX, region_id)
+        logging.error('Failed to find or create a prefix list with name prefix "%s" in %s', RESOURCE_NAME_PREFIX, region_id)
         return None
 
-    def _create_prefix_list(self, region_id: str, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[PrefixList]:
+    def _create_prefix_list(self, region_id: str, prefix_name: str = RESOURCE_NAME_PREFIX) -> Optional[PrefixList]:
         """Create a prefix list in the given region by calling the ECS CreatePrefixList API.
 
         Args:
@@ -437,11 +437,11 @@ class Prefix:
             logging.error("[prefix] Failed to describe prefix lists in region %s, err=%s", region_id, err)
             return []
 
-    def _discover_prefix_list(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> List[PrefixList]:
+    def _discover_prefix_list(self, prefix_name: str = RESOURCE_NAME_PREFIX) -> List[PrefixList]:
         """Iterate over all regions in self.regions to find a prefix list whose name starts with prefix_name.
 
         Args:
-            prefix_name: Name prefix to match against prefix list names; defaults to TEMPLATE_NAME_PREFIX.
+            prefix_name: Name prefix to match against prefix list names; defaults to RESOURCE_NAME_PREFIX.
 
         Returns:
             A list of PrefixList objects if found; empty list if not found.
@@ -566,7 +566,7 @@ class Prefix:
             return None
         return current_entries
 
-    # def _auto_search_prefix_by_name(self, prefix_name: str = TEMPLATE_NAME_PREFIX) -> Optional[str]:
+    # def _auto_search_prefix_by_name(self, prefix_name: str = RESOURCE_NAME_PREFIX) -> Optional[str]:
     #     '''Search for a prefix list by name prefix. Returns the prefix list ID if found, or None if not found.'''
     #     logging.info("[prefix] Search prefix list, region=%s, prefix_name=%s ", self.region, prefix_name)
     #     prefix_lists = self.get_prefix_list(self.client)
