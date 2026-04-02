@@ -1,7 +1,7 @@
 import json
 import random
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from enum import Enum, auto
 
 
@@ -19,43 +19,115 @@ class CreateResult(Enum):
     FAILED = auto()             # 异常失败
 
 
-def initialize_and_bind_template(common_client, template_id, proxy: Optional[int] = None):
+def initialize_and_bind_template(common_client, security_rule_id, proxy: Optional[int] = None):
 
-    if not template_id:
+    if not security_rule_id:
         logging.error("[template] Security group ID required but missing")
         return False
 
-    template_id, ret_val = create_template(common_client, proxy)
+    target_id, ret_val = _ensure_address_template(common_client, proxy)
 
     if ret_val == CreateResult.UPDATED_EXISTING:
-        return True
+        return 0
     elif ret_val == CreateResult.CREATED_NEW:
-        return associate_template_2_rule(common_client, template_id, template_id)
+        return _associate_template_2_rule(common_client, security_rule_id, security_rule_id)
     else:
+        return 1
+
+
+def update_template(common_client, target_id, proxy: Optional[int] = None):
+    """更新模板 IP，返回是否成功"""
+    if not target_id:
+        logging.error("[template] Missing template ID")
+        return False
+
+    if not target_id.startswith(TEMPLATE_ID_PREFIX):
+        logging.warning("[template] Set failed: invalid template ID (check prefix)")
+        return False
+
+    client_iplist = get_ip_list(proxy)
+
+    if _modify_template_address(common_client, target_id, client_iplist):
+        print(f"✅ [成功] 模板 {target_id} 已更新 -> {client_iplist}")
+        return True
+    else:
+        # 底层修改失败
+        logging.error("[template] Failed to update template %s", target_id)
+        print(f"❌ [失败] 模板 {target_id} 更新失败（请检查网络或模板状态）")
         return False
 
 
-def _get_template(common_client) -> dict:
+def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
+    template_ids = _display_template_list(common_client)
+    last_input = None
+
+    while True:
+
+        try:
+            user_input = input(INPUT_PROMPT).strip().lower()
+
+            if last_input == "" and user_input == "":
+                break
+
+            last_input = user_input
+
+            if user_input.isdigit():
+                _handle_digit_input(
+                    user_input, common_client, template_ids, proxy_port)
+            elif user_input == CMD_LIST:
+                # 重新拉取列表并刷新本地 template_ids
+                template_ids = _display_template_list(common_client)
+            else:
+                action = _handle_command_input(user_input, common_client, template_ids, proxy_port)
+                if action == CommandAction.BREAK:
+                    break
+
+        except KeyboardInterrupt:
+            logging.warning("[template] Operation cancelled by user")
+            break
+
+        except ValueError as e:
+            logging.warning("[template] Input failed: value error: %s", e)
+
+        except ConnectionError as e:
+            logging.error("[template] Connection failed: %s", e)
+            break
+
+        except Exception as e:
+            logging.error("[template] Request failed: %s", e)
+            break
+
+
+def _retrieve_template_info(common_client, params: dict = {}) -> list:
     try:
-        # Keep prior variant (commented) for reference; current implementation
-        # invokes the API without extra options.
-        return common_client.call_json("DescribeAddressTemplates", {})
+        # params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
+        respon = common_client.call_json("DescribeAddressTemplates", params)
+
+        logging.debug("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
+
+        address_template_set = respon.get("Response", {}).get("AddressTemplateSet", [])
+        if address_template_set:
+            logging.info("[template] Found %d templates in API response", len(address_template_set))
+            return address_template_set
+        else:
+            logging.info("[template] No existing templates found with prefix '%s'", TEMPLATE_NAME_PREFIX)
+            return []
 
     except TencentCloudSDKException as e:
         logging.error("[template] DescribeAddressTemplates failed: %s", e)
-        return {}
+        return []
 
 
-def print_template(common_client) -> List[str]:
+def _display_template_list(common_client) -> List[str]:
 
-    if not (tpl_resp := _get_template(common_client)):
+    if not (address_template_set := _retrieve_template_info(common_client)):
         return []
 
     template_ids = []
 
     print_header('Tencent Cloud Template List')
 
-    for i, template in enumerate(tpl_resp["Response"]["AddressTemplateSet"], 1):
+    for i, template in enumerate(address_template_set, 1):
         template_ids.append(template["AddressTemplateId"])
         addr_set = template["AddressSet"]
         addreset = ", ".join(addr_set[:3])
@@ -106,71 +178,48 @@ def _modify_template_address(common_client, target_id, client_ips):
     return True
 
 
-def set_template(common_client, target_id, proxy: Optional[int] = None):
-    """更新模板 IP，返回是否成功"""
-    if not target_id:
-        logging.error("[template] Missing template ID")
-        return False
+def _create_template(common_client, proxy: Optional[int] = None) -> Tuple[str, CreateResult]:
+    """创建模板并返回模板ID，失败返回None"""
 
-    if not target_id.startswith(TEMPLATE_ID_PREFIX):
-        logging.warning("[template] Set failed: invalid template ID (check prefix)")
-        return False
+    ip_list = get_ip_list(proxy)
+    random_suffix = random.randint(1, 9999)
+    template_name = f"{TEMPLATE_NAME_PREFIX}{random_suffix:04d}"
+    params = {
+        "AddressTemplateName": template_name,
+        "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in ip_list]
+    }
+    print(f"🎯 [开始] 创建模板, 模板名字为：{template_name}")
 
-    client_iplist = get_ip_list(proxy)
-
-    if _modify_template_address(common_client, target_id, client_iplist):
-        print(f"✅ [成功] 模板 {target_id} 已更新 -> {client_iplist}")
-        return True
-    else:
-        # 底层修改失败
-        logging.error("[template] Failed to update template %s", target_id)
-        print(f"❌ [失败] 模板 {target_id} 更新失败（请检查网络或模板状态）")
-        return False
-
-
-def create_template(common_client, proxy_port=None):
     try:
-        params = {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]}
-        respon = common_client.call_json("DescribeAddressTemplates", params)
-
-        logging.debug("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
-
-        if respon["Response"]["AddressTemplateSet"]:
-            # 找到第一个符合的模板就设置
-            existing_template = respon["Response"]["AddressTemplateSet"][0]
-            template_id = existing_template["AddressTemplateId"]
-            template_name = existing_template["AddressTemplateName"]
-
-            logging.info("[template] Existing template found: %s", template_id)
-
-            print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
-
-            set_template(common_client, template_id)
-            return template_id, CreateResult.UPDATED_EXISTING
-
-        ip_list = get_ip_list(proxy_port)
-        random_suffix = random.randint(1, 9999)
-        template_name = f"{TEMPLATE_NAME_PREFIX}{random_suffix:04d}"
-        params = {
-            "AddressTemplateName": template_name,
-            "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in ip_list]
-        }
-        print(f"🎯 [开始] 创建模板, 模板名字为：{template_name}")
-
         respon = common_client.call_json("CreateAddressTemplate", params)
         template_id = respon["Response"]["AddressTemplate"]["AddressTemplateId"]
-        logging.info("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
-
         print(f"🔄 [进行中] 模板 {template_id} 已创建")
-
         return template_id, CreateResult.CREATED_NEW
-
     except TencentCloudSDKException as err:
         logging.error("[template] API failed: %s", err)
-        return None, CreateResult.FAILED
+        return '', CreateResult.FAILED
 
 
-def associate_template_2_rule(common_client, template_id, rule_id):
+def _ensure_address_template(common_client, proxy_port=None):
+
+    address_template_set = _retrieve_template_info(common_client, {"Filters": [{"Name": "address-template-name", "Values": [TEMPLATE_NAME_PREFIX]}]})  # 先查询一轮，看看是否已有符合条件的模板（避免重复创建）
+
+    if not address_template_set:
+        return _create_template(common_client, proxy_port)
+
+    # 找到第一个符合的模板就设置
+    existing_template = address_template_set[0]
+    template_id = existing_template["AddressTemplateId"]
+    template_name = existing_template["AddressTemplateName"]
+    logging.info("[template] Existing template found: %s", template_id)
+
+    print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
+    update_template(common_client, template_id)
+
+    return template_id, CreateResult.UPDATED_EXISTING
+
+
+def _associate_template_2_rule(common_client, template_id, rule_id):
 
     try:
         # 避免重复关联
@@ -236,7 +285,7 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
     try:
         index = int(user_input)
         if 1 <= index <= len(template_ids):
-            set_template(common_client, template_ids[index - 1], proxy_port)
+            update_template(common_client, template_ids[index - 1], proxy_port)
         else:
             logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
     except ValueError:
@@ -275,44 +324,3 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
     else:
         logging.warning("[template] Invalid command: %s (hint: l/c/q)", user_input)
         return CommandAction.CONTINUE
-
-
-def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
-    template_ids = print_template(common_client)
-    last_input = None
-
-    while True:
-
-        try:
-            user_input = input(INPUT_PROMPT).strip().lower()
-
-            if last_input == "" and user_input == "":
-                break
-
-            last_input = user_input
-
-            if user_input.isdigit():
-                _handle_digit_input(
-                    user_input, common_client, template_ids, proxy_port)
-            elif user_input == CMD_LIST:
-                # 重新拉取列表并刷新本地 template_ids
-                template_ids = print_template(common_client)
-            else:
-                action = _handle_command_input(user_input, common_client, template_ids, proxy_port)
-                if action == CommandAction.BREAK:
-                    break
-
-        except KeyboardInterrupt:
-            logging.warning("[template] Operation cancelled by user")
-            break
-
-        except ValueError as e:
-            logging.warning("[template] Input failed: value error: %s", e)
-
-        except ConnectionError as e:
-            logging.error("[template] Connection failed: %s", e)
-            break
-
-        except Exception as e:
-            logging.error("[template] Request failed: %s", e)
-            break

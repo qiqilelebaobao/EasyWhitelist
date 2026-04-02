@@ -3,11 +3,11 @@ import sqlite3
 from typing import Optional
 
 from . import client
-from .template import set_template, initialize_and_bind_template, loop_list
+from .template import update_template, initialize_and_bind_template, loop_list
 
 
 def t_main(action: str,
-           target_id: Optional[str],
+           security_rule_id: Optional[str],
            proxy_port: Optional[int] = None,
            conn: Optional[sqlite3.Connection] = None) -> int:
 
@@ -20,14 +20,15 @@ def t_main(action: str,
     common_client = client.get_common_client(regions[0].get("RegionId"), proxy_port=proxy_port)
 
     ACTION_MAP = {
-        "init": lambda: initialize_and_bind_template(common_client, target_id, proxy_port),
+        "init": lambda: initialize_and_bind_template(common_client, security_rule_id, proxy_port),
         "list": lambda: loop_list(common_client, proxy_port),
-        "set": lambda: set_template(common_client, target_id, proxy_port),
+        "set": lambda: update_template(common_client, security_rule_id, proxy_port),
     }
 
     if action in ACTION_MAP:
-        ACTION_MAP[action]()
+        return ACTION_MAP[action]()
     else:
         logging.error("[tencentcloud] Unsupported action: %s", action)
+        return 10
 
     return 0
