@@ -53,23 +53,23 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         conn.rollback()
 
 
-def _get_db_connection(self, app_dir: Optional[str]) -> Optional[sqlite3.Connection]:
+def _get_db_connection(app_dir: Optional[str]) -> Optional[sqlite3.Connection]:
     if not app_dir:
         return None
     db_path = os.path.join(app_dir, "whitelist.db")
     try:
         conn = sqlite3.connect(db_path)
-        logging.debug("[region] Connected to database at %s", db_path)
+        logging.debug("[db] Connected to database at %s", db_path)
         return conn
     except Exception as e:
-        logging.error("[region] Failed to connect to database at %s: %s", db_path, e)
+        logging.error("[db] Failed to connect to database at %s: %s", db_path, e)
         return None
 
 
 def init_db(app_dir: str) -> Optional[sqlite3.Connection]:
     """Initialize the database, including creating necessary tables if they don't exist."""
 
-    conn = _get_db_connection(None, app_dir)
+    conn = _get_db_connection(app_dir)
     if not conn:
         logging.error("[db] Failed to initialize database connection.")
         return None
@@ -232,7 +232,7 @@ def is_cache_fresh(conn: sqlite3.Connection, cloud_provider: str, max_age_days: 
         cursor = conn.cursor()
         cursor.execute("SELECT MIN(updated_at) FROM regions WHERE cloud_provider = ?", (cloud_provider,))
         row = cursor.fetchone()
-        logging.debug("[db] Cache freshness check - latest updated_at: %s", row[0] if row else "None")
+        logging.debug("[db] Cache freshness check - oldest updated_at: %s", row[0] if row else "None")
     except Exception as e:
         logging.error("[db] Failed to check cache freshness: %s", e)
         return False
