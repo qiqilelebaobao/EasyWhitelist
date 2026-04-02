@@ -16,10 +16,11 @@ def init_app_and_db():
         logging.error("[core] Failed to create application directory.")
         return None
 
-    if not init_db(app_dir):
+    conn = init_db(app_dir)
+    if not conn:
         logging.error("[core] Failed to initialize database.")
         return None
-    return app_dir
+    return conn
 
 
 def main() -> None:
@@ -29,16 +30,16 @@ def main() -> None:
     set_log(args.verbose)
     logging.info("[core] Parsed arguments: %s", args)
 
-    app_dir = init_app_and_db()
-    logging.info("[core] Initialization complete: app_dir=%s", app_dir)
+    conn = init_app_and_db()
+    logging.info("[core] Initialization complete: conn=%s", conn)
 
     cloud_provider = args.cloud
     logging.info("[core] Cloud provider selected: %s", cloud_provider.upper())
 
     if cloud_provider == "tencent":
-        sys.exit(t_main(args.action, args.target_id, args.proxy, app_dir=app_dir))
+        sys.exit(t_main(args.action, args.target_id, args.proxy, conn=conn))
     elif cloud_provider == "alibaba":
-        sys.exit(aliyun_main(args.action, args.target_id, args.proxy, app_dir=app_dir))
+        sys.exit(aliyun_main(args.action, args.target_id, args.proxy, conn=conn))
     else:
         logging.error("[core] Unsupported cloud provider: %s", cloud_provider)
         sys.exit(1)

@@ -5,66 +5,76 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
 
-def init_db(app_dir: str) -> bool:
-    """Initialize the database, including creating necessary tables if they don't exist."""
+def _create_tables(conn: sqlite3.Connection) -> None:
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS regions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cloud_provider TEXT NOT NULL,
+                region_id TEXT UNIQUE NOT NULL,
+                name TEXT,
+                region_endpoint TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS security_groups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cloud_provider TEXT NOT NULL,
+                sg_id TEXT UNIQUE NOT NULL,
+                region_id TEXT NOT NULL,
+                sg_name TEXT,
+                vpc_id TEXT,
+                sg_type TEXT,
+                description TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ip_addresses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                raw_ip TEXT NOT NULL,
+                normalized_cidr TEXT NOT NULL,
+                resv1 TEXT,
+                resv2 TEXT,
+                resv3 TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(raw_ip)
+            )
+        ''')
+        conn.commit()
+    except Exception as e:
+        logging.error("[db] Failed to create tables: %s", e)
+        conn.rollback()
+
+
+def _get_db_connection(self, app_dir: Optional[str]) -> Optional[sqlite3.Connection]:
+    if not app_dir:
+        return None
     db_path = os.path.join(app_dir, "whitelist.db")
     try:
-        with sqlite3.connect(db_path) as conn:
-            cursor = conn.cursor()
-
-            # Create regions table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS regions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    cloud_provider TEXT NOT NULL,
-                    region_id TEXT UNIQUE NOT NULL,
-                    name TEXT,
-                    region_endpoint TEXT,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                )
-            ''')
-
-            # Create security group cache table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS security_groups (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    cloud_provider TEXT NOT NULL,
-                    sg_id TEXT UNIQUE NOT NULL,
-                    region_id TEXT NOT NULL,
-                    sg_name TEXT,
-                    vpc_id TEXT,
-                    sg_type TEXT,
-                    description TEXT,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                )
-            ''')
-
-            # Create IP address history table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS ip_addresses (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    raw_ip TEXT,
-                    normalized_cidr TEXT NOT NULL,
-                    resv1 TEXT,
-                    resv2 TEXT,
-                    resv3 TEXT,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    UNIQUE(raw_ip)
-                )
-            ''')
-
-        logging.debug("[db] Database initialized successfully at %s", db_path)
-        return True
+        conn = sqlite3.connect(db_path)
+        logging.debug("[region] Connected to database at %s", db_path)
+        return conn
     except Exception as e:
-        logging.error("[db] Failed to initialize database: %s", e)
-        return False
+        logging.error("[region] Failed to connect to database at %s: %s", db_path, e)
+        return None
 
 
-def _db_path(app_dir: str) -> str:
-    return os.path.join(app_dir, "whitelist.db")
+def init_db(app_dir: str) -> Optional[sqlite3.Connection]:
+    """Initialize the database, including creating necessary tables if they don't exist."""
+
+    conn = _get_db_connection(None, app_dir)
+    if not conn:
+        logging.error("[db] Failed to initialize database connection.")
+        return None
+    _create_tables(conn)
+    return conn
 
 
 def upsert_regions(conn: sqlite3.Connection,
@@ -75,7 +85,6 @@ def upsert_regions(conn: sqlite3.Connection,
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         for region in regions:
-            print(region)
             region_id = region.get('Region', '') or region.get('RegionId', '')
             if not region_id:
                 continue
@@ -153,7 +162,7 @@ def refresh_security_group_update_time(conn: sqlite3.Connection, sg_id: str) -> 
 
 
 def upsert_ip_address(conn: sqlite3.Connection,
-                      raw_ip: Optional[str],
+                      raw_ip: str,
                       normalized_cidr: str) -> None:
     try:
         now_iso = datetime.now(timezone.utc).isoformat()

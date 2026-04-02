@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 from typing import Optional
 
 from ..util.cli import echo_ok, echo_err, echo_info, print_header, print_row, print_tail  # noqa: F401
@@ -7,7 +8,7 @@ from .region import Regions
 from .prefix import Prefix
 
 
-def aliyun_main(action: str, target_id: Optional[str], proxy_port: Optional[int] = None, app_dir: Optional[str] = None) -> int:
+def aliyun_main(action: str, target_id: Optional[str], proxy_port: Optional[int] = None, conn: Optional[sqlite3.Connection] = None) -> int:
     """Entry point for aliyun operations used by the CLI.
 
     Args:
@@ -15,12 +16,12 @@ def aliyun_main(action: str, target_id: Optional[str], proxy_port: Optional[int]
         target: Target resource type, e.g. 'template'.
         target_id: ID of the target resource (optional).
         proxy_port: Proxy port (1–65535); None if no proxy is used.
-        app_dir: Application directory (optional).
+        conn: Database connection (optional).
     """
-    logging.info("[aliyun] Entering handler: action=%s, target_id=%s, proxy=%s, app_dir=%s",
-                 action, target_id, proxy_port, app_dir)
+    logging.info("[aliyun] Entering handler: action=%s, target_id=%s, proxy=%s, conn=%s",
+                 action, target_id, proxy_port, conn)
 
-    regions = Regions(proxy_port, app_dir=app_dir)
+    regions = Regions(proxy_port, conn=conn)
     logging.info("[aliyun] %d Regions fetched.", len(regions.regions_list) if regions.regions_list else 0)
     prefix = Prefix(regions)
     logging.info("[aliyun] Initialized Regions and Prefix instances for template operations.")

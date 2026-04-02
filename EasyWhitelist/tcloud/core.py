@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 from typing import Optional
 
 from . import client
@@ -8,9 +9,9 @@ from .template import set_template, initialize_and_bind_template, loop_list
 def t_main(action: str,
            target_id: Optional[str],
            proxy_port: Optional[int] = None,
-           app_dir: Optional[str] = None) -> int:
+           conn: Optional[sqlite3.Connection] = None) -> int:
 
-    regions = client.obtain_region_set(app_dir=app_dir, proxy_port=proxy_port)
+    regions = client.obtain_region_set(conn=conn, proxy_port=proxy_port)
     if regions is None or len(regions) == 0:
         logging.error("[tencentcloud] No regions available to proceed with template action")
         return 1

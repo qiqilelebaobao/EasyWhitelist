@@ -1,6 +1,5 @@
 import logging
 import json
-import os
 import sqlite3
 
 from typing import Optional, List
@@ -40,20 +39,12 @@ def _fetch_regions(proxy_port: Optional[int] = None) -> List[dict]:
         return []
 
 
-def obtain_region_set(app_dir: Optional[str] = None, proxy_port: Optional[int] = None) -> Optional[List]:
+def obtain_region_set(conn: Optional[sqlite3.Connection] = None, proxy_port: Optional[int] = None) -> Optional[List]:
     """Return regions, prefer cached DB value when fresh; otherwise fetch and cache.
 
-    If `app_dir` is provided this will open `whitelist.db` under that dir and
+    If `conn` is provided this will use the existing database connection and
     use `is_cache_fresh`, `load_cached_regions`, `upsert_regions` for caching.
     """
-    conn = None
-    if app_dir:
-        db_path = os.path.join(app_dir, "whitelist.db")
-        try:
-            logging.info("[tencentcloud] Attempting to open DB at %s for region caching", db_path)
-            conn = sqlite3.connect(db_path)
-        except Exception as e:
-            logging.warning("[tencentcloud] Failed to open DB %s: %s", db_path, e)
 
     if conn is None:
         logging.info("[tencentcloud] No DB connection available; will fetch regions from network without caching")

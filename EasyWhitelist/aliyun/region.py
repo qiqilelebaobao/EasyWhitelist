@@ -14,12 +14,10 @@ from .defaults import _runtime, DEFAULT_REGION_1, DEFAULT_REGION_2
 class Regions:
     """Fetches and stores all available Alibaba Cloud regions for a given ECS client."""
 
-    def __init__(self, proxy_port: Optional[int] = None, app_dir: Optional[str] = None):
+    def __init__(self, proxy_port: Optional[int] = None, conn: Optional[sqlite3.Connection] = None):
         """Initialize by loading regions from cache or cloud, and populating region list."""
         self.proxy_url = f"http://localhost:{proxy_port}" if proxy_port is not None else None
-        self.app_dir = app_dir
-
-        self.conn = self._get_db_connection(app_dir)
+        self.conn = conn
         self.regions_list = self._load_regions(proxy_port)
 
     def get_region_name(self, region_id: str) -> str:
