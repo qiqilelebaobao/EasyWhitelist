@@ -23,8 +23,7 @@ def initialize_and_bind_template(common_client, security_rule_id, proxy_port: Op
 
     if not security_rule_id:
         logging.error("[template] Security group ID required but missing")
-        return False
-
+        return 1
     template_id, ret_val = _ensure_address_template(common_client, proxy_port=proxy_port)
 
     if ret_val == CreateResult.UPDATED_EXISTING:
@@ -63,10 +62,15 @@ def update_all_templates(common_client, proxy_port: Optional[int] = None) -> int
     if not (address_template_set := _retrieve_template_info_with_filter(common_client)):
         return 1
 
+    failed = 0
     for i, template in enumerate(address_template_set, 1):
-        _update_template(common_client, template["AddressTemplateId"], proxy_port)
-        logging.info("[template] Updated template %d/%d: %s", i, len(address_template_set), template["AddressTemplateId"])
-    return 0
+        ok = _update_template(common_client, template["AddressTemplateId"], proxy_port)
+        if not ok:
+            failed += 1
+            logging.warning("[template] Failed to update template %d/%d: %s", i, len(address_template_set), template["AddressTemplateId"])
+        else:
+            logging.info("[template] Updated template %d/%d: %s", i, len(address_template_set), template["AddressTemplateId"])
+    return 0 if failed == 0 else 1
 
 
 def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
@@ -147,7 +151,7 @@ def _display_template_list(common_client) -> List[str]:
 
     for i, template in enumerate(address_template_set, 1):
         template_ids.append(template["AddressTemplateId"])
-        addr_set = template["AddressSet"]
+        addr_set = template.get("AddressSet", [])
         addreset = ", ".join(addr_set[:3])
         if len(addr_set) > 3:
             addreset += f" ~~~ {len(addr_set) - 3} more..."
@@ -211,7 +215,8 @@ def _ensure_address_template(common_client, proxy_port: Optional[int] = None):
     logging.info("[template] Existing template found: %s", template_id)
 
     print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
-    _update_template(common_client, template_id, proxy_port)
+    if not _update_template(common_client, template_id, proxy_port):
+        return template_id, CreateResult.FAILED
 
     return template_id, CreateResult.UPDATED_EXISTING
 
@@ -229,7 +234,7 @@ def _associate_template_2_rule(common_client, template_id, rule_id):
         if respon.get("Response", {}).get("SecurityGroupPolicySet", {}).get("Ingress"):
             logging.info("[template] %s already associated with %s", template_id, rule_id)
             print(f"❗ [中止] 已有属于程序创建的模板 {template_id} 关联到 {rule_id}，仅允许关联一次")
-            return False
+            return 0
 
         # 进入规则设置
         params = {"SecurityGroupId": rule_id,
@@ -244,11 +249,11 @@ def _associate_template_2_rule(common_client, template_id, rule_id):
         respon = common_client.call_json("CreateSecurityGroupPolicies", params)
         logging.info("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
         print(f"✅ [成功] 模板 {template_id} 已关联到 {rule_id}")
-        return True
+        return 0
 
     except TencentCloudSDKException as err:
         logging.error("[template] API failed: %s", err)
-        return False
+        return 1
 
 
 class CommandAction(Enum):
