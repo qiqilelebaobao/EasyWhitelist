@@ -35,7 +35,6 @@ def _discover_regions_from_api(regions, sg_id: str) -> str:
             security_groups = response.get("Response", {}).get("SecurityGroupSet", [])
             for sg in security_groups:
                 if sg.get("SecurityGroupId") == sg_id:
-                    region_id = region.get("RegionId") or region.get("Region", "")
                     logging.info("[tencentcloud] Discovered region '%s' for security group '%s'", region_id, sg_id)
                     conn = settings.db_conn
                     if conn is not None:

@@ -5,7 +5,6 @@ from typing import List, Optional, Tuple
 from enum import Enum, auto
 from datetime import datetime
 
-
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
 from ..util.db import upsert_ip_address
@@ -34,7 +33,7 @@ def initialize_and_bind_template(common_client, security_rule_id):
     if ret_val == CreateResult.UPDATED_EXISTING:
         return 0
     elif ret_val == CreateResult.CREATED_NEW:
-        return _associate_template_2_rule(common_client, template_id, security_rule_id)
+        return _associate_template_to_rule(common_client, template_id, security_rule_id)
     else:
         return 1
 
@@ -172,11 +171,11 @@ def _retrieve_template_info(common_client, params: Optional[dict] = None) -> lis
     if params is None:
         params = {}
     try:
-        respon = common_client.call_json("DescribeAddressTemplates", params)
+        response = common_client.call_json("DescribeAddressTemplates", params)
 
-        logging.debug("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
+        logging.debug("[template] API response: %s", json.dumps(response, ensure_ascii=False))
 
-        address_template_set = respon.get("Response", {}).get("AddressTemplateSet", [])
+        address_template_set = response.get("Response", {}).get("AddressTemplateSet", [])
         if address_template_set:
             logging.info("[template] Found %d templates in API response", len(address_template_set))
             return address_template_set
@@ -230,8 +229,8 @@ def _modify_template_address(common_client, template_id, client_ips):
 
     params = {"AddressTemplateId": template_id, "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in client_ips]}
     try:
-        respon = common_client.call_json("ModifyAddressTemplateAttribute", params)
-        logging.debug("[template] ModifyAddressTemplateAttribute response: %s", json.dumps(respon, ensure_ascii=False))
+        response = common_client.call_json("ModifyAddressTemplateAttribute", params)
+        logging.debug("[template] ModifyAddressTemplateAttribute response: %s", json.dumps(response, ensure_ascii=False))
     except TencentCloudSDKException as err:
         logging.error("[template] API call failed: %s", err)
         return False
@@ -251,8 +250,8 @@ def _create_template(common_client) -> Tuple[str, CreateResult]:
     print(f"🎯 [开始] 创建模板, 模板名字为：{template_name}")
 
     try:
-        respon = common_client.call_json("CreateAddressTemplate", params)
-        template_id = respon["Response"]["AddressTemplate"]["AddressTemplateId"]
+        response = common_client.call_json("CreateAddressTemplate", params)
+        template_id = response["Response"]["AddressTemplate"]["AddressTemplateId"]
         print(f"🔄 [进行中] 模板 {template_id} 已创建")
         return template_id, CreateResult.CREATED_NEW
     except (TencentCloudSDKException, KeyError) as err:
@@ -279,7 +278,7 @@ def _ensure_address_template(common_client):
     return template_id, CreateResult.UPDATED_EXISTING
 
 
-def _associate_template_2_rule(common_client, template_id, rule_id):
+def _associate_template_to_rule(common_client, template_id, rule_id):
 
     try:
         # 避免重复关联
@@ -287,9 +286,9 @@ def _associate_template_2_rule(common_client, template_id, rule_id):
             "SecurityGroupId": rule_id,
             "Filters": [{"Name": "address-module", "Values": [template_id]}]
         }
-        respon = common_client.call_json("DescribeSecurityGroupPolicies", params)
+        response = common_client.call_json("DescribeSecurityGroupPolicies", params)
 
-        if respon.get("Response", {}).get("SecurityGroupPolicySet", {}).get("Ingress"):
+        if response.get("Response", {}).get("SecurityGroupPolicySet", {}).get("Ingress"):
             logging.info("[template] %s already associated with %s", template_id, rule_id)
             print(f"❗ [中止] 已有属于程序创建的模板 {template_id} 关联到 {rule_id}，仅允许关联一次")
             return 0
@@ -304,8 +303,8 @@ def _associate_template_2_rule(common_client, template_id, rule_id):
                   ]}
                   }
 
-        respon = common_client.call_json("CreateSecurityGroupPolicies", params)
-        logging.info("[template] API response: %s", json.dumps(respon, ensure_ascii=False))
+        response = common_client.call_json("CreateSecurityGroupPolicies", params)
+        logging.info("[template] API response: %s", json.dumps(response, ensure_ascii=False))
         print(f"✅ [成功] 模板 {template_id} 已关联到 {rule_id}")
         return 0
 
