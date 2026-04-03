@@ -1,5 +1,6 @@
 import logging
 from typing import Optional, List
+
 from tencentcloud.common import credential
 from tencentcloud.common.profile.http_profile import HttpProfile
 from tencentcloud.common.profile.client_profile import ClientProfile
@@ -37,7 +38,6 @@ def _fetch_regions() -> List[dict]:
 
     Returns an empty list on error.
     """
-
     _BOOTSTRAP_REGION = ""
     try:
         common_client = get_common_client(region=_BOOTSTRAP_REGION, module="cvm", endpoint="cvm.tencentcloudapi.com")
