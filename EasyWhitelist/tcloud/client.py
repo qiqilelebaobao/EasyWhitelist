@@ -38,14 +38,17 @@ def _fetch_regions() -> List[dict]:
 
     Returns an empty list on error.
     """
-    # DescribeRegions is a global CVM API; any valid region string satisfies the
-    # CommonClient constructor, which rejects an empty region param.
+
     _BOOTSTRAP_REGION = ""
     try:
         common_client = get_common_client(region=_BOOTSTRAP_REGION, module="cvm", endpoint="cvm.tencentcloudapi.com")
         raw_regions = common_client.call_json("DescribeRegions", {}).get("Response", {}).get("RegionSet", [])
         # Normalize to RegionId key so callers see a consistent format
         # regardless of whether data comes from the API or from DB cache.
+        '''
+        {"Response":{"RegionSet":[{"LocationMC":null,"Region":"ap-shanghai","RegionIdMC":"4","RegionName":"华东地区(上海)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-nanjing","RegionIdMC":"33","RegionName":"华东地区(南京)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-guangzhou","RegionIdMC":"1","RegionName":"华南地区(广州)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-beijing","RegionIdMC":"8","RegionName":"华北地区(北京)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-chengdu","RegionIdMC":"16","RegionName":"西南地区(成都)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-chongqing","RegionIdMC":"19","RegionName":"西南地区(重庆)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-hongkong","RegionIdMC":"5","RegionName":"港澳台地区(中国香港)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-seoul","RegionIdMC":"18","RegionName":"亚太东北(首尔)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-tokyo","RegionIdMC":"25","RegionName":"亚太东北(东京)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-singapore","RegionIdMC":"9","RegionName":"亚太东南(新加坡)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-bangkok","RegionIdMC":"23","RegionName":"亚太东南(曼谷)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"ap-jakarta","RegionIdMC":"72","RegionName":"亚太东南(雅加达)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"na-siliconvalley","RegionIdMC":"15","RegionName":"美国西部(硅谷)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"eu-frankfurt","RegionIdMC":"17","RegionName":"欧洲地区(法兰克福)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"na-ashburn","RegionIdMC":"22","RegionName":"美国东部(弗吉尼亚)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"sa-saopaulo","RegionIdMC":"74","RegionName":"南美地区(圣保罗)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null},{"LocationMC":null,"Region":"me-saudi-arabia","RegionIdMC":"101","RegionName":"中东地区(利雅得)","RegionNameMC":null,"RegionState":"AVAILABLE","RegionTypeMC":null}],"RequestId":"f9d96f20-4183-4dab-8f73-85797e496751","TotalCount":17}}
+        '''
+
         for r in raw_regions:
             if "RegionId" not in r and "Region" in r:
                 r["RegionId"] = r["Region"]
@@ -54,6 +57,27 @@ def _fetch_regions() -> List[dict]:
     except Exception as e:
         logging.error("[tencentcloud] Failed to fetch regions: %s", e)
         return []
+
+
+def _fetch_and_cache_regions() -> List[dict]:
+    """Fetch regions from Tencent Cloud API and cache them in the database.
+
+    Returns the list of regions, or an empty list on error.
+    """
+    regions = _fetch_regions()
+    if not regions:
+        return []
+
+    conn = settings.db_conn
+    if conn is None:
+        logging.warning("[tencentcloud] No DB connection available; skipping cache update")
+        return regions
+
+    try:
+        upsert_regions(conn, regions, cloud_provider='tencentcloud')
+    except Exception as e:
+        logging.warning("[tencentcloud] Failed to cache regions to DB: %s", e)
+    return regions
 
 
 def obtain_region_set() -> Optional[List]:
@@ -65,16 +89,15 @@ def obtain_region_set() -> Optional[List]:
 
     if conn is None:
         logging.info("[tencentcloud] No DB connection available; will fetch regions from network without caching")
-        return _fetch_regions()
+        return _fetch_and_cache_regions()
 
     try:
         if is_cache_fresh(conn=conn, cloud_provider='tencentcloud'):
             logging.info("[tencentcloud] Loaded regions from DB cache")
             return load_cached_regions(conn=conn, cloud_provider='tencentcloud')
         # stale or empty cache: fetch from network
-        regions = _fetch_regions()
-        upsert_regions(conn, regions, cloud_provider='tencentcloud')
+        regions = _fetch_and_cache_regions()
         return regions
     except Exception as e:
         logging.warning("[tencentcloud] Cache check failed; fetching regions from network: %s", e)
-        return _fetch_regions()
+        return _fetch_and_cache_regions()

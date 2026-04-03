@@ -86,7 +86,9 @@ def upsert_regions(conn: sqlite3.Connection,
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         for region in regions:
-            region_id = region.get('Region', '') or region.get('RegionId', '')
+            region_id = region.get('Region', '')                # for tencentcloud
+            if not region_id:
+                region_id = region.get('RegionId', '')         # for aliyun
             if not region_id:
                 continue
             cursor.execute(
@@ -100,7 +102,7 @@ def upsert_regions(conn: sqlite3.Connection,
                     updated_at=excluded.updated_at
                 """,
                 (region_id,
-                 region.get('RegionName', ''),
+                 region.get('RegionName', ''),              # for tencentcloud
                  region.get('RegionEndpoint', ''),
                  cloud_provider,
                  now_iso,

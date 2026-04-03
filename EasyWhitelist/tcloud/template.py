@@ -125,7 +125,7 @@ def update_all_templates(common_client) -> int:
     return 0 if failed == 0 else 1
 
 
-def loop_list(common_client) -> None:
+def loop_list(common_client) -> int:
     template_ids = _display_template_list(common_client)
     last_input = None
 
@@ -164,6 +164,8 @@ def loop_list(common_client) -> None:
         except Exception as e:
             logging.error("[template] Request failed: %s", e)
             break
+
+    return 0
 
 
 def _retrieve_template_info(common_client, params: Optional[dict] = None) -> list:
@@ -220,6 +222,10 @@ def _display_template_list(common_client) -> List[str]:
 def _modify_template_address(common_client, template_id, client_ips):
 
     if not template_id:
+        return False
+
+    if not client_ips:
+        logging.error("[template] Refusing to update template with empty IP list")
         return False
 
     params = {"AddressTemplateId": template_id, "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in client_ips]}
