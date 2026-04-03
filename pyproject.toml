@@ -1,6 +1,6 @@
 [project]
 name = "EasyWhitelist"
-# version = "1.0.110"
+# version = "1.1.0" --- IGNORE ---
 description = 'A smart tool that detects the local Internet IP address and automatically updates the local Internet IP address to the cloud security group whitelist.'
 
 authors = [
