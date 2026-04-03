@@ -12,7 +12,7 @@ maintainers = [
 
 requires-python = ">= 3.8"
 readme = "README.md"
-keywords = ["whitelist", "security-groups", "alibaba-cloud", "tencent-cloud", "security-tools"]
+keywords = ["whitelist", "security-group", "alibaba-cloud", "aliyun", "tencent-cloud", "qcloud", "firewall", "ip", "automation", "devops", "cloud", "security"]
 
 # license = {text = "Apache-2.0"}
 # license-files = ["LICENSE"]
@@ -20,6 +20,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 
 classifiers = [
+  "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.8",
@@ -30,7 +31,12 @@ classifiers = [
   "Operating System :: OS Independent",
   "Topic :: Security",
   "Topic :: System :: Networking",
-  "Intended Audience :: System Administrators"
+  "Topic :: Utilities",
+  "Intended Audience :: System Administrators",
+  "Intended Audience :: Developers",
+  "Environment :: Console",
+  "Natural Language :: Chinese (Simplified)",
+  "Natural Language :: English"
   ]
 
 dependencies = [
@@ -42,6 +48,8 @@ dynamic = ["version"]
 [project.urls]
 Homepage = "https://github.com/qiqilelebaobao/easy_whitelist"
 Source = "https://github.com/qiqilelebaobao/easy_whitelist"
+Bug\ Tracker = "https://github.com/qiqilelebaobao/easy_whitelist/issues"
+Changelog = "https://github.com/qiqilelebaobao/easy_whitelist/releases"
 
 [project.scripts]
 ew = "EasyWhitelist._core:main"

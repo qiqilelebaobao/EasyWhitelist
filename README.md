@@ -1,5 +1,10 @@
 # EasyWhitelist
 
+[![PyPI version](https://img.shields.io/pypi/v/EasyWhitelist.svg)](https://pypi.org/project/EasyWhitelist/)
+[![Python](https://img.shields.io/pypi/pyversions/EasyWhitelist.svg)](https://pypi.org/project/EasyWhitelist/)
+[![License](https://img.shields.io/github/license/qiqilelebaobao/easy_whitelist.svg)](https://github.com/qiqilelebaobao/easy_whitelist/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/qiqilelebaobao/easy_whitelist.svg?style=social)](https://github.com/qiqilelebaobao/easy_whitelist)
+
 EasyWhitelist 是一个自动探测本机公网 IP 地址，并将其更新到云安全组白名单的命令行工具，使用 Python 编写。
 
 EasyWhitelist is a CLI tool that detects the local public IP address and automatically updates cloud security group whitelists. Written in Python.
