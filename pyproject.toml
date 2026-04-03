@@ -48,7 +48,7 @@ dynamic = ["version"]
 [project.urls]
 Homepage = "https://github.com/qiqilelebaobao/easy_whitelist"
 Source = "https://github.com/qiqilelebaobao/easy_whitelist"
-Bug\ Tracker = "https://github.com/qiqilelebaobao/easy_whitelist/issues"
+"Bug Tracker" = "https://github.com/qiqilelebaobao/easy_whitelist/issues"
 Changelog = "https://github.com/qiqilelebaobao/easy_whitelist/releases"
 
 [project.scripts]
