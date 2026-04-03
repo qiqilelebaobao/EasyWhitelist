@@ -15,10 +15,10 @@ from ..config import settings
 class Regions:
     """Fetches and stores all available Alibaba Cloud regions for a given ECS client."""
 
-    def __init__(self, conn: Optional[sqlite3.Connection] = None):
+    def __init__(self):
         """Initialize by loading regions from cache or cloud, and populating region list."""
         self.proxy_url = f"http://localhost:{settings.proxy_port}" if settings.proxy_port is not None else None
-        self.conn = conn
+        self.conn = settings.db_conn
         self.regions_list = self._load_regions()
 
     def get_region_name(self, region_id: str) -> str:

@@ -39,12 +39,13 @@ def _create_tables(conn: sqlite3.Connection) -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 raw_ip TEXT NOT NULL,
                 normalized_cidr TEXT NOT NULL,
+                cloud_provider TEXT NOT NULL,
                 resv1 TEXT,
                 resv2 TEXT,
                 resv3 TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
-                UNIQUE(raw_ip)
+                UNIQUE(raw_ip, cloud_provider)
             )
         ''')
         conn.commit()
@@ -163,19 +164,21 @@ def refresh_security_group_update_time(conn: sqlite3.Connection, sg_id: str) -> 
 
 def upsert_ip_address(conn: sqlite3.Connection,
                       raw_ip: str,
-                      normalized_cidr: str) -> None:
+                      normalized_cidr: str,
+                      cloud_provider: str) -> None:
     try:
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO ip_addresses (raw_ip, normalized_cidr, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(raw_ip) DO UPDATE SET
+            INSERT INTO ip_addresses (raw_ip, normalized_cidr, cloud_provider, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(raw_ip, cloud_provider) DO UPDATE SET
                 normalized_cidr=excluded.normalized_cidr,
+                cloud_provider=excluded.cloud_provider,
                 updated_at=excluded.updated_at
             """,
-            (raw_ip, normalized_cidr, now_iso, now_iso)
+            (raw_ip, normalized_cidr, cloud_provider, now_iso, now_iso)
         )
         conn.commit()
     except Exception as e:

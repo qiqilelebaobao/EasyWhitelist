@@ -528,7 +528,7 @@ class Prefix:
             # 记录到 SQLite，用于后续分析
             if self.regions.conn:
                 try:
-                    upsert_ip_address(self.regions.conn, s, cidr)
+                    upsert_ip_address(self.regions.conn, s, cidr, "aliyun")
                 except Exception as e:
                     logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
 

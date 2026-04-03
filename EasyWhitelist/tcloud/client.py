@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 
 from typing import Optional, List
 from tencentcloud.common import credential
@@ -57,12 +56,12 @@ def _fetch_regions() -> List[dict]:
         return []
 
 
-def obtain_region_set(conn: Optional[sqlite3.Connection] = None) -> Optional[List]:
+def obtain_region_set() -> Optional[List]:
     """Return regions, prefer cached DB value when fresh; otherwise fetch and cache.
 
-    If `conn` is provided this will use the existing database connection and
-    use `is_cache_fresh`, `load_cached_regions`, `upsert_regions` for caching.
+    Uses `settings.db_conn` for caching when a database connection is available.
     """
+    conn = settings.db_conn
 
     if conn is None:
         logging.info("[tencentcloud] No DB connection available; will fetch regions from network without caching")

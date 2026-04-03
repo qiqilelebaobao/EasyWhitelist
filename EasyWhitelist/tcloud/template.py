@@ -1,4 +1,5 @@
 import json
+import ipaddress
 import logging
 from typing import List, Optional, Tuple
 from enum import Enum, auto
@@ -7,9 +8,13 @@ from datetime import datetime
 
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
+from ..util.db import upsert_ip_address
+from ..config import settings
 from ..detector.detectors import retrieve_unique_ip_addresses
 from ..util.defaults import RESOURCE_NAME_PREFIX, TEMPLATE_ID_PREFIX
 from ..util.cli import print_header, print_row, print_tail
+
+DEFAULT_MAX_ENTRIES = 20
 
 
 class CreateResult(Enum):
@@ -34,6 +39,51 @@ def initialize_and_bind_template(common_client, security_rule_id):
         return 1
 
 
+def _normalize_ip_list(ip_list: List[str]) -> List[str]:
+    """Validate, normalize to CIDR strings, deduplicate, and limit to DEFAULT_MAX_ENTRIES.
+
+    - Each element may be a bare IP address or a CIDR string.
+    - Normalizes to canonical network form (e.g. '1.2.3.4' -> '1.2.3.4/32').
+    - Preserves order, removes duplicates, and truncates to DEFAULT_MAX_ENTRIES.
+    """
+
+    if not ip_list:
+        return []
+
+    normalized: List[str] = []
+    seen = set()
+
+    for raw in ip_list:
+        if raw is None:
+            continue
+        s = str(raw).strip()
+        if not s:
+            continue
+        try:
+            net = ipaddress.ip_network(s, strict=False)
+            cidr = str(net)
+        except ValueError:
+            logging.warning("[prefix] Invalid IP/CIDR skipped: %s", s)
+            continue
+        if cidr in seen:
+            continue
+        seen.add(cidr)
+        normalized.append(cidr)
+
+        # 记录到 SQLite，用于后续分析
+        if settings.db_conn is not None:
+            try:
+                upsert_ip_address(settings.db_conn, s, cidr, "tencentcloud")
+            except Exception as e:
+                logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
+
+        if len(normalized) >= DEFAULT_MAX_ENTRIES:
+            logging.warning("[prefix] Truncating IP list to %d entries (DEFAULT_MAX_ENTRIES)", DEFAULT_MAX_ENTRIES)
+            break
+
+    return normalized
+
+
 def _update_template(common_client, template_id):
     """更新模板 IP，返回是否成功"""
     if not template_id:
@@ -49,6 +99,8 @@ def _update_template(common_client, template_id):
     if _modify_template_address(common_client, template_id, unique_client_ips):
         logging.info("[template] Template %s updated with IPs: %s", template_id, ", ".join(unique_client_ips) if unique_client_ips else "")
         print(f"✅ [成功] 模板 {template_id} 已更新 -> {unique_client_ips}")
+        _normalize_ip_list(unique_client_ips)  # 规范化并记录到 DB，但不修改已设置的模板 IP 列表（避免用户输入不合法 IP 导致模板更新失败）
+        print("📌 [提示] 已规范化 IP 列表并记录到数据库（不修改已设置的模板 IP）")
         return True
     else:
         # 底层修改失败
