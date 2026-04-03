@@ -12,21 +12,21 @@ from ..util.db import load_cached_security_group, upsert_security_group, refresh
 from .defaults import _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
+from ..config import settings
 
 
 class SecurityGroup:
-    def __init__(self, sg_id: str, regions: Regions, proxy_port: Optional[int] = None, sg_name: str = ''):
+    def __init__(self, sg_id: str, regions: Regions, sg_name: str = ''):
         """Look up a security group by ID across all known regions.
 
         Args:
             sg_id: Security group ID to look up.
             regions: Regions helper with the list of regions to search.
-            proxy_port: Optional proxy port for network requests.
             sg_name: Optional security group name; auto-populated from the API if empty.
         """
         self.regions = regions
         self.sg_id = sg_id
-        self.proxy_port = proxy_port
+        self.proxy_port = settings.proxy_port
         self.sg_name = sg_name
         self.conn = regions.conn
 
@@ -47,7 +47,7 @@ class SecurityGroup:
                 logging.error("[sg] Security group %s not found in any region", sg_id)
                 return
 
-        self.client = ClientFactory.create_client(self.region_id, proxy_port=self.proxy_port)
+        self.client = ClientFactory.create_client(self.region_id)
 
     def add_prefix_list_rule(self, prefix_list_id: str) -> bool:
         """Authorize inbound traffic from a prefix list into this security group.
@@ -165,7 +165,7 @@ class SecurityGroup:
         Returns:
             A list of security group dicts; empty list on failure (logged).
         """
-        client: Ecs20140526Client = ClientFactory.create_client(region_id, proxy_port=self.proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(region_id)
         runtime = _runtime(self.proxy_port is not None)
         all_sgs: list = []
         page_number = 1

@@ -21,11 +21,11 @@ def _discover_regions_from_cache(conn: sqlite3.Connection, sg_id: str) -> list:
         return []
 
 
-def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_id: str, proxy_port: Optional[int] = None) -> str:
+def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_id: str) -> str:
     for region in regions:
         try:
             logging.debug("[tencentcloud] Attempting to discover region for security group '%s' by querying region '%s'", sg_id, region.get("RegionId"))
-            common_client = client.get_common_client(region.get("RegionId"), proxy_port=proxy_port)
+            common_client = client.get_common_client(region.get("RegionId"))
             response = common_client.call_json("DescribeSecurityGroups", {"SecurityGroupIds": [sg_id]})
 
             security_groups = response.get("Response", {}).get("SecurityGroupSet", [])
@@ -48,7 +48,7 @@ def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_i
     return ''
 
 
-def discover_regions_from_api_with_cache(conn: Optional[sqlite3.Connection], regions, sg_id: str, proxy_port: Optional[int] = None) -> str:
+def discover_regions_from_api_with_cache(conn: Optional[sqlite3.Connection], regions, sg_id: str) -> str:
     """Discover the region for a given security group ID, using cache if available."""
     if conn:
         cached_regions = _discover_regions_from_cache(conn, sg_id)
@@ -57,4 +57,4 @@ def discover_regions_from_api_with_cache(conn: Optional[sqlite3.Connection], reg
             return cached_regions[0]
 
     # Cache miss or no DB connection; fall back to API discovery
-    return _discover_regions_from_api(conn, regions, sg_id, proxy_port=proxy_port)
+    return _discover_regions_from_api(conn, regions, sg_id)

@@ -4,7 +4,6 @@ import ipaddress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from urllib.parse import urlparse
 
 from tqdm import tqdm
 
@@ -21,6 +20,7 @@ from .region import Regions
 from .client import ClientFactory
 from ..util.db import upsert_ip_address
 from .sg import SecurityGroup
+from ..config import settings
 
 
 class PrefixList:
@@ -51,8 +51,7 @@ class Prefix:
             regions: A Regions object containing information for all target regions.
         """
         self.regions = regions
-        parsed = urlparse(regions.proxy_url) if regions.proxy_url else None
-        self.proxy_port = parsed.port if parsed else None
+        self.proxy_port = settings.proxy_port
         self._prefix_list: Optional[List[PrefixList]] = None
         self.current_prefix_list = None
 
@@ -96,7 +95,7 @@ class Prefix:
 
         # 1. Look up the security group; return on failure
         try:
-            sg = SecurityGroup(sg_id, self.regions, proxy_port=self.proxy_port)
+            sg = SecurityGroup(sg_id, self.regions)
             logging.info("[prefix] Security group lookup result: sg_id=%s, region_id=%s, sg_name=%s",
                          sg.sg_id, sg.region_id, sg.sg_name)
         except Exception:
@@ -160,7 +159,7 @@ class Prefix:
             logging.error('No prefix list with name prefix "%s" found in any region — run init first', RESOURCE_NAME_PREFIX)
             return 1
 
-        client_ip_list = retrieve_unique_ip_addresses(self.proxy_port)
+        client_ip_list = retrieve_unique_ip_addresses()
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
         rows = []
@@ -323,7 +322,7 @@ class Prefix:
         # Build the CreatePrefixList request object
         prefix_list_name = f"{prefix_name}{int(datetime.now().timestamp())}"
         description = f"{prefix_list_name}_desc"
-        client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(region_id)
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
             region_id=region_id,
             prefix_list_name=prefix_list_name,
@@ -352,7 +351,7 @@ class Prefix:
             logging.error("[prefix] Prefix list ID or region ID is not initialized")
             return []
 
-        client_ip_list = retrieve_unique_ip_addresses(self.proxy_port)
+        client_ip_list = retrieve_unique_ip_addresses()
         client_ip_list = self._normalize_ip_list(client_ip_list)
 
         if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
@@ -368,7 +367,7 @@ class Prefix:
         Returns:
             True on success; False on failure.
         """
-        client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(region_id)
         request = ecs_20140526_models.ModifyPrefixListRequest(
             region_id=region_id,
             prefix_list_id=prefix_list_id,
@@ -411,7 +410,7 @@ class Prefix:
         Returns:
             A list of prefix list dicts; empty list on network or API error.
         """
-        client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(region_id)
         logging.debug("[prefix] Retrieving prefix lists in region %s...", region_id)
         runtime = _runtime(self.proxy_port is not None)
         all_entries: list = []
@@ -550,7 +549,7 @@ class Prefix:
         Returns:
             A list of entry dicts (each containing 'Cidr' and 'Description'); None on error.
         """
-        client: Ecs20140526Client = ClientFactory.create_client(region_id, self.proxy_port)
+        client: Ecs20140526Client = ClientFactory.create_client(region_id)
         logging.info("[prefix] Fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
         runtime = _runtime(self.proxy_port is not None)
         try:

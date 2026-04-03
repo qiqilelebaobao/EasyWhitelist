@@ -9,10 +9,9 @@ from .sg import discover_regions_from_api_with_cache
 
 def t_main(action: str,
            security_rule_id: Optional[str],
-           proxy_port: Optional[int] = None,
            conn: Optional[sqlite3.Connection] = None) -> int:
 
-    regions = client.obtain_region_set(conn=conn, proxy_port=proxy_port)
+    regions = client.obtain_region_set(conn=conn)
     if regions is None or len(regions) == 0:
         logging.error("[tencentcloud] No regions available to proceed with template action")
         return 1
@@ -20,19 +19,19 @@ def t_main(action: str,
 
     if action == 'init' and security_rule_id:
         logging.info("[tencentcloud] Target security rule ID: %s", security_rule_id)
-        region_id = discover_regions_from_api_with_cache(conn, regions, security_rule_id, proxy_port=proxy_port)
+        region_id = discover_regions_from_api_with_cache(conn, regions, security_rule_id)
         if not region_id:
             logging.warning("[tencentcloud] Failed to discover region for security group '%s'; defaulting to first region in list", security_rule_id)
             return 2
-        common_client = client.get_common_client(region_id, proxy_port=proxy_port)
+        common_client = client.get_common_client(region_id)
     else:
         logging.info("[tencentcloud] Using region '%s' for template operations", regions[0].get("RegionId"))
-        common_client = client.get_common_client(regions[0].get("RegionId"), proxy_port=proxy_port)
+        common_client = client.get_common_client(regions[0].get("RegionId"))
 
     ACTION_MAP = {
-        "init": lambda: initialize_and_bind_template(common_client, security_rule_id, proxy_port),
-        "list": lambda: loop_list(common_client, proxy_port),
-        "set": lambda: update_all_templates(common_client, proxy_port),
+        "init": lambda: initialize_and_bind_template(common_client, security_rule_id),
+        "list": lambda: loop_list(common_client),
+        "set": lambda: update_all_templates(common_client),
     }
 
     if action in ACTION_MAP:

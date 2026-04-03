@@ -19,12 +19,12 @@ class CreateResult(Enum):
     FAILED = auto()             # 异常失败
 
 
-def initialize_and_bind_template(common_client, security_rule_id, proxy_port: Optional[int] = None):
+def initialize_and_bind_template(common_client, security_rule_id):
 
     if not security_rule_id:
         logging.error("[template] Security group ID required but missing")
         return 1
-    template_id, ret_val = _ensure_address_template(common_client, proxy_port=proxy_port)
+    template_id, ret_val = _ensure_address_template(common_client)
 
     if ret_val == CreateResult.UPDATED_EXISTING:
         return 0
@@ -34,7 +34,7 @@ def initialize_and_bind_template(common_client, security_rule_id, proxy_port: Op
         return 1
 
 
-def _update_template(common_client, template_id, proxy_port: Optional[int] = None):
+def _update_template(common_client, template_id):
     """更新模板 IP，返回是否成功"""
     if not template_id:
         logging.error("[template] Missing template ID")
@@ -44,7 +44,7 @@ def _update_template(common_client, template_id, proxy_port: Optional[int] = Non
         logging.error("[template] Set failed: invalid template ID (check prefix)")
         return False
 
-    unique_client_ips = retrieve_unique_ip_addresses(proxy_port)
+    unique_client_ips = retrieve_unique_ip_addresses()
 
     if _modify_template_address(common_client, template_id, unique_client_ips):
         logging.info("[template] Template %s updated with IPs: %s", template_id, ", ".join(unique_client_ips) if unique_client_ips else "")
@@ -57,14 +57,14 @@ def _update_template(common_client, template_id, proxy_port: Optional[int] = Non
         return False
 
 
-def update_all_templates(common_client, proxy_port: Optional[int] = None) -> int:
+def update_all_templates(common_client) -> int:
 
     if not (address_template_set := _retrieve_template_info_with_filter(common_client)):
         return 1
 
     failed = 0
     for i, template in enumerate(address_template_set, 1):
-        ok = _update_template(common_client, template["AddressTemplateId"], proxy_port)
+        ok = _update_template(common_client, template["AddressTemplateId"])
         if not ok:
             failed += 1
             logging.warning("[template] Failed to update template %d/%d: %s", i, len(address_template_set), template["AddressTemplateId"])
@@ -73,7 +73,7 @@ def update_all_templates(common_client, proxy_port: Optional[int] = None) -> int
     return 0 if failed == 0 else 1
 
 
-def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
+def loop_list(common_client) -> None:
     template_ids = _display_template_list(common_client)
     last_input = None
 
@@ -89,12 +89,12 @@ def loop_list(common_client, proxy_port: Optional[int] = None) -> None:
 
             if user_input.isdigit():
                 _handle_digit_input(
-                    user_input, common_client, template_ids, proxy_port)
+                    user_input, common_client, template_ids)
             elif user_input == CMD_LIST:
                 # 重新拉取列表并刷新本地 template_ids
                 template_ids = _display_template_list(common_client)
             else:
-                action = _handle_command_input(user_input, common_client, template_ids, proxy_port)
+                action = _handle_command_input(user_input, common_client, template_ids)
                 if action == CommandAction.BREAK:
                     break
 
@@ -181,10 +181,10 @@ def _modify_template_address(common_client, template_id, client_ips):
     return True
 
 
-def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[str, CreateResult]:
+def _create_template(common_client) -> Tuple[str, CreateResult]:
     """创建模板并返回模板ID，失败返回 ('', CreateResult.FAILED)。"""
 
-    ip_list = retrieve_unique_ip_addresses(proxy_port)
+    ip_list = retrieve_unique_ip_addresses()
     template_name = f"{RESOURCE_NAME_PREFIX}{int(datetime.now().timestamp())}"
     params = {
         "AddressTemplateName": template_name,
@@ -202,11 +202,11 @@ def _create_template(common_client, proxy_port: Optional[int] = None) -> Tuple[s
         return '', CreateResult.FAILED
 
 
-def _ensure_address_template(common_client, proxy_port: Optional[int] = None):
+def _ensure_address_template(common_client):
 
     address_template_set = _retrieve_template_info_with_filter(common_client)
     if not address_template_set:
-        return _create_template(common_client, proxy_port)
+        return _create_template(common_client)
 
     # 找到第一个符合的模板就设置
     existing_template = address_template_set[0]
@@ -215,7 +215,7 @@ def _ensure_address_template(common_client, proxy_port: Optional[int] = None):
     logging.info("[template] Existing template found: %s", template_id)
 
     print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
-    if not _update_template(common_client, template_id, proxy_port):
+    if not _update_template(common_client, template_id):
         return template_id, CreateResult.FAILED
 
     return template_id, CreateResult.UPDATED_EXISTING
@@ -269,7 +269,7 @@ CMD_EXIT = "q"
 INPUT_PROMPT = "Please choose # template to set (or [L]ist, [C]reate, [Q]uit, Enter\u00d72 to exit): "
 
 
-def _handle_digit_input(user_input: str, common_client, template_ids: list, proxy_port: Optional[int]) -> None:
+def _handle_digit_input(user_input: str, common_client, template_ids: list) -> None:
     """
     处理数字输入，选择模板索引
 
@@ -277,7 +277,6 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
         user_input: 用户输入的数字字符串
         common_client: 云服务客户端
         template_ids: 模板ID列表
-        proxy_port: 代理端口，可选
     """
 
     if not template_ids:
@@ -287,14 +286,14 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list, prox
     try:
         index = int(user_input)
         if 1 <= index <= len(template_ids):
-            _update_template(common_client, template_ids[index - 1], proxy_port)
+            _update_template(common_client, template_ids[index - 1])
         else:
             logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
     except ValueError:
         logging.warning("[template] Selection failed: invalid number '%s' (expected 1~%d)", user_input, len(template_ids))
 
 
-def _handle_command_input(user_input: str, common_client, template_ids: list, proxy_port: Optional[int]) -> CommandAction:
+def _handle_command_input(user_input: str, common_client, template_ids: list) -> CommandAction:
     """
     处理命令输入，执行相应操作
 
@@ -302,7 +301,6 @@ def _handle_command_input(user_input: str, common_client, template_ids: list, pr
         user_input: 用户输入的命令
         common_client: 云服务客户端
         template_ids: 模板ID列表
-        proxy_port: 代理端口，可选
 
     Returns:
         CommandAction: 指示后续操作的动作

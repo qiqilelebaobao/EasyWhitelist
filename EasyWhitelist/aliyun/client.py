@@ -1,12 +1,11 @@
 import os
 import warnings
-from typing import Optional
-
 import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
 from ..util.defaults import _IGNORE_SSL
+from ..config import settings
 
 # The Tea SDK embeds certifi's CA into a custom _TLSAdapter ssl_context, so TLS
 # verification is performed correctly. Older urllib3 releases, however, set
@@ -24,21 +23,19 @@ class ClientFactory:
     @staticmethod
     def create_client(
         region: str,
-        proxy_port: Optional[int] = None,
         proxy_host: str = "localhost",
     ) -> Ecs20140526Client:
         """Create an authenticated ECS client for the given region.
 
         Args:
             region: Alibaba Cloud region, e.g. 'cn-hangzhou'.
-            proxy_port: Proxy port (1–65535); None if no proxy is used.
             proxy_host: Proxy hostname or IP address; defaults to 'localhost'.
         """
         if not region:
             raise ValueError("region must not be empty")
 
-        if proxy_port is not None and not (1 <= proxy_port <= 65535):
-            raise ValueError(f"Invalid proxy_port: {proxy_port}. Must be between 1 and 65535.")
+        if settings.proxy_port is not None and not (1 <= settings.proxy_port <= 65535):
+            raise ValueError(f"Invalid proxy_port: {settings.proxy_port}. Must be between 1 and 65535.")
 
         endpoint = os.getenv('ALIBABA_CLOUD_ENDPOINT') or f"ecs.{region}.aliyuncs.com"
 
@@ -62,10 +59,10 @@ class ClientFactory:
             ca=certifi.where()
         )
 
-        if proxy_port is not None:
+        if settings.proxy_port is not None:
             # Using http:// for the https_proxy value is intentional:
             # the client tunnels HTTPS through HTTP CONNECT rather than connecting to the proxy itself over HTTPS.
-            proxy_url = f"http://{proxy_host}:{proxy_port}"
+            proxy_url = f"http://{proxy_host}:{settings.proxy_port}"
             config_kwargs["http_proxy"] = proxy_url
             config_kwargs["https_proxy"] = proxy_url
 

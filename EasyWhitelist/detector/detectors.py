@@ -7,11 +7,12 @@ from typing import List
 
 from ..util.defaults import _IGNORE_SSL, DEFAULT_CONCURRENT_WORKERS
 from . import utils
+from ..config import settings
 
 
-def retrieve_unique_ip_addresses(proxy_port=None):
+def retrieve_unique_ip_addresses():
 
-    client_ip_list: List[str] = _get_local_ips(proxy_port)
+    client_ip_list: List[str] = _get_local_ips()
     # 用 dict.fromkeys 去重，同时保留顺序（set() 会破坏顺序）
     client_ip_list = list(dict.fromkeys(client_ip_list))
 
@@ -31,7 +32,7 @@ def print_ip_list(ip_list):
     print("-" * number)
 
 
-def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy_port=None):
+def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable):
     # 发送GET请求
     headers = {"user-agent": ag}
 
@@ -39,11 +40,11 @@ def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable, proxy_port=None):
         return None
 
     try:
-        logging.debug("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, proxy_port if proxy_port else "n/a")
+        logging.debug("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, settings.proxy_port if settings.proxy_port else "n/a")
 
-        if proxy_port:
+        if settings.proxy_port:
             response = requests.get(u, headers=headers, timeout=(3, 5),
-                                    proxies={"http": f"http://127.0.0.1:{proxy_port}", "https": f"http://127.0.0.1:{proxy_port}"},
+                                    proxies={"http": f"http://127.0.0.1:{settings.proxy_port}", "https": f"http://127.0.0.1:{settings.proxy_port}"},
                                     verify=not _IGNORE_SSL)
         else:
             response = requests.get(u, headers=headers, timeout=(3, 5))
@@ -71,11 +72,11 @@ def _validate_ip(l_ip):
     return bool(re.fullmatch(pat, l_ip))
 
 
-def _get_local_ips(proxy_port=None):
+def _get_local_ips():
     ip_list = []
     with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(utils.detect_url))) as executor:
         future_to_url = {
-            executor.submit(_get_local_ip_from_url_and_parse, u[0], u[1], u[2], u[3], proxy_port): u for u in utils.detect_url
+            executor.submit(_get_local_ip_from_url_and_parse, u[0], u[1], u[2], u[3]): u for u in utils.detect_url
         }
         for future in as_completed(future_to_url):
             url = future_to_url[future]
