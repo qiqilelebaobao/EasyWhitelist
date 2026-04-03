@@ -80,7 +80,7 @@ def _fetch_and_cache_regions() -> List[dict]:
     return regions
 
 
-def obtain_region_set() -> Optional[List]:
+def load_regions_prefer_cache() -> Optional[List]:
     """Return regions, prefer cached DB value when fresh; otherwise fetch and cache.
 
     Uses `settings.db_conn` for caching when a database connection is available.

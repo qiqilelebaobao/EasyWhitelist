@@ -45,7 +45,7 @@ def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_i
                         )
                     return region_id
         except Exception as e:
-            logging.error("[tencentcloud] Failed to discover regions from API: %s", e)
+            logging.info("[tencentcloud] Failed to discover regions from API: %s", e)
     return ''
 
 

@@ -125,7 +125,7 @@ def update_all_templates(common_client) -> int:
     return 0 if failed == 0 else 1
 
 
-def loop_list(common_client) -> int:
+def process_template_input(common_client) -> int:
     template_ids = _display_template_list(common_client)
     last_input = None
 

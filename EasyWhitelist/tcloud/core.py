@@ -3,7 +3,7 @@ from typing import Optional
 
 from ..config import settings
 from . import client
-from .template import update_all_templates, initialize_and_bind_template, loop_list
+from .template import update_all_templates, initialize_and_bind_template, process_template_input
 from .sg import discover_regions_from_api_with_cache
 
 
@@ -11,7 +11,7 @@ def t_main(action: str,
            security_rule_id: Optional[str]
            ) -> int:
 
-    regions = client.obtain_region_set()
+    regions = client.load_regions_prefer_cache()
     if regions is None or len(regions) == 0:
         logging.error("[tencentcloud] No regions available to proceed with template action")
         return 1
@@ -26,12 +26,15 @@ def t_main(action: str,
         common_client = client.get_common_client(region_id, module="vpc", endpoint="vpc.tencentcloudapi.com")
     else:
         region_id = regions[0].get("RegionId") or regions[0].get("Region", "")
+        if not region_id:
+            logging.error("[tencentcloud] First region entry is missing 'RegionId' and 'Region' keys; cannot determine region to use")
+            return 3
         logging.info("[tencentcloud] Using region '%s' for template operations", region_id)
         common_client = client.get_common_client(region_id, module="vpc", endpoint="vpc.tencentcloudapi.com")
 
     ACTION_MAP = {
         "init": lambda: initialize_and_bind_template(common_client, security_rule_id),
-        "list": lambda: loop_list(common_client),
+        "list": lambda: process_template_input(common_client),
         "set": lambda: update_all_templates(common_client),
     }
 
@@ -39,4 +42,4 @@ def t_main(action: str,
         return ACTION_MAP[action]()
     else:
         logging.error("[tencentcloud] Unsupported action: %s", action)
-        return 3
+        return 4
