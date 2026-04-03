@@ -26,7 +26,6 @@ class SecurityGroup:
         """
         self.regions = regions
         self.sg_id = sg_id
-        self.proxy_port = settings.proxy_port
         self.sg_name = sg_name
         self.conn = regions.conn
 
@@ -70,7 +69,7 @@ class SecurityGroup:
             ip_protocol='all',
             port_range='-1/-1',
             source_prefix_list_id=prefix_list_id)
-        runtime = _runtime(self.proxy_port is not None)
+        runtime = _runtime(settings.proxy_port is not None)
         resp = _ecs_api_call(
             lambda: self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime),  # type: ignore[union-attr]
             "creating security group rule",
@@ -166,7 +165,7 @@ class SecurityGroup:
             A list of security group dicts; empty list on failure (logged).
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
-        runtime = _runtime(self.proxy_port is not None)
+        runtime = _runtime(settings.proxy_port is not None)
         all_sgs: list = []
         page_number = 1
         page_size = 100  # maximum allowed by the ECS API

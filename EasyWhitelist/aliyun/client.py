@@ -4,7 +4,7 @@ import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
-from ..util.defaults import _IGNORE_SSL
+from ..config.settings import _IGNORE_SSL
 from ..config import settings
 
 # The Tea SDK embeds certifi's CA into a custom _TLSAdapter ssl_context, so TLS

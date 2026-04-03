@@ -23,10 +23,11 @@ def t_main(action: str,
         if not region_id:
             logging.warning("[tencentcloud] Failed to discover region for security group '%s'; defaulting to first region in list", security_rule_id)
             return 2
-        common_client = client.get_common_client(region_id)
+        common_client = client.get_common_client(region_id, module="vpc", endpoint="vpc.tencentcloudapi.com")
     else:
-        logging.info("[tencentcloud] Using region '%s' for template operations", regions[0].get("RegionId"))
-        common_client = client.get_common_client(regions[0].get("RegionId"))
+        region_id = regions[0].get("RegionId") or regions[0].get("Region", "")
+        logging.info("[tencentcloud] Using region '%s' for template operations", region_id)
+        common_client = client.get_common_client(region_id, module="vpc", endpoint="vpc.tencentcloudapi.com")
 
     ACTION_MAP = {
         "init": lambda: initialize_and_bind_template(common_client, security_rule_id),

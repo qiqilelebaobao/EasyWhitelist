@@ -24,14 +24,15 @@ def _discover_regions_from_cache(conn: sqlite3.Connection, sg_id: str) -> list:
 def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_id: str) -> str:
     for region in regions:
         try:
-            logging.debug("[tencentcloud] Attempting to discover region for security group '%s' by querying region '%s'", sg_id, region.get("RegionId"))
-            common_client = client.get_common_client(region.get("RegionId"))
+            region_id = region.get("RegionId") or region.get("Region", "")
+            logging.debug("[tencentcloud] Attempting to discover region for security group '%s' by querying region '%s'", sg_id, region_id)
+            common_client = client.get_common_client(region_id, module="vpc", endpoint="vpc.tencentcloudapi.com")
             response = common_client.call_json("DescribeSecurityGroups", {"SecurityGroupIds": [sg_id]})
 
             security_groups = response.get("Response", {}).get("SecurityGroupSet", [])
             for sg in security_groups:
                 if sg.get("SecurityGroupId") == sg_id:
-                    region_id = region.get("RegionId")
+                    region_id = region.get("RegionId") or region.get("Region", "")
                     logging.info("[tencentcloud] Discovered region '%s' for security group '%s'", region_id, sg_id)
                     if conn is not None:
                         upsert_security_group(

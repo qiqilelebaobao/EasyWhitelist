@@ -51,7 +51,6 @@ class Prefix:
             regions: A Regions object containing information for all target regions.
         """
         self.regions = regions
-        self.proxy_port = settings.proxy_port
         self._prefix_list: Optional[List[PrefixList]] = None
         self.current_prefix_list = None
 
@@ -330,7 +329,7 @@ class Prefix:
             max_entries=DEFAULT_MAX_ENTRIES,
             address_family='IPv4'
         )
-        runtime = _runtime(self.proxy_port is not None)
+        runtime = _runtime(settings.proxy_port is not None)
         resp = _ecs_api_call(
             lambda: client.create_prefix_list_with_options(create_prefix_list_request, runtime),
             "creating prefix list",
@@ -376,7 +375,7 @@ class Prefix:
                 description=f"EasyWhitelist@{datetime.now().strftime('%Y-%m-%d %H:%M')}"
             ) for ip in ip_list]
         )
-        runtime = _runtime(self.proxy_port is not None)
+        runtime = _runtime(settings.proxy_port is not None)
         resp = _ecs_api_call(
             lambda: client.modify_prefix_list_with_options(request, runtime),
             "modifying prefix list",
@@ -412,7 +411,7 @@ class Prefix:
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
         logging.debug("[prefix] Retrieving prefix lists in region %s...", region_id)
-        runtime = _runtime(self.proxy_port is not None)
+        runtime = _runtime(settings.proxy_port is not None)
         all_entries: list = []
         next_token: Optional[str] = None
         max_results = 100  # maximum allowed by the ECS API
@@ -551,7 +550,7 @@ class Prefix:
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
         logging.info("[prefix] Fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
-        runtime = _runtime(self.proxy_port is not None)
+        runtime = _runtime(settings.proxy_port is not None)
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
                 region_id=region_id,
