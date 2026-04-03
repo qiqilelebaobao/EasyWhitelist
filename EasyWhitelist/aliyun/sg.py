@@ -36,7 +36,7 @@ class SecurityGroup:
         cached = self._load_cached_security_group()
         if cached:
             self.region_id = cached.get('region_id')
-            self.sg_name = self.sg_name or cached.get('region_name', '')
+            self.sg_name = self.sg_name or cached.get('sg_name', '')
             logging.info("[sg] Security group %s loaded from cache: %s/%s", self.sg_id, self.region_id, self.sg_name)
 
         # If not cached, do online lookup and cache result

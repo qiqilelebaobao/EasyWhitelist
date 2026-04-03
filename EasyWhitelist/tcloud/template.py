@@ -99,13 +99,12 @@ def _update_template(common_client, template_id):
         logging.info("[template] Template %s updated with IPs: %s", template_id, ", ".join(unique_client_ips) if unique_client_ips else "")
         print(f"✅ [成功] 模板 {template_id} 已更新 -> {unique_client_ips}")
         _normalize_ip_list(unique_client_ips)  # 规范化并记录到 DB，但不修改已设置的模板 IP 列表（避免用户输入不合法 IP 导致模板更新失败）
-        print("📌 [提示] 已规范化 IP 列表并记录到数据库（不修改已设置的模板 IP）")
+        print("📌 [提示] 已规范化 IP 列表并记录到数据库")
         return True
-    else:
-        # 底层修改失败
-        logging.error("[template] Failed to update template %s", template_id)
-        print(f"❌ [失败] 模板 {template_id} 更新失败（请检查网络或模板状态）")
-        return False
+    # 底层修改失败
+    logging.error("[template] Failed to update template %s", template_id)
+    print(f"❌ [失败] 模板 {template_id} 更新失败（请检查网络或模板状态）")
+    return False
 
 
 def update_all_templates(common_client) -> int:
@@ -133,7 +132,7 @@ def process_template_input(common_client) -> int:
         try:
             user_input = input(INPUT_PROMPT).strip().lower()
 
-            if last_input == "" and user_input == "":
+            if last_input == CMD_EMPTY and user_input == CMD_EMPTY:
                 break
 
             last_input = user_input
@@ -145,7 +144,7 @@ def process_template_input(common_client) -> int:
                 # 重新拉取列表并刷新本地 template_ids
                 template_ids = _display_template_list(common_client)
             else:
-                action = _handle_command_input(user_input, common_client, template_ids)
+                action = _handle_command_input(user_input, common_client)
                 if action == CommandAction.BREAK:
                     break
 
@@ -208,10 +207,14 @@ def _display_template_list(common_client) -> List[str]:
         addreset = ", ".join(addr_set[:3])
         if len(addr_set) > 3:
             addreset += f" ~~~ {len(addr_set) - 3} more..."
-        t_id = template["AddressTemplateId"]
-        t_time = template["CreatedTime"]
-        t_name = template["AddressTemplateName"]
-        print_row(idx=i, region=common_client.region, id=t_id, ctime=t_time, addrs=addreset, name=t_name)
+        print_row(
+            idx=i,
+            region=common_client.region,
+            id=template["AddressTemplateId"],
+            ctime=template["CreatedTime"],
+            addrs=addreset,
+            name=template["AddressTemplateName"],
+        )
 
     print_tail()
 
@@ -294,16 +297,16 @@ def _associate_template_to_rule(common_client, template_id, rule_id):
             return 0
 
         # 进入规则设置
-        params = {"SecurityGroupId": rule_id,
-                  "SecurityGroupPolicySet":
-                  {"Ingress": [
-                      {"PolicyIndex": 0, "Protocol": "ALL", "AddressTemplate": {
-                          "AddressId": template_id},
-                       "Action": "ACCEPT", "PolicyDescription": "Easy Whitelist"}
-                  ]}
-                  }
+        policy_params = {"SecurityGroupId": rule_id,
+                         "SecurityGroupPolicySet":
+                         {"Ingress": [
+                             {"PolicyIndex": 0, "Protocol": "ALL", "AddressTemplate": {
+                                 "AddressId": template_id},
+                                 "Action": "ACCEPT", "PolicyDescription": "Easy Whitelist"}
+                         ]}
+                         }
 
-        response = common_client.call_json("CreateSecurityGroupPolicies", params)
+        response = common_client.call_json("CreateSecurityGroupPolicies", policy_params)
         logging.info("[template] API response: %s", json.dumps(response, ensure_ascii=False))
         print(f"✅ [成功] 模板 {template_id} 已关联到 {rule_id}")
         return 0
@@ -316,7 +319,6 @@ def _associate_template_to_rule(common_client, template_id, rule_id):
 class CommandAction(Enum):
     CONTINUE = auto()
     BREAK = auto()
-    NOTHING = auto()  # keep for future use, e.g. invalid command but do not want to print warning
 
 
 CMD_LIST = "l"
@@ -347,14 +349,13 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list) -> N
         logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
 
 
-def _handle_command_input(user_input: str, common_client, template_ids: list) -> CommandAction:
+def _handle_command_input(user_input: str, common_client) -> CommandAction:
     """
     处理命令输入，执行相应操作
 
     Args:
         user_input: 用户输入的命令
         common_client: 云服务客户端
-        template_ids: 模板ID列表
 
     Returns:
         CommandAction: 指示后续操作的动作

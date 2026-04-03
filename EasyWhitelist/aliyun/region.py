@@ -1,7 +1,5 @@
-import os
 import logging
-import sqlite3
-from typing import List, Optional, Dict
+from typing import List, Dict
 
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
@@ -43,7 +41,7 @@ class Regions:
                 return self._fetch_regions_from_network()
         except Exception as db_exc:
             logging.warning("[region] Cache check failed; fetching regions from network: %s", db_exc)
-            return []
+            return self._fetch_regions_from_network()
 
     def _fetch_regions_from_network(self) -> List[Dict]:
         """Fetch regions directly from Aliyun API without caching."""
@@ -71,15 +69,3 @@ class Regions:
                 logging.warning("[region] Failed to cache regions to db: %s", db_exc)
 
         return regions
-
-    def _get_db_connection(self, app_dir: Optional[str]) -> Optional[sqlite3.Connection]:
-        if not app_dir:
-            return None
-        db_path = os.path.join(app_dir, "whitelist.db")
-        try:
-            conn = sqlite3.connect(db_path)
-            logging.debug("[region] Connected to database at %s", db_path)
-            return conn
-        except Exception as e:
-            logging.error("[region] Failed to connect to database at %s: %s", db_path, e)
-            return None

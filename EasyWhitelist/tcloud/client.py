@@ -38,9 +38,9 @@ def _fetch_regions() -> List[dict]:
 
     Returns an empty list on error.
     """
-    _BOOTSTRAP_REGION = ""
+    bootstrap_region = ""
     try:
-        common_client = get_common_client(region=_BOOTSTRAP_REGION, module="cvm", endpoint="cvm.tencentcloudapi.com")
+        common_client = get_common_client(region=bootstrap_region, module="cvm", endpoint="cvm.tencentcloudapi.com")
         raw_regions = common_client.call_json("DescribeRegions", {}).get("Response", {}).get("RegionSet", [])
         # Normalize to RegionId key so callers see a consistent format
         # regardless of whether data comes from the API or from DB cache.

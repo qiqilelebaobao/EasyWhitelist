@@ -11,7 +11,7 @@ def t_main(action: str,
            ) -> int:
 
     regions = client.load_regions_prefer_cache()
-    if regions is None or len(regions) == 0:
+    if not regions:
         logging.error("[tencentcloud] No regions available to proceed with template action")
         return 1
     logging.info("[tencentcloud] Available regions: %d", len(regions))
