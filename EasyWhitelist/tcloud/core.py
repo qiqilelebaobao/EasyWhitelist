@@ -1,7 +1,6 @@
 import logging
 from typing import Optional
 
-from ..config import settings
 from . import client
 from .template import update_all_templates, initialize_and_bind_template, process_template_input
 from .sg import discover_regions_from_api_with_cache
@@ -19,7 +18,7 @@ def t_main(action: str,
 
     if action == 'init' and security_rule_id:
         logging.info("[tencentcloud] Target security rule ID: %s", security_rule_id)
-        region_id = discover_regions_from_api_with_cache(settings.db_conn, regions, security_rule_id)
+        region_id = discover_regions_from_api_with_cache(regions, security_rule_id)
         if not region_id:
             logging.warning("[tencentcloud] Failed to discover region for security group '%s'; defaulting to first region in list", security_rule_id)
             return 2

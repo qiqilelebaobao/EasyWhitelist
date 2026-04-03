@@ -1,11 +1,14 @@
 import logging
-import sqlite3
-from typing import Optional
 from . import client
+from ..config import settings
 from ..util.db import upsert_security_group
 
 
-def _discover_regions_from_cache(conn: sqlite3.Connection, sg_id: str) -> list:
+def _discover_regions_from_cache(sg_id: str) -> list:
+    conn = settings.db_conn
+    if conn is None:
+        logging.info("[tencentcloud] No DB connection available; cannot check cache for security group '%s'", sg_id)
+        return []
     try:
         cursor = conn.cursor()
         cursor.execute(
@@ -21,7 +24,7 @@ def _discover_regions_from_cache(conn: sqlite3.Connection, sg_id: str) -> list:
         return []
 
 
-def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_id: str) -> str:
+def _discover_regions_from_api(regions, sg_id: str) -> str:
     for region in regions:
         try:
             region_id = region.get("RegionId") or region.get("Region", "")
@@ -34,6 +37,7 @@ def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_i
                 if sg.get("SecurityGroupId") == sg_id:
                     region_id = region.get("RegionId") or region.get("Region", "")
                     logging.info("[tencentcloud] Discovered region '%s' for security group '%s'", region_id, sg_id)
+                    conn = settings.db_conn
                     if conn is not None:
                         upsert_security_group(
                             conn,
@@ -49,13 +53,14 @@ def _discover_regions_from_api(conn: Optional[sqlite3.Connection], regions, sg_i
     return ''
 
 
-def discover_regions_from_api_with_cache(conn: Optional[sqlite3.Connection], regions, sg_id: str) -> str:
+def discover_regions_from_api_with_cache(regions, sg_id: str) -> str:
     """Discover the region for a given security group ID, using cache if available."""
+    conn = settings.db_conn
     if conn:
-        cached_regions = _discover_regions_from_cache(conn, sg_id)
+        cached_regions = _discover_regions_from_cache(sg_id)
         if cached_regions:
             logging.info("[tencentcloud] Found cached region '%s' for security group '%s'", cached_regions[0], sg_id)
             return cached_regions[0]
 
     # Cache miss or no DB connection; fall back to API discovery
-    return _discover_regions_from_api(conn, regions, sg_id)
+    return _discover_regions_from_api(regions, sg_id)
