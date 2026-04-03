@@ -87,15 +87,14 @@ def load_regions_prefer_cache() -> Optional[List]:
 
     if conn is None:
         logging.info("[tencentcloud] No DB connection available; will fetch regions from network without caching")
-        return _fetch_and_cache_regions()
+        return _fetch_regions()
 
     try:
         if is_cache_fresh(conn=conn, cloud_provider='tencentcloud'):
             logging.info("[tencentcloud] Loaded regions from DB cache")
             return load_cached_regions(conn=conn, cloud_provider='tencentcloud')
         # stale or empty cache: fetch from network
-        regions = _fetch_and_cache_regions()
-        return regions
+        return _fetch_and_cache_regions()
     except Exception as e:
         logging.warning("[tencentcloud] Cache check failed; fetching regions from network: %s", e)
         return _fetch_and_cache_regions()

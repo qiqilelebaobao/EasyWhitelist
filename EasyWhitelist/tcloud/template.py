@@ -340,14 +340,11 @@ def _handle_digit_input(user_input: str, common_client, template_ids: list) -> N
         logging.warning("[template] No templates available; create one first")
         return
 
-    try:
-        index = int(user_input)
-        if 1 <= index <= len(template_ids):
-            _update_template(common_client, template_ids[index - 1])
-        else:
-            logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
-    except ValueError:
-        logging.warning("[template] Selection failed: invalid number '%s' (expected 1~%d)", user_input, len(template_ids))
+    index = int(user_input)
+    if 1 <= index <= len(template_ids):
+        _update_template(common_client, template_ids[index - 1])
+    else:
+        logging.warning("[template] Selection failed: index out of range (available: 1~%d)", len(template_ids))
 
 
 def _handle_command_input(user_input: str, common_client, template_ids: list) -> CommandAction:

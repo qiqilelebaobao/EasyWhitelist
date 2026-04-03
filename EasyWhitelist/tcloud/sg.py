@@ -55,12 +55,11 @@ def _discover_regions_from_api(regions, sg_id: str) -> str:
 
 def discover_regions_from_api_with_cache(regions, sg_id: str) -> str:
     """Discover the region for a given security group ID, using cache if available."""
-    conn = settings.db_conn
-    if conn:
-        cached_regions = _discover_regions_from_cache(sg_id)
-        if cached_regions:
-            logging.info("[tencentcloud] Found cached region '%s' for security group '%s'", cached_regions[0], sg_id)
-            return cached_regions[0]
+
+    cached_regions = _discover_regions_from_cache(sg_id)
+    if cached_regions:
+        logging.info("[tencentcloud] Found cached region '%s' for security group '%s'", cached_regions[0], sg_id)
+        return cached_regions[0]
 
     # Cache miss or no DB connection; fall back to API discovery
     return _discover_regions_from_api(regions, sg_id)
