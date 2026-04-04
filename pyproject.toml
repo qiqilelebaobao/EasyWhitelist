@@ -12,7 +12,7 @@ maintainers = [
 
 requires-python = ">= 3.8"
 readme = "README.md"
-keywords = ["whitelist", "security-group", "alibaba-cloud", "aliyun", "tencent-cloud", "qcloud", "firewall", "ip", "automation", "devops", "cloud", "security"]
+keywords = ["whitelist", "security-group", "alibaba-cloud", "aliyun", "tencent-cloud", "qcloud", "firewall", "cloud", "security"]
 
 # license = {text = "Apache-2.0"}
 # license-files = ["LICENSE"]
