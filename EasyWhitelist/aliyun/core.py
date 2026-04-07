@@ -25,7 +25,7 @@ def aliyun_main(action: str, target_id: Optional[str]) -> int:
 
     action_map = {
         "init": lambda: prefix.init_whitelist(target_id),
-        "list": lambda: prefix.print_prefix_list(),
+        "list": lambda: prefix.process_prefix_list_input(),
         "set": lambda: prefix.update_prefix(),
     }
     if action in action_map:

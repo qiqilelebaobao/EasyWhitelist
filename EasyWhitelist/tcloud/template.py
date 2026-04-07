@@ -325,7 +325,7 @@ CMD_LIST = "l"
 CMD_EMPTY = ""
 CMD_CREATE = "c"
 CMD_EXIT = "q"
-INPUT_PROMPT = "Please choose # template to set (or [L]ist, [C]reate, [Q]uit, Enter\u00d72 to exit): "
+INPUT_PROMPT = "Please choose # template to set (or [L]ist, [C]reate, [Q]uit, [\u21b5\u00d72] to exit): "
 
 
 def _handle_digit_input(user_input: str, common_client, template_ids: list) -> None:

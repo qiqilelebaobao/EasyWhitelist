@@ -156,18 +156,11 @@ class Prefix:
 
         return 0 if failed == 0 else 1
 
-    def print_prefix_list(self) -> int:
-        """Print a tabular summary of all prefix lists in the current region.
-
-        Returns:
-            0 on success; 1 if the client or region is not initialized; 2 if no prefix list data is available.
-        """
-
+    def _display_prefix_list(self) -> List[str]:
+        """Fetch and display prefix lists as a table, returning prefix list IDs."""
         logging.info("[prefix] Printing prefix list.")
         if not self.prefix_list:
-            return 1
-
-        any_error = False
+            return []
 
         logging.info("[prefix] Fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
 
@@ -199,12 +192,73 @@ class Prefix:
                         pbar.update(1)
 
         print_header('Alibaba Cloud Prefix List')
-        any_error = self._print_prefix_list_results(results)
-
+        self._print_prefix_list_results(results)
         print_tail()
         logging.info("[prefix] Prefix list IDs: %s", [pl.prefix_list_id for pl in self.prefix_list])
 
-        return 2 if any_error else 0
+        return [pl.prefix_list_id for pl in self.prefix_list]
+
+    def process_prefix_list_input(self) -> int:
+        """Display prefix lists and accept interactive input to update them.
+
+        Returns:
+            0 always (exits on user request or error); 1 if no prefix lists found.
+        """
+        prefix_list_ids = self._display_prefix_list()
+        if not prefix_list_ids:
+            return 1
+
+        last_input = None
+        input_prompt = "Please choose # prefix list to update (or [L]ist, [S]et all, [Q]uit, [\u21b5\u00d72] to exit): "
+
+        while True:
+            try:
+                user_input = input(input_prompt).strip().lower()
+
+                if last_input == "" and user_input == "":
+                    break
+                last_input = user_input
+
+                if user_input.isdigit():
+                    index = int(user_input)
+                    if 1 <= index <= len(prefix_list_ids):
+                        pl = self.prefix_list[index - 1]
+                        client_ip_list = retrieve_unique_ip_addresses()
+                        client_ip_list = self._normalize_ip_list(client_ip_list)
+                        if self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list):
+                            echo_success(f"\u524d\u7f00\u5217\u8868 {pl.prefix_list_id} ({pl.region_id}) \u5df2\u66f4\u65b0 -> {client_ip_list}")
+                            echo_hint("\u5df2\u89c4\u8303\u5316 IP \u5217\u8868\u5e76\u8bb0\u5f55\u5230\u6570\u636e\u5e93")
+                        else:
+                            msg = (
+                                f"前缀列表 {pl.prefix_list_id} ({pl.region_id}) 更新失败"
+                                "（请检查网络或前缀列表状态）"
+                            )
+                            echo_fail(msg)
+                    else:
+                        logging.warning("[prefix] Selection out of range (available: 1~%d)", len(prefix_list_ids))
+                elif user_input == "l":
+                    self._prefix_list = None  # force refresh
+                    prefix_list_ids = self._display_prefix_list()
+                elif user_input == "s":
+                    self.update_prefix()
+                elif user_input == "q":
+                    break
+                elif user_input != "":
+                    logging.warning("[prefix] Invalid command: %s (hint: l/s/q)", user_input)
+
+            except KeyboardInterrupt:
+                logging.warning("[prefix] Operation cancelled by user")
+                break
+            except ValueError as e:
+                logging.warning("[prefix] Input failed: value error: %s", e)
+            except ConnectionError as e:
+                logging.error("[prefix] Connection failed: %s", e)
+                break
+            except Exception as e:
+                logging.error("[prefix] Request failed: %s", e)
+                break
+
+        return 0
 
     def _print_prefix_list_results(self, results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]]) -> bool:
         """Render prefix list query results in table form and return any-error flag."""
