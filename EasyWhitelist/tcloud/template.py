@@ -30,9 +30,7 @@ def initialize_and_bind_template(common_client, security_rule_id):
         return 1
     template_id, ret_val = _ensure_address_template(common_client)
 
-    if ret_val == CreateResult.UPDATED_EXISTING:
-        return 0
-    elif ret_val == CreateResult.CREATED_NEW:
+    if ret_val == CreateResult.UPDATED_EXISTING or ret_val == CreateResult.CREATED_NEW:
         return _associate_template_to_rule(common_client, template_id, security_rule_id)
     else:
         return 1
