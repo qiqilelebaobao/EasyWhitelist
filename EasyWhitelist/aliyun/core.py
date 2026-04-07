@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from ..util.cli import echo_ok, echo_err, echo_info, print_header, print_row, print_tail  # noqa: F401
+from ..util.cli import echo_err
 
 from .region import Regions
 from .prefix import Prefix

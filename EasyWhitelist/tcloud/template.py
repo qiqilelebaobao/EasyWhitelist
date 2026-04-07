@@ -11,7 +11,7 @@ from ..util.db import upsert_ip_address
 from ..config import settings
 from ..detector.detectors import retrieve_unique_ip_addresses
 from ..util.defaults import RESOURCE_NAME_PREFIX, TEMPLATE_ID_PREFIX
-from ..util.cli import print_header, print_row, print_tail
+from ..util.cli import print_header, print_row, print_tail, echo_start, echo_progress, echo_success, echo_fail, echo_abort, echo_hint
 
 DEFAULT_MAX_ENTRIES = 20
 
@@ -97,13 +97,13 @@ def _update_template(common_client, template_id):
 
     if _modify_template_address(common_client, template_id, unique_client_ips):
         logging.info("[template] Template %s updated with IPs: %s", template_id, ", ".join(unique_client_ips) if unique_client_ips else "")
-        print(f"✅ [成功] 模板 {template_id} 已更新 -> {unique_client_ips}")
+        echo_success(f"模板 {template_id} 已更新 -> {unique_client_ips}")
         _normalize_ip_list(unique_client_ips)  # 规范化并记录到 DB，但不修改已设置的模板 IP 列表（避免用户输入不合法 IP 导致模板更新失败）
-        print("📌 [提示] 已规范化 IP 列表并记录到数据库")
+        echo_hint("已规范化 IP 列表并记录到数据库")
         return True
     # 底层修改失败
     logging.error("[template] Failed to update template %s", template_id)
-    print(f"❌ [失败] 模板 {template_id} 更新失败（请检查网络或模板状态）")
+    echo_fail(f"模板 {template_id} 更新失败（请检查网络或模板状态）")
     return False
 
 
@@ -250,12 +250,12 @@ def _create_template(common_client) -> Tuple[str, CreateResult]:
         "AddressTemplateName": template_name,
         "AddressesExtra": [{"Address": ip, "Description": "client_ip"} for ip in ip_list]
     }
-    print(f"🎯 [开始] 创建模板, 模板名字为：{template_name}")
+    echo_start(f"创建模板, 模板名字为：{template_name}")
 
     try:
         response = common_client.call_json("CreateAddressTemplate", params)
         template_id = response["Response"]["AddressTemplate"]["AddressTemplateId"]
-        print(f"🔄 [进行中] 模板 {template_id} 已创建")
+        echo_progress(f"模板 {template_id} 已创建")
         return template_id, CreateResult.CREATED_NEW
     except (TencentCloudSDKException, KeyError) as err:
         logging.error("[template] API failed: %s", err)
@@ -274,7 +274,7 @@ def _ensure_address_template(common_client):
     template_name = existing_template.get("AddressTemplateName")
     logging.info("[template] Existing template found: %s", template_id)
 
-    print(f"🔄 [进行中] 已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
+    echo_progress(f"已有模板 {template_id} ({template_name})，直接在模板更新本地公网IP")
     if not _update_template(common_client, template_id):
         return template_id, CreateResult.FAILED
 
@@ -293,7 +293,7 @@ def _associate_template_to_rule(common_client, template_id, rule_id):
 
         if response.get("Response", {}).get("SecurityGroupPolicySet", {}).get("Ingress"):
             logging.info("[template] %s already associated with %s", template_id, rule_id)
-            print(f"❗ [中止] 已有属于程序创建的模板 {template_id} 关联到 {rule_id}，仅允许关联一次")
+            echo_abort(f"已有属于程序创建的模板 {template_id} 关联到 {rule_id}，仅允许关联一次")
             return 0
 
         # 进入规则设置
@@ -308,7 +308,7 @@ def _associate_template_to_rule(common_client, template_id, rule_id):
 
         response = common_client.call_json("CreateSecurityGroupPolicies", policy_params)
         logging.info("[template] API response: %s", json.dumps(response, ensure_ascii=False))
-        print(f"✅ [成功] 模板 {template_id} 已关联到 {rule_id}")
+        echo_success(f"模板 {template_id} 已关联到 {rule_id}")
         return 0
 
     except TencentCloudSDKException as err:

@@ -39,6 +39,36 @@ def echo_info(msg: str) -> None:
     print(f"  {_CYAN}\u203a{_RST}  {msg}")
 
 
+def echo_start(msg: str) -> None:
+    """Print a start line:  🎯 [开始] message."""
+    print(f"\U0001f3af [\u5f00\u59cb] {msg}")
+
+
+def echo_progress(msg: str) -> None:
+    """Print a progress line: 🔄 [进行中] message."""
+    print(f"\U0001f504 [\u8fdb\u884c\u4e2d] {msg}")
+
+
+def echo_success(msg: str) -> None:
+    """Print a success line:  ✅ [成功] message."""
+    print(f"\u2705 [\u6210\u529f] {msg}")
+
+
+def echo_fail(msg: str) -> None:
+    """Print a failure line:  ❌ [失败] message."""
+    print(f"\u274c [\u5931\u8d25] {msg}")
+
+
+def echo_abort(msg: str) -> None:
+    """Print an abort line:   ❗ [中止] message."""
+    print(f"\u2757 [\u4e2d\u6b62] {msg}")
+
+
+def echo_hint(msg: str) -> None:
+    """Print a hint line:     📌 [提示] message."""
+    print(f"\U0001f4cc [\u63d0\u793a] {msg}")
+
+
 def _build_line(left: str, mid: str, right: str, fill: str = '\u2500', widths: Optional[List[int]] = None) -> str:
     """Build a separator line using given column widths.
 

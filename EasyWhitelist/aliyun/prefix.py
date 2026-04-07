@@ -10,9 +10,9 @@ from tqdm import tqdm
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 
-from ..util.defaults import RESOURCE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS, _GREEN, _RST
-from ..util.cli import echo_ok
-from ..util.cli import print_header, print_row, print_separator, print_tail, print_row_init, print_header_init, print_tail_init
+from ..util.defaults import RESOURCE_NAME_PREFIX, DEFAULT_CONCURRENT_WORKERS
+from ..util.cli import echo_start, echo_progress, echo_success, echo_fail, echo_hint
+from ..util.cli import print_header, print_row, print_separator, print_tail
 from ..detector.detectors import retrieve_unique_ip_addresses
 
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
@@ -77,17 +77,6 @@ class Prefix:
             4 - failed to get/create/update prefix list
             5 - failed to create security group rule
         """
-        def _print_init_summary(region: Optional[str], prefix_list_id: Optional[str], ctime: str, addrs: str, name: str) -> None:
-            print_header_init('Alibaba Cloud Template Init')
-            print_row_init(idx=1,
-                           region=region or '',
-                           id=prefix_list_id or '',
-                           name=name or '',
-                           ctime=ctime,
-                           addrs=addrs,
-                           )
-            print_tail_init()
-
         if not sg_id:
             logging.error("Security group ID is required for initialization")
             return 1
@@ -121,14 +110,7 @@ class Prefix:
             return 5
         logging.info("[prefix] Security group rule with prefix list %s applied to %s", self.current_prefix_list.prefix_list_id, sg.sg_id)
 
-        _print_init_summary(sg.region_id,
-                            self.current_prefix_list.prefix_list_id,
-                            self.current_prefix_list.creation_time if self.current_prefix_list.creation_time else '',
-                            f"{', '.join(ip_list)}" if ip_list else '',
-                            self.current_prefix_list.prefix_list_name if self.current_prefix_list.prefix_list_name else '',
-                            )
-
-        echo_ok("Successfully initialized template-based whitelist\n")
+        echo_success(f"前缀列表 {self.current_prefix_list.prefix_list_id} 已关联到安全组 {sg_id}")
 
         return 0
 
@@ -160,41 +142,19 @@ class Prefix:
 
         client_ip_list = retrieve_unique_ip_addresses()
         client_ip_list = self._normalize_ip_list(client_ip_list)
+        echo_hint("已规范化 IP 列表并记录到数据库")
 
-        rows = []
         failed = 0
-        pbar = tqdm(
-            self.prefix_list,
-            desc=f'  {_GREEN}\u2714{_RST}  Updating prefix list',
-            unit='pl',
-            ncols=84,
-            mininterval=0.3,
-            maxinterval=1.0,
-            ascii=True,
-            bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]',
-        )
-        try:
-            for pl in pbar:
-                ok = self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
-                if not ok:
-                    failed += 1
-                rows.append({
-                    'region': pl.region_id,
-                    'id': pl.prefix_list_id,
-                    'status': 'ok' if ok else 'failed',
-                    'info': f"{len(client_ip_list)} IP(s)",
-                    'name': pl.prefix_list_name or '',
-                })
-        finally:
-            pbar.close()
+        for pl in self.prefix_list:
+            ok = self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list)
+            if ok:
+                echo_success(f"前缀列表 {pl.prefix_list_id} ({pl.region_id}) 已更新 -> {client_ip_list}")
+            else:
+                failed += 1
+                echo_fail(f"前缀列表 {pl.prefix_list_id} ({pl.region_id}) 更新失败（请检查网络或前缀列表状态）")
+                logging.warning("[prefix] Failed to update prefix list: %s in %s", pl.prefix_list_id, pl.region_id)
 
-        if failed == 0:
-            echo_ok(f"Done: {len(self.prefix_list)}/{len(self.prefix_list)} prefix list(s) updated successfully")
-            self._print_prefix_operation('Alibaba Cloud Prefix Update', rows)
-            return 0
-
-        logging.error("Done: %d/%d succeeded, %d failed", len(self.prefix_list) - failed, len(self.prefix_list), failed)
-        return 1
+        return 0 if failed == 0 else 1
 
     def print_prefix_list(self) -> int:
         """Print a tabular summary of all prefix lists in the current region.
@@ -221,7 +181,7 @@ class Prefix:
 
             with tqdm(
                 total=len(futures),
-                desc=f'  {_GREEN}\u2714{_RST}  Fetching prefix list details',
+                desc='\U0001f504 [\u8fdb\u884c\u4e2d]  Fetching prefix list details',
                 unit='task',
                 ncols=84,
                 mininterval=0.3,
@@ -280,6 +240,7 @@ class Prefix:
                 if pl.region_id == region_id:
                     self.current_prefix_list = pl
                     logging.info("[prefix] Reusing prefix list %s in %s", pl.prefix_list_id, region_id)
+                    echo_progress(f"已有前缀列表 {pl.prefix_list_id}，直接更新本地公网IP")
                     return pl
 
         # 只查目标 region
@@ -294,6 +255,7 @@ class Prefix:
             self._prefix_list.extend([pl for pl in found if pl not in self._prefix_list])
             self.current_prefix_list = found[0]
             logging.info("[prefix] Reusing prefix list %s in %s", found[0].prefix_list_id, region_id)
+            echo_progress(f"已有前缀列表 {found[0].prefix_list_id}，直接更新本地公网IP")
             return found[0]
 
         # 没有则创建
@@ -321,6 +283,7 @@ class Prefix:
         # Build the CreatePrefixList request object
         prefix_list_name = f"{prefix_name}{int(datetime.now().timestamp())}"
         description = f"{prefix_list_name}_desc"
+        echo_start(f"创建前缀列表, 名字为：{prefix_list_name}")
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
         create_prefix_list_request = ecs_20140526_models.CreatePrefixListRequest(
             region_id=region_id,
@@ -338,7 +301,10 @@ class Prefix:
             return None
         ret_data = resp.body.to_map()
         logging.debug(json.dumps(ret_data))
-        return PrefixList(ret_data["PrefixListId"], region_id) if "PrefixListId" in ret_data else None
+        if "PrefixListId" in ret_data:
+            echo_progress(f"前缀列表 {ret_data['PrefixListId']} 已创建")
+            return PrefixList(ret_data["PrefixListId"], region_id)
+        return None
 
     def _update_prefix_list(self) -> List[str]:
         """Retrieve the current client IP list, validate and deduplicate the entries, then append them to the prefix list.
@@ -355,9 +321,11 @@ class Prefix:
 
         if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
             logging.info("[prefix] Prefix list %s updated successfully with %d IP(s)", self.current_prefix_list.prefix_list_id, len(client_ip_list))
+            echo_success(f"前缀列表 {self.current_prefix_list.prefix_list_id} 已更新 -> {client_ip_list}")
             return client_ip_list
 
         logging.error("[prefix] Failed to update prefix list %s with client IPs", self.current_prefix_list.prefix_list_id)
+        echo_fail(f"前缀列表 {self.current_prefix_list.prefix_list_id} 更新失败（请检查网络或前缀列表状态）")
         return []
 
     def _modify_one_prefix_list(self, region_id: str, prefix_list_id: str, ip_list: List[str]) -> bool:
@@ -470,7 +438,7 @@ class Prefix:
             futures = {executor.submit(_search_region_safe, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             with tqdm(
                 total=len(futures),
-                desc=f'  {_GREEN}\u2714{_RST}  Searching prefix lists',
+                desc="\U0001f504 [\u8fdb\u884c\u4e2d]  Searching prefix lists",
                 unit='region',
                 ncols=84,
                 mininterval=0.3,
