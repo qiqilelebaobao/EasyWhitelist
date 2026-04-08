@@ -149,7 +149,6 @@ class Prefix:
 
         client_ip_list = retrieve_unique_ip_addresses()
         client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
-        echo_hint("已规范化 IP 列表" + ("并记录到数据库" if self.regions.conn is not None else ""))
 
         failed = 0
         for pl in self.prefix_list:

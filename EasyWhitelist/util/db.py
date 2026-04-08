@@ -5,6 +5,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
+from ..util.cli import echo_hint
+
 
 def _create_tables(conn: sqlite3.Connection) -> None:
 
@@ -305,6 +307,7 @@ def normalize_ip_list(
         if db_conn is not None:
             try:
                 upsert_ip_address(db_conn, s, cidr, cloud_provider)
+                echo_hint("已规范化 IP 列表并记录到数据库")
             except Exception as e:
                 logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
 
