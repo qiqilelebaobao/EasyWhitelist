@@ -19,7 +19,7 @@ def get_common_client(region: str, module: str, endpoint: str) -> CommonClient:
         http_profile.endpoint = endpoint
         http_profile.proxy = f"127.0.0.1:{settings.ctx.proxy_port}" if settings.ctx.proxy_port is not None else None
         if settings.ctx.proxy_port:
-            http_profile.certification = not settings.ctx.IGNORE_SSL
+            http_profile.certification = not settings.ctx.SSL_VERIFICATION_BYPASS_FOR_PROXY
 
         client_profile = ClientProfile()
         client_profile.httpProfile = http_profile

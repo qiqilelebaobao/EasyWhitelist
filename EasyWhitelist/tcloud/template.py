@@ -47,6 +47,8 @@ def _update_template(common_client, template_id):
 
     raw_ips = retrieve_unique_ip_addresses()
     normalized_ips = normalize_ip_list(raw_ips, DEFAULT_MAX_ENTRIES, "tencentcloud", settings.ctx.db_conn)
+    if settings.ctx.db_conn is not None and normalized_ips:
+        echo_hint("已规范化 IP 列表并记录到数据库")
 
     if _modify_template_address(common_client, template_id, normalized_ips):
         logging.info("[template] Template %s updated with IPs: %s", template_id, ", ".join(normalized_ips) if normalized_ips else "")
@@ -197,6 +199,8 @@ def _create_template(common_client) -> Tuple[str, CreateResult]:
 
     raw_ips = retrieve_unique_ip_addresses()
     normalized_ips = normalize_ip_list(raw_ips, DEFAULT_MAX_ENTRIES, "tencentcloud", settings.ctx.db_conn)
+    if settings.ctx.db_conn is not None and normalized_ips:
+        echo_hint("已规范化 IP 列表并记录到数据库")
 
     template_name = f"{RESOURCE_NAME_PREFIX}{int(datetime.now().timestamp())}"
     params = {

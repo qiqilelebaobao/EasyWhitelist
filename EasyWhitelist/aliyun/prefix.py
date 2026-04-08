@@ -149,6 +149,8 @@ class Prefix:
 
         client_ip_list = retrieve_unique_ip_addresses()
         client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
+        if self.regions.conn is not None and client_ip_list:
+            echo_hint("已规范化 IP 列表并记录到数据库")
 
         failed = 0
         for pl in self.prefix_list:
@@ -378,6 +380,8 @@ class Prefix:
 
         client_ip_list = retrieve_unique_ip_addresses()
         client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
+        if self.regions.conn is not None and client_ip_list:
+            echo_hint("已规范化 IP 列表并记录到数据库")
 
         if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
             logging.info("[prefix] Prefix list %s updated successfully with %d IP(s)", self.current_prefix_list.prefix_list_id, len(client_ip_list))
@@ -534,16 +538,3 @@ class Prefix:
             logging.exception("[prefix] Failed to describe prefix list attributes for %s", prefix_list_id)
             return None
         return current_entries
-
-    # def _auto_search_prefix_by_name(self, prefix_name: str = RESOURCE_NAME_PREFIX) -> Optional[str]:
-    #     '''Search for a prefix list by name prefix. Returns the prefix list ID if found, or None if not found.'''
-    #     logging.info("[prefix] Search prefix list, region=%s, prefix_name=%s ", self.region, prefix_name)
-    #     prefix_lists = self.get_prefix_list(self.client)
-    #     logging.debug(prefix_lists)
-    #     if prefix_lists and 'PrefixLists' in prefix_lists and 'PrefixList' in prefix_lists['PrefixLists']:
-    #         for prefix in prefix_lists['PrefixLists']['PrefixList']:  # type: ignore
-    #             logging.debug(prefix)
-    #             if prefix['PrefixListName'].startswith(prefix_name):
-    #                 logging.info("[prefix] Found prefix list, name=%s id=%s", prefix['PrefixListName'], prefix['PrefixListId'])
-    #                 return prefix["PrefixListId"]
-    #     return None

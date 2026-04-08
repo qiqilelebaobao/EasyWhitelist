@@ -24,7 +24,7 @@ DEFAULT_MAX_ENTRIES = 20
 
 def _runtime(use_proxy: bool = False) -> RuntimeOptions:
     """Return a RuntimeOptions instance; ignore_ssl is enabled when DISABLE_SSL_VERIFY=1 (local debugging only)."""
-    return RuntimeOptions(ignore_ssl=ctx.IGNORE_SSL and use_proxy)
+    return RuntimeOptions(ignore_ssl=ctx.SSL_VERIFICATION_BYPASS_FOR_PROXY and use_proxy)
 
 
 def _ecs_api_call(fn: Callable[[], T], action: str, default: Optional[T] = None) -> Optional[T]:

@@ -12,7 +12,7 @@ from ..config import settings
 # detect a CA loaded into a custom ssl_context. That can trigger spurious
 # `InsecureRequestWarning`s despite a verified connection. Because we always
 # pass `ca=certifi.where()`, it is safe to suppress that specific warning here.
-if settings.ctx.IGNORE_SSL:
+if settings.ctx.SSL_VERIFICATION_BYPASS_FOR_PROXY:
     warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 
