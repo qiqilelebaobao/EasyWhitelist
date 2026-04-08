@@ -28,6 +28,9 @@ class SecurityGroup:
         self.sg_id = sg_id
         self.sg_name = sg_name
         self.conn = regions.conn
+        self.vpc_id = ''
+        self.sg_type = ''
+        self.description = ''
 
         self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
 
@@ -105,6 +108,7 @@ class SecurityGroup:
             A (sg_dict, region_id) tuple on success; (None, None) if not found.
         """
         executor = ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list)))
+        result: Tuple[Optional[Dict[str, Any]], Optional[str]] = (None, None)
         try:
             future_to_region = {executor.submit(self._search_security_group_by_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             for future in as_completed(future_to_region):
@@ -115,10 +119,14 @@ class SecurityGroup:
                     continue
                 if sg:
                     logging.info("[sg] Security group %s found in region %s", self.sg_id, future_to_region[future])
-                    return sg, future_to_region[future]
+                    result = sg, future_to_region[future]
+                    # Cancel pending (not yet started) futures to avoid unnecessary API calls
+                    for f in future_to_region:
+                        f.cancel()
+                    break
         finally:
             executor.shutdown(wait=False)
-        return None, None
+        return result
 
     def _find_security_group_and_cache(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """Find the security group and cache it in the instance for future use."""
@@ -129,8 +137,7 @@ class SecurityGroup:
             self.sg_type = sg.get("SecurityGroupType", "")
             self.description = sg.get("Description", "")
 
-            region_name = self.regions.get_region_name(region_id) if hasattr(self.regions, 'get_region_name') else ''
-            self._cache_security_group(region_id, region_name)
+            self._cache_security_group(region_id)
         return sg, region_id
 
     def _load_cached_security_group(self) -> Dict[str, str]:
@@ -144,18 +151,18 @@ class SecurityGroup:
             logging.warning("[sg] Failed to read cached security group %s: %s", self.sg_id, e)
             return {}
 
-    def _cache_security_group(self, region_id: str, region_name: str = "") -> None:
+    def _cache_security_group(self, region_id: str) -> None:
         """Cache the SG id + region in SQLite for faster future lookup."""
         if not self.conn:
             return
 
         try:
             upsert_security_group(self.conn, self.sg_id, "aliyun", region_id, self.sg_name, self.vpc_id, self.sg_type, self.description)
-            logging.info("[sg] Cached security group %s => %s/%s", self.sg_id, region_id, region_name)
+            logging.info("[sg] Cached security group %s => %s", self.sg_id, region_id)
         except Exception as e:
             logging.warning("[sg] Failed to cache security group %s: %s", self.sg_id, e)
 
-    def _fetch_security_groups(self, region_id) -> List[Dict[str, Any]]:
+    def _fetch_security_groups(self, region_id: str) -> List[Dict[str, Any]]:
         """Retrieve ALL security groups in the given region using page-based pagination.
 
         DescribeSecurityGroups returns at most 100 entries per page; this method iterates
