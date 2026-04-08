@@ -4,7 +4,7 @@ import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
-from ..config.settings import IGNORE_SSL
+from ..config.settings import ctx
 from ..config import settings
 
 # The Tea SDK embeds certifi's CA into a custom _TLSAdapter ssl_context, so TLS
@@ -13,7 +13,7 @@ from ..config import settings
 # detect a CA loaded into a custom ssl_context. That can trigger spurious
 # `InsecureRequestWarning`s despite a verified connection. Because we always
 # pass `ca=certifi.where()`, it is safe to suppress that specific warning here.
-if IGNORE_SSL:
+if ctx.IGNORE_SSL:
     warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 
