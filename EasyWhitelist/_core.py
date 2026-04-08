@@ -1,3 +1,4 @@
+import atexit
 import sys
 import logging
 
@@ -34,6 +35,8 @@ def main() -> None:
 
     db_conn = init_app_and_db()
     settings.ctx.db_conn = db_conn
+    if db_conn is not None:
+        atexit.register(db_conn.close)
     logging.info("[core] Initialization complete: conn=%s", db_conn)
 
     cloud_provider = args.cloud

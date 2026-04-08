@@ -43,4 +43,7 @@ def init_arg() -> argparse.Namespace:
 
     args = parser.parse_args()
 
+    if args.action == "init" and not args.target_id:
+        parser.error("'init' requires a target_id argument (e.g. sg-xxxxxxxx)")
+
     return args

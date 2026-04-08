@@ -149,7 +149,7 @@ class Prefix:
 
         client_ip_list = retrieve_unique_ip_addresses()
         client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
-        echo_hint("已规范化 IP 列表并记录到数据库")
+        echo_hint("已规范化 IP 列表" + ("并记录到数据库" if self.regions.conn is not None else ""))
 
         failed = 0
         for pl in self.prefix_list:
@@ -234,7 +234,7 @@ class Prefix:
                         client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
                         if self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list):
                             echo_success(f"\u524d\u7f00\u5217\u8868 {pl.prefix_list_id} ({pl.region_id}) \u5df2\u66f4\u65b0 -> {client_ip_list}")
-                            echo_hint("\u5df2\u89c4\u8303\u5316 IP \u5217\u8868\u5e76\u8bb0\u5f55\u5230\u6570\u636e\u5e93")
+                            echo_hint("已规范化 IP 列表" + ("并记录到数据库" if self.regions.conn is not None else ""))
                         else:
                             msg = (
                                 f"前缀列表 {pl.prefix_list_id} ({pl.region_id}) 更新失败"
@@ -502,8 +502,6 @@ class Prefix:
                         result = future.result()
                         logging.debug("[prefix] Completed search in region %s, found %d matching prefix list(s)", region_id, len(result))
                         prefix_list.extend(result)
-                    except Exception:
-                        logging.exception("[prefix] Error searching prefix list in region %s", region_id)
                     finally:
                         pbar.update(1)
 
