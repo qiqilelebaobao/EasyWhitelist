@@ -39,6 +39,14 @@ class PrefixList:
         self.creation_time = creation_time
         self.prefix_list_name = prefix_list_name
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PrefixList):
+            return NotImplemented
+        return self.prefix_list_id == other.prefix_list_id
+
+    def __hash__(self) -> int:
+        return hash(self.prefix_list_id)
+
 
 class Prefix:
     """Manage Alibaba Cloud ECS prefix lists across multiple regions."""
@@ -387,6 +395,9 @@ class Prefix:
         Returns:
             True on success; False on failure.
         """
+        if not ip_list:
+            logging.error("[prefix] Refusing to update prefix list %s with empty IP list", prefix_list_id)
+            return False
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
         request = ecs_20140526_models.ModifyPrefixListRequest(
             region_id=region_id,

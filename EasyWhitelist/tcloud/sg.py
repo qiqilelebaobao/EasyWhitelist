@@ -49,6 +49,7 @@ def _query_region(region, sg_id: str):
 def _discover_regions_from_api(regions, sg_id: str) -> str:
     max_workers = min(DEFAULT_CONCURRENT_WORKERS, len(regions))
     executor = ThreadPoolExecutor(max_workers=max_workers)
+    found_region = ''
     try:
         future_to_region = {
             executor.submit(_query_region, region, sg_id): region
@@ -72,10 +73,14 @@ def _discover_regions_from_api(regions, sg_id: str) -> str:
                         sg_name=sg.get('SecurityGroupName', ''),
                         description=sg.get('SecurityGroupDesc', ''),
                     )
-                return region_id
+                found_region = region_id
+                # Cancel pending (not yet started) futures to avoid unnecessary API calls
+                for f in future_to_region:
+                    f.cancel()
+                break
     finally:
         executor.shutdown(wait=False)
-    return ''
+    return found_region
 
 
 def discover_regions_from_api_with_cache(regions, sg_id: str) -> str:
