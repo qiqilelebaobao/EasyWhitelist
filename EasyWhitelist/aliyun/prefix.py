@@ -407,20 +407,6 @@ class Prefix:
             return True
         return False
 
-    def _print_prefix_operation(self, title: str, rows: List[Dict[str, str]]) -> None:
-        """Print a compact table for prefix operation results."""
-        print_header(title)
-        for i, row in enumerate(rows, start=1):
-            print_row(
-                idx=i,
-                region=row.get("region", ""),
-                id=row.get("id", ""),
-                ctime=row.get("status", ""),
-                addrs=row.get("info", ""),
-                name=row.get("name", ""),
-            )
-        print_tail()
-
     def _fetch_prefix_lists(self, region_id: str) -> List[Dict[str, Any]]:
         """Call the ECS DescribePrefixLists API to list all prefix lists in the given region.
         Iterates all pages via NextToken / MaxResults and returns a flat list.

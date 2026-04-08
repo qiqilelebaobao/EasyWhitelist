@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from typing import List
 
-from ..config.settings import _IGNORE_SSL
+from ..config.settings import IGNORE_SSL
 
 from ..util.defaults import DEFAULT_CONCURRENT_WORKERS
 from . import utils
@@ -47,7 +47,7 @@ def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable):
         if settings.proxy_port:
             response = requests.get(u, headers=headers, timeout=(3, 5),
                                     proxies={"http": f"http://127.0.0.1:{settings.proxy_port}", "https": f"http://127.0.0.1:{settings.proxy_port}"},
-                                    verify=not _IGNORE_SSL)
+                                    verify=not IGNORE_SSL)
         else:
             response = requests.get(u, headers=headers, timeout=(3, 5))
 
