@@ -108,10 +108,11 @@ class SecurityGroup:
             A (sg_dict, region_id) tuple on success; (None, None) if not found.
         """
         executor = ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list)))
+        executor.shutdown(wait=False)  # Don't wait for all tasks to complete; we'll handle it manually
         result: Tuple[Optional[Dict[str, Any]], Optional[str]] = (None, None)
         try:
             future_to_region = {executor.submit(self._search_security_group_by_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
-            for future in as_completed(future_to_region):
+            for future in as_completed(future_to_region, timeout=60):  # wait up to 60s for the first completed future
                 try:
                     sg = future.result()
                 except Exception as e:
@@ -125,8 +126,7 @@ class SecurityGroup:
                         f.cancel()
                     break
         finally:
-            executor.shutdown(wait=False)
-        return result
+            return result
 
     def _find_security_group_and_cache(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """Find the security group and cache it in the instance for future use."""
