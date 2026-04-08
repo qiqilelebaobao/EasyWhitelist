@@ -15,8 +15,8 @@ class Regions:
 
     def __init__(self):
         """Initialize by loading regions from cache or cloud, and populating region list."""
-        self.proxy_url = f"http://localhost:{settings.proxy_port}" if settings.proxy_port is not None else None
-        self.conn = settings.db_conn
+        self.proxy_url = f"http://localhost:{settings.ctx.proxy_port}" if settings.ctx.proxy_port is not None else None
+        self.conn = settings.ctx.db_conn
         self.regions_list = self._load_regions()
 
     def get_region_name(self, region_id: str) -> str:
@@ -52,7 +52,7 @@ class Regions:
             client = ClientFactory.create_client(DEFAULT_REGION_2)
 
         describe_regions_request = ecs_20140526_models.DescribeRegionsRequest()
-        runtime = _runtime(settings.proxy_port is not None)
+        runtime = _runtime(settings.ctx.proxy_port is not None)
 
         try:
             response = client.describe_regions_with_options(describe_regions_request, runtime)

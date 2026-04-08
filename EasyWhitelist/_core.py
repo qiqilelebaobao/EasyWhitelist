@@ -28,12 +28,12 @@ def main() -> None:
 
     args = arg.init_arg()
 
-    settings.proxy_port = args.proxy
+    settings.ctx.proxy_port = args.proxy
     set_log(args.verbose)
     logging.info("[core] Parsed arguments: %s", args)
 
     db_conn = init_app_and_db()
-    settings.db_conn = db_conn
+    settings.ctx.db_conn = db_conn
     logging.info("[core] Initialization complete: conn=%s", db_conn)
 
     cloud_provider = args.cloud

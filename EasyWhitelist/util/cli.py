@@ -100,15 +100,23 @@ def print_header_init(title: str) -> None:
     print(_build_line('\u251c', '\u253c', '\u2524', widths=_COL_WIDTHS_INIT))
 
 
+def _fit(text: str, width: int) -> str:
+    """Truncate *text* to *width* characters, appending '…' if truncated."""
+    s = str(text)
+    if len(s) <= width:
+        return f"{s:<{width}}"
+    return s[: width - 1] + "\u2026"
+
+
 def print_row(**values) -> None:
     """Print a table row. Pass column values as keyword arguments matching COLS keys."""
-    cells = [f"{str(values.get(key, '')):<{width}}" for key, width in COLS.items()]
+    cells = [_fit(values.get(key, ''), width) for key, width in COLS.items()]
     print('\u2502' + '\u2502'.join(cells) + '\u2502')
 
 
 def print_row_init(**values) -> None:
     """Print a table row for initialization. Pass column values as keyword arguments matching COLS_INIT keys."""
-    cells = [f"{str(values.get(key, '')):<{width}}" for key, width in COLS_INIT.items()]
+    cells = [_fit(values.get(key, ''), width) for key, width in COLS_INIT.items()]
     print('\u2502' + '\u2502'.join(cells) + '\u2502')
 
 

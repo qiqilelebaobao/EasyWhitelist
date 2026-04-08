@@ -1,6 +1,5 @@
 import json
 import logging
-import ipaddress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -18,7 +17,7 @@ from ..detector.detectors import retrieve_unique_ip_addresses
 from .defaults import DEFAULT_MAX_ENTRIES, _runtime, _ecs_api_call
 from .region import Regions
 from .client import ClientFactory
-from ..util.db import upsert_ip_address
+from ..util.db import normalize_ip_list
 from .sg import SecurityGroup
 from ..config import settings
 
@@ -141,7 +140,7 @@ class Prefix:
             return 1
 
         client_ip_list = retrieve_unique_ip_addresses()
-        client_ip_list = self._normalize_ip_list(client_ip_list)
+        client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
         echo_hint("已规范化 IP 列表并记录到数据库")
 
         failed = 0
@@ -224,7 +223,7 @@ class Prefix:
                     if 1 <= index <= len(prefix_list_ids):
                         pl = self.prefix_list[index - 1]
                         client_ip_list = retrieve_unique_ip_addresses()
-                        client_ip_list = self._normalize_ip_list(client_ip_list)
+                        client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
                         if self._modify_one_prefix_list(pl.region_id, pl.prefix_list_id, client_ip_list):
                             echo_success(f"\u524d\u7f00\u5217\u8868 {pl.prefix_list_id} ({pl.region_id}) \u5df2\u66f4\u65b0 -> {client_ip_list}")
                             echo_hint("\u5df2\u89c4\u8303\u5316 IP \u5217\u8868\u5e76\u8bb0\u5f55\u5230\u6570\u636e\u5e93")
@@ -346,7 +345,7 @@ class Prefix:
             max_entries=DEFAULT_MAX_ENTRIES,
             address_family='IPv4'
         )
-        runtime = _runtime(settings.proxy_port is not None)
+        runtime = _runtime(settings.ctx.proxy_port is not None)
         resp = _ecs_api_call(
             lambda: client.create_prefix_list_with_options(create_prefix_list_request, runtime),
             "creating prefix list",
@@ -371,7 +370,7 @@ class Prefix:
             return []
 
         client_ip_list = retrieve_unique_ip_addresses()
-        client_ip_list = self._normalize_ip_list(client_ip_list)
+        client_ip_list = normalize_ip_list(client_ip_list, DEFAULT_MAX_ENTRIES, "aliyun", self.regions.conn)
 
         if self._modify_one_prefix_list(self.current_prefix_list.region_id, self.current_prefix_list.prefix_list_id, client_ip_list):
             logging.info("[prefix] Prefix list %s updated successfully with %d IP(s)", self.current_prefix_list.prefix_list_id, len(client_ip_list))
@@ -397,7 +396,7 @@ class Prefix:
                 description=f"EasyWhitelist@{datetime.now().strftime('%Y-%m-%d %H:%M')}"
             ) for ip in ip_list]
         )
-        runtime = _runtime(settings.proxy_port is not None)
+        runtime = _runtime(settings.ctx.proxy_port is not None)
         resp = _ecs_api_call(
             lambda: client.modify_prefix_list_with_options(request, runtime),
             "modifying prefix list",
@@ -419,7 +418,7 @@ class Prefix:
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
         logging.debug("[prefix] Retrieving prefix lists in region %s...", region_id)
-        runtime = _runtime(settings.proxy_port is not None)
+        runtime = _runtime(settings.ctx.proxy_port is not None)
         all_entries: list = []
         next_token: Optional[str] = None
         max_results = 100  # maximum allowed by the ECS API
@@ -502,50 +501,6 @@ class Prefix:
             len(prefix_list), len(self.regions.regions_list))
         return prefix_list
 
-    def _normalize_ip_list(self, ip_list: List[str]) -> List[str]:
-        """Validate, normalize to CIDR strings, deduplicate, and limit to DEFAULT_MAX_ENTRIES.
-
-        - Each element may be a bare IP address or a CIDR string.
-        - Normalizes to canonical network form (e.g. '1.2.3.4' -> '1.2.3.4/32').
-        - Preserves order, removes duplicates, and truncates to DEFAULT_MAX_ENTRIES.
-        """
-
-        if not ip_list:
-            return []
-
-        normalized: List[str] = []
-        seen = set()
-
-        for raw in ip_list:
-            if raw is None:
-                continue
-            s = str(raw).strip()
-            if not s:
-                continue
-            try:
-                net = ipaddress.ip_network(s, strict=False)
-                cidr = str(net)
-            except ValueError:
-                logging.warning("[prefix] Invalid IP/CIDR skipped: %s", s)
-                continue
-            if cidr in seen:
-                continue
-            seen.add(cidr)
-            normalized.append(cidr)
-
-            # 记录到 SQLite，用于后续分析
-            if self.regions.conn:
-                try:
-                    upsert_ip_address(self.regions.conn, s, cidr, "aliyun")
-                except Exception as e:
-                    logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
-
-            if len(normalized) >= DEFAULT_MAX_ENTRIES:
-                logging.warning("[prefix] Truncating IP list to %d entries (DEFAULT_MAX_ENTRIES)", DEFAULT_MAX_ENTRIES)
-                break
-
-        return normalized
-
     def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> Optional[List[Dict[str, Any]]]:
         """Fetch the CIDR entries of a specific prefix list.
 
@@ -558,7 +513,7 @@ class Prefix:
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
         logging.info("[prefix] Fetching prefix list details for prefix_list_id=%s in region %s", prefix_list_id, region_id)
-        runtime = _runtime(settings.proxy_port is not None)
+        runtime = _runtime(settings.ctx.proxy_port is not None)
         try:
             describe_req = ecs_20140526_models.DescribePrefixListAttributesRequest(
                 region_id=region_id,

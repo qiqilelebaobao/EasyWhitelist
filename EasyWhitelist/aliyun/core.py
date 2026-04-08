@@ -16,7 +16,7 @@ def aliyun_main(action: str, target_id: Optional[str]) -> int:
         target_id: ID of the target resource (optional).
     """
     logging.info("[aliyun] Entering handler: action=%s, target_id=%s, conn=%s",
-                 action, target_id, settings.db_conn)
+                 action, target_id, settings.ctx.db_conn)
 
     regions = Regions()
     logging.info("[aliyun] %d Regions fetched.", len(regions.regions_list) if regions.regions_list else 0)

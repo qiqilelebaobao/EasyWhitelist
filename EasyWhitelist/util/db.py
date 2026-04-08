@@ -1,3 +1,4 @@
+import ipaddress
 import os
 import sqlite3
 import logging
@@ -263,3 +264,52 @@ def is_cache_fresh(conn: sqlite3.Connection, cloud_provider: str, max_age_days: 
                   last_dt.isoformat(), local_today.isoformat(), max_age_days, is_fresh)
 
     return is_fresh
+
+
+def normalize_ip_list(
+    ip_list: List[str],
+    max_entries: int,
+    cloud_provider: str,
+    db_conn: Optional[sqlite3.Connection] = None,
+) -> List[str]:
+    """Validate, normalize to CIDR strings, deduplicate, and limit to max_entries.
+
+    - Each element may be a bare IP address or a CIDR string.
+    - Normalizes to canonical network form (e.g. '1.2.3.4' -> '1.2.3.4/32').
+    - Preserves order, removes duplicates, and truncates to max_entries.
+    - If db_conn is provided, records each normalized IP via upsert_ip_address.
+    """
+    if not ip_list:
+        return []
+
+    normalized: List[str] = []
+    seen = set()
+
+    for raw in ip_list:
+        if raw is None:
+            continue
+        s = str(raw).strip()
+        if not s:
+            continue
+        try:
+            net = ipaddress.ip_network(s, strict=False)
+            cidr = str(net)
+        except ValueError:
+            logging.warning("[prefix] Invalid IP/CIDR skipped: %s", s)
+            continue
+        if cidr in seen:
+            continue
+        seen.add(cidr)
+        normalized.append(cidr)
+
+        if db_conn is not None:
+            try:
+                upsert_ip_address(db_conn, s, cidr, cloud_provider)
+            except Exception as e:
+                logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
+
+        if len(normalized) >= max_entries:
+            logging.warning("[prefix] Truncating IP list to %d entries", max_entries)
+            break
+
+    return normalized

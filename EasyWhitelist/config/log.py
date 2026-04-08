@@ -11,6 +11,6 @@ def set_log(verbose: int = 0):
         2: logging.DEBUG
     }
 
-    level = level_map.get(verbose, logging.WARNING)
+    level = level_map.get(verbose, logging.DEBUG)
 
     logging.basicConfig(level=level, format=LOG_FORMAT)

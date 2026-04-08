@@ -9,7 +9,7 @@ def _port(txt: str) -> int:
     return n
 
 
-def init_arg():
+def init_arg() -> argparse.Namespace:
     """Parse CLI for ew (cloud ACL auto-whitelist)."""
 
     parser = argparse.ArgumentParser(

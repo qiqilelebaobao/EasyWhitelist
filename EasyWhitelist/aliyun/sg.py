@@ -69,7 +69,7 @@ class SecurityGroup:
             ip_protocol='all',
             port_range='-1/-1',
             source_prefix_list_id=prefix_list_id)
-        runtime = _runtime(settings.proxy_port is not None)
+        runtime = _runtime(settings.ctx.proxy_port is not None)
         resp = _ecs_api_call(
             lambda: self.client.authorize_security_group_with_options(create_sg_rule_with_prefix_request, runtime),  # type: ignore[union-attr]
             "creating security group rule",
@@ -104,7 +104,8 @@ class SecurityGroup:
         Returns:
             A (sg_dict, region_id) tuple on success; (None, None) if not found.
         """
-        with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list))) as executor:
+        executor = ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list)))
+        try:
             future_to_region = {executor.submit(self._search_security_group_by_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             for future in as_completed(future_to_region):
                 try:
@@ -115,6 +116,8 @@ class SecurityGroup:
                 if sg:
                     logging.info("[sg] Security group %s found in region %s", self.sg_id, future_to_region[future])
                     return sg, future_to_region[future]
+        finally:
+            executor.shutdown(wait=False)
         return None, None
 
     def _find_security_group_and_cache(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -165,7 +168,7 @@ class SecurityGroup:
             A list of security group dicts; empty list on failure (logged).
         """
         client: Ecs20140526Client = ClientFactory.create_client(region_id)
-        runtime = _runtime(settings.proxy_port is not None)
+        runtime = _runtime(settings.ctx.proxy_port is not None)
         all_sgs: list = []
         page_number = 1
         page_size = 100  # maximum allowed by the ECS API

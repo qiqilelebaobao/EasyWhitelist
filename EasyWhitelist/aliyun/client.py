@@ -34,8 +34,8 @@ class ClientFactory:
         if not region:
             raise ValueError("region must not be empty")
 
-        if settings.proxy_port is not None and not (1 <= settings.proxy_port <= 65535):
-            raise ValueError(f"Invalid proxy_port: {settings.proxy_port}. Must be between 1 and 65535.")
+        if settings.ctx.proxy_port is not None and not (1 <= settings.ctx.proxy_port <= 65535):
+            raise ValueError(f"Invalid proxy_port: {settings.ctx.proxy_port}. Must be between 1 and 65535.")
 
         endpoint = os.getenv('ALIBABA_CLOUD_ENDPOINT') or f"ecs.{region}.aliyuncs.com"
 
@@ -59,10 +59,10 @@ class ClientFactory:
             ca=certifi.where()
         )
 
-        if settings.proxy_port is not None:
+        if settings.ctx.proxy_port is not None:
             # Using http:// for the https_proxy value is intentional:
             # the client tunnels HTTPS through HTTP CONNECT rather than connecting to the proxy itself over HTTPS.
-            proxy_url = f"http://{proxy_host}:{settings.proxy_port}"
+            proxy_url = f"http://{proxy_host}:{settings.ctx.proxy_port}"
             config_kwargs["http_proxy"] = proxy_url
             config_kwargs["https_proxy"] = proxy_url
 

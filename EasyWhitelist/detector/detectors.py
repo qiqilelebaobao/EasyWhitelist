@@ -42,11 +42,11 @@ def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable):
         return None
 
     try:
-        logging.debug("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, settings.proxy_port if settings.proxy_port else "n/a")
+        logging.debug("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, settings.ctx.proxy_port if settings.ctx.proxy_port else "n/a")
 
-        if settings.proxy_port:
+        if settings.ctx.proxy_port:
             response = requests.get(u, headers=headers, timeout=(3, 5),
-                                    proxies={"http": f"http://127.0.0.1:{settings.proxy_port}", "https": f"http://127.0.0.1:{settings.proxy_port}"},
+                                    proxies={"http": f"http://127.0.0.1:{settings.ctx.proxy_port}", "https": f"http://127.0.0.1:{settings.ctx.proxy_port}"},
                                     verify=not IGNORE_SSL)
         else:
             response = requests.get(u, headers=headers, timeout=(3, 5))
