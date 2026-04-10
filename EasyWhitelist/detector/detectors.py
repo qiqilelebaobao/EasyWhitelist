@@ -57,8 +57,8 @@ def _get_local_ip_from_url_and_parse(source: utils.DetectSource):
         return None
 
 
-def _validate_ip(l_ip):
-    if not l_ip:
+def _validate_ip(ip):
+    if not ip:
         return False
 
     # r"(?:(?:25[0-5]|2[0-4][0-9]|[1]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[1]?[0-9][0-9]?)"  # wip
@@ -66,7 +66,7 @@ def _validate_ip(l_ip):
     # r"((?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])" # wip
     # r"(?<![\.\d])(?:25[0-5]\.|2[0-4]\d\.|[01]?\d\d?\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?![\.\d])" # wip
     pat = r"((?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}(?:[1-9]?\d|1\d\d|2[0-4]\d|25[0-5])"
-    return bool(re.fullmatch(pat, l_ip))
+    return bool(re.fullmatch(pat, ip))
 
 
 def _get_local_ips():
