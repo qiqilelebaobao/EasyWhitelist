@@ -3,7 +3,10 @@ import argparse
 
 def _port(txt: str) -> int:
     """argparse type checker: 1-65535"""
-    n = int(txt)
+    try:
+        n = int(txt)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Port must be an integer, got {txt!r}")
     if not 0 < n < 65536:
         raise argparse.ArgumentTypeError(f"Port must be 1-65535, got {n}")
     return n
@@ -36,14 +39,12 @@ def init_arg() -> argparse.Namespace:
 
     parser.add_argument("-v", "--verbose", action="count", default=0)
 
-    parser.add_argument("action", help="action to perform", choices=[
-                        "init", "list", "set"])
+    subparsers = parser.add_subparsers(dest="action", metavar="action", required=True)
 
-    parser.add_argument("target_id", help="template id or rule id", nargs="?")
+    sub_init = subparsers.add_parser("init", help="init with a template or prefix id")
+    sub_init.add_argument("target_id", help="template id or prefix id (e.g. sg-xxxxxxxx)")
 
-    args = parser.parse_args()
+    subparsers.add_parser("list", help="list current rules")
+    subparsers.add_parser("set", help="set whitelist rules")
 
-    if args.action == "init" and not args.target_id:
-        parser.error("'init' requires a target_id argument (e.g. sg-xxxxxxxx)")
-
-    return args
+    return parser.parse_args()

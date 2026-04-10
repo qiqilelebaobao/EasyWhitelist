@@ -4,6 +4,7 @@ LOG_FORMAT = "%(asctime)s-%(process)d-%(filename)s:%(lineno)d-%(levelname)s-%(me
 
 
 def set_log(verbose: int = 0):
+    '''Set up logging configuration based on verbosity level, only called once.'''
 
     level_map = {
         0: logging.WARNING,
@@ -13,4 +14,5 @@ def set_log(verbose: int = 0):
 
     level = level_map.get(verbose, logging.DEBUG)
 
-    logging.basicConfig(level=level, format=LOG_FORMAT)
+    logging.basicConfig(format=LOG_FORMAT)
+    logging.getLogger().setLevel(level)
