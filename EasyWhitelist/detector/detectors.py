@@ -32,28 +32,25 @@ def print_ip_list(ip_list):
     print("-" * number)
 
 
-def _get_local_ip_from_url_and_parse(u, patt, ag, if_enable):
-    # 发送GET请求
-    headers = {"user-agent": ag}
+def _get_local_ip_from_url_and_parse(source: utils.DetectSource):
+    headers = {"user-agent": source.user_agent}
 
-    if if_enable.strip().lower() != "enable":
+    if not source.enabled:
         return None
 
     try:
-        logging.debug("[ip.detect] Fetching local IP from %s (proxy_port=%s)", u, settings.ctx.proxy_port if settings.ctx.proxy_port else "n/a")
+        logging.debug("[ip.detect] Fetching local IP from %s (proxy_port=%s)", source.url, settings.ctx.proxy_port if settings.ctx.proxy_port else "n/a")
 
         if settings.ctx.proxy_port:
-            response = requests.get(u, headers=headers, timeout=(3, 5),
+            response = requests.get(source.url, headers=headers, timeout=(3, 5),
                                     proxies={"http": f"http://127.0.0.1:{settings.ctx.proxy_port}", "https": f"http://127.0.0.1:{settings.ctx.proxy_port}"},
                                     verify=not settings.ctx.ssl_bypass)
         else:
-            response = requests.get(u, headers=headers, timeout=(3, 5))
+            response = requests.get(source.url, headers=headers, timeout=(3, 5))
 
-        # 获取响应内容
-        respon = response.text
-        l_ip = utils.parse_ip_from_response(respon, patt)
-        logging.info("[ip.detect] Fetched local IP from %s (ip=%s)", u, l_ip)
-        return l_ip
+        ip = utils.parse_ip_from_response(response.text, source.pattern)
+        logging.info("[ip.detect] Fetched local IP from %s (ip=%s)", source.url, ip)
+        return ip
 
     except Exception as e:
         logging.error("[ip.detect] Failed to parse response, error=%s", e)
@@ -76,7 +73,7 @@ def _get_local_ips():
     ip_list = []
     with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(utils.detect_url))) as executor:
         future_to_url = {
-            executor.submit(_get_local_ip_from_url_and_parse, u[0], u[1], u[2], u[3]): u for u in utils.detect_url
+            executor.submit(_get_local_ip_from_url_and_parse, u): u for u in utils.detect_url
         }
         for future in as_completed(future_to_url):
             url = future_to_url[future]
