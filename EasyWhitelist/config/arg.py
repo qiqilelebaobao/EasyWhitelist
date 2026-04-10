@@ -15,6 +15,13 @@ def _port(txt: str) -> int:
 def init_arg() -> argparse.Namespace:
     """Parse CLI for ew (cloud ACL auto-whitelist)."""
 
+    # 第一步：先从任意位置抠出 -p / -v，不影响其他参数
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("-p", "--proxy", type=_port, metavar="port", default=None)
+    pre.add_argument("-v", "--verbose", action="count", default=0)
+    pre_args, remaining = pre.parse_known_args()
+
+    # 第二步：对剩余参数做完整解析
     parser = argparse.ArgumentParser(
         prog="ew",
         description="This is a cloud acl auto whitelist tool.",
@@ -33,12 +40,6 @@ def init_arg() -> argparse.Namespace:
     )
     parser.set_defaults(cloud="tencent")  # 显式给默认值
 
-    # 可选参数
-    parser.add_argument("-p", "--proxy", type=_port,
-                        metavar="port", help="local HTTP proxy port")
-
-    parser.add_argument("-v", "--verbose", action="count", default=0)
-
     subparsers = parser.add_subparsers(dest="action", metavar="action", required=True)
 
     sub_init = subparsers.add_parser("init", help="init with a template or prefix id")
@@ -47,4 +48,10 @@ def init_arg() -> argparse.Namespace:
     subparsers.add_parser("list", help="list current rules")
     subparsers.add_parser("set", help="set whitelist rules")
 
-    return parser.parse_args()
+    args = parser.parse_args(remaining)
+
+    # 合并第一步抠出的参数
+    args.proxy = pre_args.proxy
+    args.verbose = pre_args.verbose
+
+    return args

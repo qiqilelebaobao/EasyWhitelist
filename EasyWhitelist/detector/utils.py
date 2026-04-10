@@ -33,8 +33,8 @@ def parse_ip_from_response(response, patt):
 detect_url = [
     DetectSource("https://ifconfig.me", IFCONFIG_ME_PATTERN,
                  random.choice(curl_user_agent), True),
-    DetectSource("http://cip.cc", CIP_CC_PATTERN,
-                 random.choice(chrome_user_agent), False),
+    DetectSource("https://cip.cc", CIP_CC_PATTERN,
+                 random.choice(curl_user_agent), False),
     DetectSource("https://tool.lu/ip/", TOOL_LU_PATTERN,
                  random.choice(chrome_user_agent), True),
     DetectSource("http://ip.sb/", IP_SB_PATTERN, random.choice(curl_user_agent), True)
