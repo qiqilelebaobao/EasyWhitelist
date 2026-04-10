@@ -19,12 +19,10 @@ def get_common_client(region: str, module: str, endpoint: str) -> CommonClient:
         http_profile.endpoint = endpoint
         http_profile.proxy = f"127.0.0.1:{settings.ctx.proxy_port}" if settings.ctx.proxy_port is not None else None
         if settings.ctx.proxy_port:
-            http_profile.certification = not settings.ctx.ssl_bypass
-
+            http_profile.certification = False if settings.ctx.ssl_bypass else ""
         client_profile = ClientProfile()
         client_profile.httpProfile = http_profile
         # clientProfile.signMethod = "HmacSHA256"
-
         common_client = CommonClient(module, "2017-03-12", cred, region, profile=client_profile)
         return common_client
 

@@ -44,7 +44,7 @@ def _get_local_ip_from_url_and_parse(source: utils.DetectSource):
         if settings.ctx.proxy_port:
             response = requests.get(source.url, headers=headers, timeout=(3, 5),
                                     proxies={"http": f"http://127.0.0.1:{settings.ctx.proxy_port}", "https": f"http://127.0.0.1:{settings.ctx.proxy_port}"},
-                                    verify=not settings.ctx.ssl_bypass)
+                                    verify=False if settings.ctx.ssl_bypass else "")
         else:
             response = requests.get(source.url, headers=headers, timeout=(3, 5))
 

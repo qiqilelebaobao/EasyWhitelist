@@ -25,9 +25,17 @@ def init_app_and_db():
     return conn
 
 
+def ignore_ssl_warnings_if_proxyed(is_proxy_enabled: bool):
+    """Suppress SSL warnings if SSL verification is bypassed."""
+    if is_proxy_enabled:
+        import warnings
+        warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+
+
 def main() -> None:
 
     args = arg.init_arg()
+    ignore_ssl_warnings_if_proxyed(args.proxy is not None)
 
     settings.ctx.proxy_port = args.proxy
     set_log(args.verbose)

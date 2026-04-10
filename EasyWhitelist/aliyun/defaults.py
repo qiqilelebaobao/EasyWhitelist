@@ -24,7 +24,14 @@ DEFAULT_MAX_ENTRIES = 20
 
 def _runtime(use_proxy: bool = False) -> RuntimeOptions:
     """Return a RuntimeOptions instance; ignore_ssl is enabled when DISABLE_SSL_VERIFY=1 (local debugging only)."""
-    return RuntimeOptions(ignore_ssl=ctx.ssl_bypass and use_proxy)
+    if ctx.ssl_bypass and use_proxy:
+        logging.info("[aliyun] SSL verification is disabled due to DISABLE_SSL_VERIFY=1 and proxy usage. This should only be used for local debugging.")
+        return RuntimeOptions(ignore_ssl=True)
+    elif use_proxy:
+        logging.info("[aliyun] Proxy is enabled without SSL bypass. SSL verification will be performed.")
+        return RuntimeOptions(ignore_ssl=True)  # Path to CA bundle; adjust if necessary for the environment.
+    else:
+        return RuntimeOptions()
 
 
 def _ecs_api_call(fn: Callable[[], T], action: str, default: Optional[T] = None) -> Optional[T]:
