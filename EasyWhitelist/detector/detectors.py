@@ -78,9 +78,9 @@ def _get_local_ips():
         for future in as_completed(future_to_url):
             url = future_to_url[future]
             try:
-                l_ip = future.result()
-                if l_ip and _validate_ip(l_ip):
-                    ip_list.append(l_ip)
+                ip = future.result()
+                if ip and _validate_ip(ip):
+                    ip_list.append(ip)
             except Exception as e:
                 logging.error("[ip.detect] Failed to parse response from %s, error=%s", url, e)
     logging.info("[ip.detect] Detected local IPs: \"%s\"", ", ".join(ip_list) if ip_list else "")
