@@ -1,12 +1,9 @@
 import os
-import warnings
 import certifi
 from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
 from alibabacloud_tea_openapi.utils_models import Config
 
 from ..config import settings
-
-
 
 
 class ClientFactory:
