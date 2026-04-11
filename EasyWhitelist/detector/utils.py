@@ -11,10 +11,11 @@ edge_user_agent = [
 curl_user_agent = ["curl/8.6.0", "curl/7.29.0", "curl/8.7.1"]
 
 # Use a more specific IP regex to avoid matching non-IP content such as error pages
-IFCONFIG_ME_PATTERN = r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
-CIP_CC_PATTERN = r"URL\s+?:\s+?http://www\.cip\.cc/(.+)"
-TOOL_LU_PATTERN = r"<p>你的外网IP地址是：\s*?(.+)</p>"
-IP_SB_PATTERN = r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
+_IP = r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+IFCONFIG_ME_PATTERN = rf"({_IP})"
+CIP_CC_PATTERN = rf"IP\s*:\s*({_IP})"
+TOOL_LU_PATTERN = rf"<p>你的外网IP地址是\s*：\s*?({_IP})</p>"
+IP_SB_PATTERN = rf"({_IP})"
 
 
 class DetectSource(NamedTuple):
@@ -34,7 +35,7 @@ detect_url = [
     DetectSource("https://ifconfig.me", IFCONFIG_ME_PATTERN,
                  random.choice(curl_user_agent), True),
     DetectSource("https://cip.cc", CIP_CC_PATTERN,
-                 random.choice(curl_user_agent), False),
+                 random.choice(chrome_user_agent), True),
     DetectSource("https://tool.lu/ip/", TOOL_LU_PATTERN,
                  random.choice(chrome_user_agent), True),
     DetectSource("http://ip.sb/", IP_SB_PATTERN, random.choice(curl_user_agent), True)
