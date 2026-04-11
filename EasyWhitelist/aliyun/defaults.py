@@ -28,7 +28,7 @@ def _runtime(use_proxy: bool = False) -> RuntimeOptions:
         logging.info("[aliyun] SSL verification is disabled due to DISABLE_SSL_VERIFY=1 and proxy usage. This should only be used for local debugging.")
         return RuntimeOptions(ignore_ssl=True)
     elif use_proxy:
-        logging.info("[aliyun] Proxy is enabled without SSL bypass. SSL verification will be performed.")
+        logging.info("[aliyun] SSL verification is disabled due to proxy usage. This should only be used for local debugging.")
         return RuntimeOptions(ignore_ssl=True)  # Path to CA bundle; adjust if necessary for the environment.
     else:
         return RuntimeOptions()

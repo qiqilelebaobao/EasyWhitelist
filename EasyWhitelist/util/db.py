@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
 
-
 def _create_tables(conn: sqlite3.Connection) -> None:
 
     try:
