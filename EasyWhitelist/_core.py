@@ -4,8 +4,7 @@ import logging
 
 from .util.app import generate_app_directory
 from .util.db import init_db
-from .config import arg
-from .config import settings
+from .config import arg, settings
 from .config.log import set_log
 from .tcloud.core import t_main
 from .aliyun.core import aliyun_main
