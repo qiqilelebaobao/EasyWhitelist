@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from alibabacloud_ecs20140526 import models as ecs_20140526_models
@@ -32,7 +34,7 @@ class SecurityGroup:
         self.sg_type = ''
         self.description = ''
 
-        self.client: Optional[Ecs20140526Client] = None  # may remain None if the SG is not found
+        self.client: Ecs20140526Client | None = None  # may remain None if the SG is not found
 
         # Try cached security group first
         self.region_id = None
@@ -85,7 +87,7 @@ class SecurityGroup:
         logging.info("[sg] Security group rule with prefix list %s applied to %s", prefix_list_id, self.sg_id)
         return True
 
-    def _search_security_group_by_region(self, region_id: str) -> Optional[Dict[str, Any]]:
+    def _search_security_group_by_region(self, region_id: str) -> Dict[str, Any] | None:
         """Search for self.sg_id in a single region.
 
         Args:
@@ -101,14 +103,14 @@ class SecurityGroup:
         logging.info("[sg] Security group %s not found in region %s", self.sg_id, region_id)
         return None
 
-    def _find_security_group(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    def _find_security_group(self) -> Tuple[Dict[str, Any] | None, str | None]:
         """Iterate all regions to locate self.sg_id.
 
         Returns:
             A (sg_dict, region_id) tuple on success; (None, None) if not found.
         """
         executor = ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list)))
-        result: Tuple[Optional[Dict[str, Any]], Optional[str]] = (None, None)
+        result: Tuple[Dict[str, Any] | None, str | None] = (None, None)
         try:
             future_to_region = {executor.submit(self._search_security_group_by_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
             for future in as_completed(future_to_region, timeout=60):  # wait up to 60s for the first completed future
@@ -128,7 +130,7 @@ class SecurityGroup:
             executor.shutdown(wait=False)
         return result
 
-    def _find_security_group_and_cache(self) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    def _find_security_group_and_cache(self) -> Tuple[Dict[str, Any] | None, str | None]:
         """Find the security group and cache it in the instance for future use."""
         sg, region_id = self._find_security_group()
         if sg and region_id:

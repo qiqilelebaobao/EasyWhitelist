@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 from . import client
 from .template import update_all_templates, initialize_and_bind_template, process_template_input
@@ -7,7 +8,7 @@ from .sg import discover_regions_from_api_with_cache
 
 
 def t_main(action: str,
-           security_rule_id: Optional[str]
+           security_rule_id: str | None
            ) -> int:
 
     regions = client.load_regions_prefer_cache()

@@ -4,8 +4,10 @@ Keep cloud-specific defaults here (region, vpc, endpoint, limits).
 Do NOT store secrets or credentials in this file.
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Callable, Optional, TypeVar
+from typing import Callable, TypeVar
 
 from darabonba.runtime import RuntimeOptions
 from Tea.exceptions import UnretryableException, TeaException
@@ -34,7 +36,7 @@ def _runtime(use_proxy: bool = False) -> RuntimeOptions:
         return RuntimeOptions()
 
 
-def _ecs_api_call(fn: Callable[[], T], action: str, default: Optional[T] = None) -> Optional[T]:
+def _ecs_api_call(fn: Callable[[], T], action: str, default: T | None = None) -> T | None:
     """Call *fn* and handle the common Tea SDK exception trio.
 
     Returns fn()'s result on success, or *default* on failure.

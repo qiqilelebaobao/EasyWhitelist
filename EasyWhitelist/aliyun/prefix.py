@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from tqdm import tqdm
 
@@ -25,7 +27,7 @@ from ..config import settings
 class PrefixList:
     """Data class representing an Alibaba Cloud ECS prefix list."""
 
-    def __init__(self, prefix_list_id: str, region_id: str, creation_time: Optional[str] = None, prefix_list_name: Optional[str] = None):
+    def __init__(self, prefix_list_id: str, region_id: str, creation_time: str | None = None, prefix_list_name: str | None = None):
         """Initialize a PrefixList instance.
 
         Args:
@@ -58,7 +60,7 @@ class Prefix:
             regions: A Regions object containing information for all target regions.
         """
         self.regions = regions
-        self._prefix_list: Optional[List[PrefixList]] = None
+        self._prefix_list: List[PrefixList] | None = None
         self.current_prefix_list = None
 
     @property
@@ -70,7 +72,7 @@ class Prefix:
                          [pl.__dict__ for pl in self._prefix_list] if self._prefix_list else None)
         return self._prefix_list
 
-    def init_whitelist(self, sg_id: Optional[str]) -> int:
+    def init_whitelist(self, sg_id: str | None) -> int:
         """Initialize whitelist by associating a prefix list with a security group.
 
         Args:
@@ -173,7 +175,7 @@ class Prefix:
         logging.info("[prefix] Fetching prefix list details with up to %d concurrent workers...", min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1))
 
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.prefix_list) or 1)) as executor:
-            results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]] = [None] * len(self.prefix_list)
+            results: List[tuple[PrefixList, List[Dict[str, Any]]] | None] = [None] * len(self.prefix_list)
 
             def fetch_entries(prefix: PrefixList, index: int):
                 return index, prefix, self._get_prefix_detail_by_id(prefix.region_id, prefix.prefix_list_id)
@@ -268,7 +270,7 @@ class Prefix:
 
         return 0
 
-    def _print_prefix_list_results(self, results: List[Optional[tuple[PrefixList, Optional[List[Dict[str, Any]]]]]]) -> bool:
+    def _print_prefix_list_results(self, results: List[tuple[PrefixList, List[Dict[str, Any]]] | None]) -> bool:
         """Render prefix list query results in table form and return any-error flag."""
         any_error = False
 
@@ -294,7 +296,7 @@ class Prefix:
 
         return any_error
 
-    def _ensure_prefix_list(self, region_id: str) -> Optional[PrefixList]:
+    def _ensure_prefix_list(self, region_id: str) -> PrefixList | None:
         """高效查找或创建指定 region 的 prefix list，仅查目标 region，避免全局遍历。"""
         # 优先用缓存
         if self._prefix_list is not None:
@@ -332,7 +334,7 @@ class Prefix:
         logging.error('Failed to find or create a prefix list with name prefix "%s" in %s', RESOURCE_NAME_PREFIX, region_id)
         return None
 
-    def _create_prefix_list(self, region_id: str, prefix_name: str = RESOURCE_NAME_PREFIX) -> Optional[PrefixList]:
+    def _create_prefix_list(self, region_id: str, prefix_name: str = RESOURCE_NAME_PREFIX) -> PrefixList | None:
         """Create a prefix list in the given region by calling the ECS CreatePrefixList API.
 
         Args:
@@ -434,7 +436,7 @@ class Prefix:
         logging.debug("[prefix] Retrieving prefix lists in region %s...", region_id)
         runtime = _runtime(settings.ctx.proxy_port is not None)
         all_entries: list = []
-        next_token: Optional[str] = None
+        next_token: str | None = None
         max_results = 100  # maximum allowed by the ECS API
         try:
             while True:
@@ -513,7 +515,7 @@ class Prefix:
             len(prefix_list), len(self.regions.regions_list))
         return prefix_list
 
-    def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> Optional[List[Dict[str, Any]]]:
+    def _get_prefix_detail_by_id(self, region_id: str, prefix_list_id: str) -> List[Dict[str, Any]] | None:
         """Fetch the CIDR entries of a specific prefix list.
 
         Args:

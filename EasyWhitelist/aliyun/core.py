@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 from ..util.cli import echo_err
 
@@ -8,7 +9,7 @@ from .prefix import Prefix
 from ..config import settings
 
 
-def aliyun_main(action: str, security_rule_id: Optional[str]) -> int:
+def aliyun_main(action: str, security_rule_id: str | None) -> int:
     """Entry point for aliyun operations used by the CLI.
 
     Args:

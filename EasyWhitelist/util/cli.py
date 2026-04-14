@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from .defaults import _BOLD, _CYAN, _GREEN, _RED, _RST
-from typing import Optional, List
+from typing import List
 
 COLS = {
     "idx": 5,
@@ -69,7 +71,7 @@ def echo_hint(msg: str) -> None:
     print(f"\U0001f4cc [\u63d0\u793a] {msg}")
 
 
-def _build_line(left: str, mid: str, right: str, fill: str = '\u2500', widths: Optional[List[int]] = None) -> str:
+def _build_line(left: str, mid: str, right: str, fill: str = '\u2500', widths: List[int] | None = None) -> str:
     """Build a separator line using given column widths.
 
     If `widths` is None, use the default `_COL_WIDTHS`.
@@ -120,12 +122,12 @@ def print_row_init(**values) -> None:
     print('\u2502' + '\u2502'.join(cells) + '\u2502')
 
 
-def print_separator(widths: Optional[List[int]] = None) -> None:
+def print_separator(widths: List[int] | None = None) -> None:
     """Print a row separator. By default uses main table widths; pass widths to use others."""
     print(_build_line('\u251c', '\u253c', '\u2524', '\u2504', widths=widths))
 
 
-def print_tail(widths: Optional[List[int]] = None) -> None:
+def print_tail(widths: List[int] | None = None) -> None:
     """Print table tail/end line. By default uses main table widths; pass widths to use others."""
     print(_build_line('\u2514', '\u2534', '\u2518', widths=widths))
     print()

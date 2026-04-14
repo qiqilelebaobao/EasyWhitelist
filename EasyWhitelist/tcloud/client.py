@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Optional, List
+from typing import List
 
 from tencentcloud.common import credential
 from tencentcloud.common.profile.http_profile import HttpProfile
@@ -74,7 +76,7 @@ def _fetch_and_cache_regions() -> List[dict]:
     return regions
 
 
-def load_regions_prefer_cache() -> Optional[List]:
+def load_regions_prefer_cache() -> List | None:
     """Return regions, prefer cached DB value when fresh; otherwise fetch and cache.
 
     Uses `settings.db_conn` for caching when a database connection is available.

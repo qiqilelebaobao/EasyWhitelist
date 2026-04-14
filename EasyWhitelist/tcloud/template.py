@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 from enum import Enum, auto
 from datetime import datetime
 
@@ -119,7 +121,7 @@ def process_template_input(common_client) -> int:
     return 0
 
 
-def _retrieve_template_info(common_client, params: Optional[dict] = None) -> list:
+def _retrieve_template_info(common_client, params: dict | None = None) -> list:
     if params is None:
         params = {}
     try:

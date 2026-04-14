@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import ipaddress
 import os
 import sqlite3
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
 def _create_tables(conn: sqlite3.Connection) -> None:
@@ -55,7 +57,7 @@ def _create_tables(conn: sqlite3.Connection) -> None:
         conn.rollback()
 
 
-def _get_db_connection(app_dir: Optional[str]) -> Optional[sqlite3.Connection]:
+def _get_db_connection(app_dir: str | None) -> sqlite3.Connection | None:
     if not app_dir:
         return None
     db_path = os.path.join(app_dir, "whitelist.db")
@@ -68,7 +70,7 @@ def _get_db_connection(app_dir: Optional[str]) -> Optional[sqlite3.Connection]:
         return None
 
 
-def init_db(app_dir: str) -> Optional[sqlite3.Connection]:
+def init_db(app_dir: str) -> sqlite3.Connection | None:
     """Initialize the database, including creating necessary tables if they don't exist."""
 
     conn = _get_db_connection(app_dir)
@@ -270,7 +272,7 @@ def normalize_ip_list(
     ip_list: List[str],
     max_entries: int,
     cloud_provider: str,
-    db_conn: Optional[sqlite3.Connection] = None,
+    db_conn: sqlite3.Connection | None = None,
 ) -> List[str]:
     """Validate, normalize to CIDR strings, deduplicate, and limit to max_entries.
 
