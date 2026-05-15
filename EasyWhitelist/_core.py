@@ -1,6 +1,8 @@
 import atexit
+import os
 import sys
 import logging
+from urllib.parse import urlparse
 
 from .util.app import generate_app_directory
 from .util.db import init_db
@@ -31,9 +33,29 @@ def ignore_ssl_warnings_if_proxyed(is_proxy_enabled: bool):
         warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 
+def _resolve_proxy_port(cli_port: int | None) -> int | None:
+    """Return the proxy port to use.
+
+    Priority: CLI flag (-p) > HTTPS_PROXY / https_proxy env var > None.
+    Only the port number is extracted from the env var; the host is ignored
+    because all internal proxy references use 127.0.0.1.
+    """
+    if cli_port is not None:
+        return cli_port
+    raw = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    if not raw:
+        return None
+    parsed = urlparse(raw if "://" in raw else "http://" + raw)
+    port = parsed.port
+    if port and 1 <= port <= 65535:
+        return port
+    return None
+
+
 def main() -> None:
 
     args = arg.init_arg()
+    args.proxy = _resolve_proxy_port(args.proxy)
     ignore_ssl_warnings_if_proxyed(args.proxy is not None)
 
     settings.ctx.proxy_port = args.proxy
