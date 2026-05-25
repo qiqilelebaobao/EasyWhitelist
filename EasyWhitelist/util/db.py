@@ -16,7 +16,7 @@ def _create_tables(conn: sqlite3.Connection) -> None:
             CREATE TABLE IF NOT EXISTS regions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cloud_provider TEXT NOT NULL,
-                region_id TEXT UNIQUE NOT NULL,
+                region_id TEXT NOT NULL,
                 name TEXT,
                 region_endpoint TEXT,
                 created_at TEXT NOT NULL,
@@ -296,7 +296,7 @@ def normalize_ip_list(
             net = ipaddress.ip_network(s, strict=False)
             cidr = str(net)
         except ValueError:
-            logging.warning("[prefix] Invalid IP/CIDR skipped: %s", s)
+            logging.warning("[db] Invalid IP/CIDR skipped: %s", s)
             continue
         if cidr in seen:
             continue
@@ -310,7 +310,7 @@ def normalize_ip_list(
                 logging.warning("[db] Failed to record normalized IP %s: %s", cidr, e)
 
         if len(normalized) >= max_entries:
-            logging.warning("[prefix] Truncating IP list to %d entries", max_entries)
+            logging.warning("[db] Truncating IP list to %d entries", max_entries)
             break
 
     return normalized
