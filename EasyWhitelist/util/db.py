@@ -28,14 +28,15 @@ def _create_tables(conn: sqlite3.Connection) -> None:
             CREATE TABLE IF NOT EXISTS security_groups (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cloud_provider TEXT NOT NULL,
-                sg_id TEXT UNIQUE NOT NULL,
+                sg_id TEXT NOT NULL,
                 region_id TEXT NOT NULL,
                 sg_name TEXT,
                 vpc_id TEXT,
                 sg_type TEXT,
                 description TEXT,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                UNIQUE(cloud_provider, sg_id)
             )
         ''')
         cursor.execute('''
@@ -132,7 +133,7 @@ def upsert_security_group(conn: sqlite3.Connection,
             """
             INSERT INTO security_groups (sg_id, region_id, sg_name, vpc_id, sg_type, description, cloud_provider, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(sg_id) DO UPDATE SET
+            ON CONFLICT(cloud_provider, sg_id) DO UPDATE SET
                 region_id=excluded.region_id,
                 sg_name=excluded.sg_name,
                 vpc_id=excluded.vpc_id,
