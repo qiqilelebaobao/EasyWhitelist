@@ -20,7 +20,8 @@ def _create_tables(conn: sqlite3.Connection) -> None:
                 name TEXT,
                 region_endpoint TEXT,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                UNIQUE(cloud_provider, region_id)
             )
         ''')
         cursor.execute('''
@@ -98,10 +99,9 @@ def upsert_regions(conn: sqlite3.Connection,
                 """
                 INSERT INTO regions (region_id, name, region_endpoint, cloud_provider, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(region_id) DO UPDATE SET
+                ON CONFLICT(cloud_provider, region_id) DO UPDATE SET
                     name=excluded.name,
                     region_endpoint=excluded.region_endpoint,
-                    cloud_provider=excluded.cloud_provider,
                     updated_at=excluded.updated_at
                 """,
                 (region_id,
@@ -180,7 +180,6 @@ def upsert_ip_address(conn: sqlite3.Connection,
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(raw_ip, cloud_provider) DO UPDATE SET
                 normalized_cidr=excluded.normalized_cidr,
-                cloud_provider=excluded.cloud_provider,
                 updated_at=excluded.updated_at
             """,
             (raw_ip, normalized_cidr, cloud_provider, now_iso, now_iso)
