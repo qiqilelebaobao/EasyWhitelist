@@ -91,9 +91,9 @@ def upsert_regions(conn: sqlite3.Connection,
         now_iso = datetime.now(timezone.utc).isoformat()
         cursor = conn.cursor()
         for region in regions:
-            region_id = region.get('Region', '')                # for tencentcloud
-            if not region_id:
-                region_id = region.get('RegionId', '')         # for aliyun
+            region_id = region.get('Region', '') or region.get('RegionId', '')  # Region for tencentcloud, RegionId for aliyun
+            region_name = region.get('RegionName', '') or region.get('LocalName', '')  # RegionName for tencentcloud, LocalName for aliyun
+            ep = region.get('RegionEndpoint', '') or f"vpc.{region_id}.example.com"  # Use RegionEndpoint for aliyun, constructed endpoint for tencentcloud
             if not region_id:
                 continue
             cursor.execute(
@@ -106,8 +106,8 @@ def upsert_regions(conn: sqlite3.Connection,
                     updated_at=excluded.updated_at
                 """,
                 (region_id,
-                 region.get('RegionName', ''),              # for tencentcloud
-                 region.get('RegionEndpoint', ''),
+                 region_name,
+                 ep,
                  cloud_provider,
                  now_iso,
                  now_iso)
@@ -139,7 +139,6 @@ def upsert_security_group(conn: sqlite3.Connection,
                 vpc_id=excluded.vpc_id,
                 sg_type=excluded.sg_type,
                 description=excluded.description,
-                cloud_provider=excluded.cloud_provider,
                 updated_at=excluded.updated_at
             """,
             (sg_id, region_id, sg_name, vpc_id, sg_type, description, cloud_provider, now_iso, now_iso)

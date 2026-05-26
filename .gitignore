@@ -20,3 +20,5 @@ notes/
 #Tests
 tests/
 AGENTS.md
+DATA_FLOW.md
+ARCHITECTURE.md
