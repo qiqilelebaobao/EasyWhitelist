@@ -73,7 +73,7 @@ def _fetch_and_cache_regions() -> List[dict]:
         upsert_regions(conn, regions, cloud_provider='tencentcloud')
     except Exception as e:
         logging.warning("[tencentcloud] Failed to cache regions to DB: %s", e)
-    return regions
+    return load_cached_regions(conn=conn, cloud_provider='tencentcloud')
 
 
 def load_regions_prefer_cache() -> List | None:

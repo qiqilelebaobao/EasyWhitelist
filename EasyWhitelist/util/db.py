@@ -194,16 +194,16 @@ def load_cached_regions(conn: sqlite3.Connection, cloud_provider: str) -> List[D
 
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT region_id, name, region_endpoint, cloud_provider FROM regions WHERE cloud_provider = ?", (cloud_provider,))
+        cursor.execute("SELECT region_id, name, region_endpoint, cloud_provider FROM regions WHERE cloud_provider = ? order by id", (cloud_provider,))
         rows = cursor.fetchall()
         return [
             {
-                'RegionId': r[0],
-                'LocalName': r[1],
-                'RegionEndpoint': r[2],
-                'CloudProvider': r[3],
+                'region_id': region_id,
+                'local_name': local_name,
+                'region_endpoint': region_endpoint,
+                'cloud_provider': cloud_provider,
             }
-            for r in rows
+            for region_id, local_name, region_endpoint, cloud_provider in rows
         ]
     except Exception as e:
         logging.error("[db] Failed to load cached regions: %s", e)

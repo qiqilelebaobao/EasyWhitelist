@@ -25,9 +25,9 @@ def t_main(action: str,
             return 2
         common_client = client.get_common_client(region_id, module="vpc", endpoint="vpc.tencentcloudapi.com")
     else:
-        region_id = regions[0].get("RegionId") or regions[0].get("Region", "")
+        region_id = regions[0].get("region_id")
         if not region_id:
-            logging.error("[tencentcloud] First region entry is missing 'RegionId' and 'Region' keys; cannot determine region to use")
+            logging.error("[tencentcloud] First region entry is missing 'region_id' key; cannot determine region to use")
             return 3
         logging.info("[tencentcloud] Using region '%s' for template operations", region_id)
         common_client = client.get_common_client(region_id, module="vpc", endpoint="vpc.tencentcloudapi.com")

@@ -490,7 +490,7 @@ class Prefix:
         with ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1)) as executor:
             logging.info("[prefix] Submitting search tasks for (%d), total %d regions ...",
                          min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list) or 1), len(self.regions.regions_list))
-            futures = {executor.submit(_search_region_safe, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
+            futures = {executor.submit(_search_region_safe, e['region_id']): e['region_id'] for e in self.regions.regions_list}
             with tqdm(
                 total=len(futures),
                 desc="\U0001f504 [\u8fdb\u884c\u4e2d]  Searching prefix lists",
