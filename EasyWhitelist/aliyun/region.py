@@ -22,8 +22,8 @@ class Regions:
     def get_region_name(self, region_id: str) -> str:
         """Return LocalName/region_name for a known region_id (empty string if not found)."""
         for r in self.regions_list or []:
-            if r.get('RegionId') == region_id:
-                return r.get('LocalName', '') or r.get('name', '') or ''
+            if r.get('region_id') == region_id:
+                return r.get('local_name', '') or ''
         return ''
 
     def _load_regions(self) -> List[Dict]:
@@ -56,16 +56,25 @@ class Regions:
 
         try:
             response = client.describe_regions_with_options(describe_regions_request, runtime)
-            regions = response.body.to_map().get('Regions', {}).get('Region', [])
-            logging.debug("[region] DescribeRegions response: %s", regions)
+            raw_regions = response.body.to_map().get('Regions', {}).get('Region', [])
+            logging.debug("[region] DescribeRegions response: %s", raw_regions)
         except Exception as e:
             logging.error("[region] Failed to fetch regions from API: %s", e)
             return []
 
         if self.conn is not None:
             try:
-                upsert_regions(self.conn, regions, cloud_provider='aliyun')
+                upsert_regions(self.conn, raw_regions, cloud_provider='aliyun')
             except Exception as db_exc:
                 logging.warning("[region] Failed to cache regions to db: %s", db_exc)
 
+        # Normalize to snake_case keys to match cache format
+        regions = [
+            {
+                'region_id': r.get('RegionId', ''),
+                'local_name': r.get('LocalName', ''),
+                'region_endpoint': r.get('RegionEndpoint', ''),
+            }
+            for r in raw_regions
+        ]
         return regions

@@ -112,7 +112,7 @@ class SecurityGroup:
         executor = ThreadPoolExecutor(max_workers=min(DEFAULT_CONCURRENT_WORKERS, len(self.regions.regions_list)))
         result: Tuple[Dict[str, Any] | None, str | None] = (None, None)
         try:
-            future_to_region = {executor.submit(self._search_security_group_by_region, e['RegionId']): e['RegionId'] for e in self.regions.regions_list}
+            future_to_region = {executor.submit(self._search_security_group_by_region, e['region_id']): e['region_id'] for e in self.regions.regions_list}
             for future in as_completed(future_to_region, timeout=60):  # wait up to 60s for the first completed future
                 try:
                     sg = future.result()
